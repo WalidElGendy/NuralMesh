@@ -2,3 +2,4 @@ ollama
 supabase
 fastapi
 uvicorn
+stripe

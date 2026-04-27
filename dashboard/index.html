@@ -68,15 +68,15 @@
                         <span class="rounded-full border border-purple-400/20 bg-purple-400/10 px-3 py-1 text-xs font-medium text-purple-200">Live</span>
                     </div>
                     <div class="mt-5 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/30 px-4 py-3">
-                        <code id="api-key" class="truncate text-sm text-slate-200">nm_live_&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;3f9a</code>
+                        <code id="api-key" class="truncate text-sm text-slate-200">Loading key...</code>
                         <button id="copy-key" class="rounded-full border border-mesh-primary px-4 py-2 text-sm font-semibold text-purple-200 transition hover:bg-mesh-primary hover:text-white">Copy</button>
                     </div>
                 </article>
 
                 <article class="rounded-3xl border border-white/10 bg-mesh-card p-6">
                     <p class="text-sm font-medium text-mesh-muted">Usage Today</p>
-                    <p class="mt-5 text-3xl font-semibold tracking-[-0.04em]">1,284 <span class="text-lg text-slate-400">requests</span></p>
-                    <p class="mt-3 text-sm font-medium text-emerald-400">+12% vs yesterday</p>
+                    <p class="mt-5 text-3xl font-semibold tracking-[-0.04em]"><span id="usage-today">Loading</span> <span class="text-lg text-slate-400">requests</span></p>
+                    <p id="usage-limit" class="mt-3 text-sm font-medium text-emerald-400">Checking plan limit...</p>
                 </article>
 
                 <article class="rounded-3xl border border-white/10 bg-mesh-card p-6">
@@ -182,6 +182,7 @@
     </div>
     <script>
         const API_BASE_URL = "http://localhost:8000";
+        const API_KEY = "nm_live_sk_3f9a8b2c1d4e5f6a7b8c9d0e1f2a3b4c";
         const POLL_INTERVAL_MS = 2000;
         let activePoll = null;
 
@@ -197,6 +198,20 @@
         const recentCalls = document.getElementById("recent-calls");
         const recentUpdated = document.getElementById("recent-updated");
         const copyKeyButton = document.getElementById("copy-key");
+        const apiKeyEl = document.getElementById("api-key");
+        const usageToday = document.getElementById("usage-today");
+        const usageLimit = document.getElementById("usage-limit");
+
+        function authHeaders(extraHeaders = {}) {
+            return {
+                ...extraHeaders,
+                "X-API-Key": API_KEY,
+            };
+        }
+
+        function maskApiKey(apiKey) {
+            return `${apiKey.slice(0, 8)}${"•".repeat(12)}${apiKey.slice(-4)}`;
+        }
 
         function setBackendStatus(text, tone = "neutral") {
             const tones = {
@@ -269,7 +284,9 @@
         }
 
         async function fetchJob(jobId) {
-            const response = await fetch(`${API_BASE_URL}/job/${jobId}`);
+            const response = await fetch(`${API_BASE_URL}/job/${jobId}`, {
+                headers: authHeaders(),
+            });
             if (!response.ok) {
                 throw new Error("Could not fetch job status");
             }
@@ -286,6 +303,7 @@
                     clearInterval(activePoll);
                     activePoll = null;
                     setLoading(false);
+                    loadBillingSummary();
                     setResultOutput(job.output || "Inference completed without output.");
                     addRecentCall({
                         model: "llama3",
@@ -299,6 +317,7 @@
                     clearInterval(activePoll);
                     activePoll = null;
                     setLoading(false);
+                    loadBillingSummary();
                     setResultOutput(job.output || "Inference failed.", true);
                     addRecentCall({ model: "llama3", tokens: "0", status: "error" });
                     return;
@@ -334,9 +353,9 @@
             try {
                 const response = await fetch(`${API_BASE_URL}/submit`, {
                     method: "POST",
-                    headers: {
+                    headers: authHeaders({
                         "Content-Type": "application/json",
-                    },
+                    }),
                     body: JSON.stringify({ prompt }),
                 });
 
@@ -365,7 +384,7 @@
 
         copyKeyButton.addEventListener("click", async () => {
             try {
-                await navigator.clipboard.writeText("nm_live_sk_3f9a...");
+                await navigator.clipboard.writeText(API_KEY);
                 copyKeyButton.textContent = "Copied!";
             } catch (error) {
                 copyKeyButton.textContent = "Copy failed";
@@ -375,8 +394,28 @@
             }, 1400);
         });
 
+        async function loadBillingSummary() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/billing/me`, {
+                    headers: authHeaders(),
+                });
+                if (!response.ok) {
+                    throw new Error("Could not load billing data");
+                }
+                const billing = await response.json();
+                apiKeyEl.textContent = maskApiKey(billing.api_key);
+                usageToday.textContent = billing.requests_today.toLocaleString();
+                usageLimit.textContent = `${billing.request_limit.toLocaleString()} request plan limit`;
+            } catch (error) {
+                apiKeyEl.textContent = maskApiKey(API_KEY);
+                usageToday.textContent = "Unavailable";
+                usageLimit.textContent = error.message;
+            }
+        }
+
         setResultStatus("idle");
         checkBackendHealth();
+        loadBillingSummary();
     </script>
 </body>
 </html>

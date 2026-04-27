@@ -17,194 +17,135 @@
                     },
                     colors: {
                         mesh: {
-                            black: "#050712",
-                            panel: "#0b1020",
-                            card: "#11172a",
-                            line: "#22304d",
-                            cyan: "#4ee7ff",
-                            violet: "#8b5cf6",
-                            green: "#36f2a6",
+                            bg: "#07070F",
+                            card: "#0E0E18",
+                            elevated: "#141421",
+                            border: "#242436",
+                            muted: "#8E8EA0",
+                            primary: "#7C3AED",
                         },
+                    },
+                    boxShadow: {
+                        glow: "0 0 80px rgba(124, 58, 237, 0.18)",
                     },
                 },
             },
         };
     </script>
 </head>
-<body class="min-h-screen bg-mesh-black font-sans text-slate-100">
-    <div class="pointer-events-none fixed inset-0 overflow-hidden">
-        <div class="absolute left-1/2 top-0 h-96 w-96 -translate-x-1/2 rounded-full bg-cyan-500/20 blur-3xl"></div>
-        <div class="absolute bottom-0 right-0 h-96 w-96 rounded-full bg-violet-600/20 blur-3xl"></div>
+<body class="min-h-screen bg-mesh-bg font-sans text-white antialiased">
+    <div class="pointer-events-none fixed inset-0">
+        <div class="absolute left-1/2 top-[-180px] h-[420px] w-[620px] -translate-x-1/2 rounded-full bg-mesh-primary/20 blur-3xl"></div>
+        <div class="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_32rem)]"></div>
     </div>
 
-    <main class="relative mx-auto flex min-h-screen max-w-7xl flex-col gap-6 px-4 py-5 sm:px-6 lg:px-8">
-        <header class="flex flex-col gap-4 rounded-3xl border border-white/10 bg-white/[0.03] p-5 shadow-2xl shadow-cyan-950/20 backdrop-blur md:flex-row md:items-center md:justify-between">
-            <div class="flex items-center gap-4">
-                <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-mesh-cyan to-mesh-violet text-xl font-bold text-white shadow-lg shadow-cyan-500/20">
-                    NM
-                </div>
-                <div>
-                    <p class="text-sm uppercase tracking-[0.35em] text-cyan-200/70">NeuralMesh</p>
-                    <h1 class="text-2xl font-bold tracking-tight text-white sm:text-3xl">Distributed Inference Control</h1>
-                </div>
+    <div class="relative mx-auto min-h-screen max-w-7xl px-6 py-6 lg:px-8">
+        <nav class="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4 shadow-glow backdrop-blur-xl">
+            <a href="index.html" class="flex items-center gap-3">
+                <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-mesh-primary text-sm font-bold shadow-lg shadow-purple-950/50">NM</div>
+                <span class="text-lg font-semibold tracking-tight">NeuralMesh</span>
+            </a>
+            <div class="flex items-center gap-1 rounded-full border border-white/10 bg-black/20 p-1 text-sm">
+                <a href="index.html" class="rounded-full bg-mesh-primary px-4 py-2 font-medium text-white shadow-lg shadow-purple-950/40">Dashboard</a>
+                <a href="nodes.html" class="rounded-full px-4 py-2 font-medium text-mesh-muted transition hover:text-white">Nodes</a>
+                <a href="billing.html" class="rounded-full px-4 py-2 font-medium text-mesh-muted transition hover:text-white">Billing</a>
             </div>
-            <div class="flex flex-wrap items-center gap-3">
-                <span class="rounded-full border border-mesh-green/30 bg-mesh-green/10 px-4 py-2 text-sm font-medium text-mesh-green">
-                    Network Online
-                </span>
-                <button class="rounded-full bg-white px-5 py-2.5 text-sm font-bold text-slate-950 transition hover:bg-cyan-100">
-                    Submit Job
-                </button>
+        </nav>
+
+        <header class="mt-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div>
+                <p class="text-sm font-medium uppercase tracking-[0.24em] text-purple-300">Production overview</p>
+                <h1 class="mt-3 text-4xl font-semibold tracking-[-0.04em] text-white md:text-5xl">Inference dashboard</h1>
             </div>
+            <p class="max-w-xl text-sm leading-6 text-mesh-muted">Monitor API usage, latency, and recent model calls across your distributed NeuralMesh nodes.</p>
         </header>
 
-        <section class="grid gap-6 lg:grid-cols-[280px_1fr]">
-            <aside class="rounded-3xl border border-white/10 bg-mesh-panel/80 p-5 backdrop-blur">
-                <nav class="space-y-2 text-sm font-medium">
-                    <a class="flex items-center justify-between rounded-2xl bg-cyan-400/10 px-4 py-3 text-cyan-100" href="#">
-                        Overview
-                        <span class="h-2 w-2 rounded-full bg-mesh-cyan"></span>
-                    </a>
-                    <a class="block rounded-2xl px-4 py-3 text-slate-400 transition hover:bg-white/5 hover:text-white" href="#">Jobs</a>
-                    <a class="block rounded-2xl px-4 py-3 text-slate-400 transition hover:bg-white/5 hover:text-white" href="#">Nodes</a>
-                    <a class="block rounded-2xl px-4 py-3 text-slate-400 transition hover:bg-white/5 hover:text-white" href="#">Models</a>
-                    <a class="block rounded-2xl px-4 py-3 text-slate-400 transition hover:bg-white/5 hover:text-white" href="#">Billing</a>
-                </nav>
-
-                <div class="mt-8 rounded-3xl border border-cyan-300/10 bg-cyan-300/5 p-4">
-                    <p class="text-sm text-cyan-100/70">Active model</p>
-                    <h2 class="mt-2 text-xl font-bold text-white">llama3</h2>
-                    <div class="mt-4 h-2 rounded-full bg-slate-800">
-                        <div class="h-2 w-3/4 rounded-full bg-gradient-to-r from-mesh-cyan to-mesh-violet"></div>
+        <main class="mt-8 space-y-6">
+            <section class="grid gap-4 lg:grid-cols-[1.35fr_1fr_1fr_1fr]">
+                <article class="rounded-3xl border border-white/10 bg-mesh-card p-6 shadow-2xl shadow-black/30">
+                    <div class="flex items-center justify-between">
+                        <p class="text-sm font-medium text-mesh-muted">API Key</p>
+                        <span class="rounded-full border border-purple-400/20 bg-purple-400/10 px-3 py-1 text-xs font-medium text-purple-200">Live</span>
                     </div>
-                    <p class="mt-3 text-xs text-slate-400">75% cluster capacity available</p>
+                    <div class="mt-5 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/30 px-4 py-3">
+                        <code class="truncate text-sm text-slate-200">nm_live_&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;3f9a</code>
+                        <button class="rounded-full border border-mesh-primary px-4 py-2 text-sm font-semibold text-purple-200 transition hover:bg-mesh-primary hover:text-white">Copy</button>
+                    </div>
+                </article>
+
+                <article class="rounded-3xl border border-white/10 bg-mesh-card p-6">
+                    <p class="text-sm font-medium text-mesh-muted">Usage Today</p>
+                    <p class="mt-5 text-3xl font-semibold tracking-[-0.04em]">1,284 <span class="text-lg text-slate-400">requests</span></p>
+                    <p class="mt-3 text-sm font-medium text-emerald-400">+12% vs yesterday</p>
+                </article>
+
+                <article class="rounded-3xl border border-white/10 bg-mesh-card p-6">
+                    <p class="text-sm font-medium text-mesh-muted">Avg Response Time</p>
+                    <p class="mt-5 text-3xl font-semibold tracking-[-0.04em]">312ms</p>
+                    <p class="mt-3 text-sm text-slate-500">p95 across all models</p>
+                </article>
+
+                <article class="rounded-3xl border border-white/10 bg-mesh-card p-6">
+                    <p class="text-sm font-medium text-mesh-muted">Active Nodes</p>
+                    <p class="mt-5 text-3xl font-semibold tracking-[-0.04em]">3 nodes</p>
+                    <p class="mt-3 text-sm text-slate-500">GPU workers online</p>
+                </article>
+            </section>
+
+            <section class="overflow-hidden rounded-3xl border border-white/10 bg-mesh-card shadow-2xl shadow-black/30">
+                <div class="flex items-center justify-between border-b border-white/10 px-6 py-5">
+                    <div>
+                        <h2 class="text-xl font-semibold tracking-[-0.03em]">Recent API Calls</h2>
+                        <p class="mt-1 text-sm text-mesh-muted">Latest requests routed through NeuralMesh.</p>
+                    </div>
+                    <span class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-slate-400">Updated 18s ago</span>
                 </div>
-            </aside>
-
-            <div class="space-y-6">
-                <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                    <article class="rounded-3xl border border-white/10 bg-mesh-card p-5">
-                        <p class="text-sm text-slate-400">Completed Jobs</p>
-                        <p class="mt-3 text-3xl font-bold text-white">12,482</p>
-                        <p class="mt-2 text-sm text-mesh-green">+18.2% today</p>
-                    </article>
-                    <article class="rounded-3xl border border-white/10 bg-mesh-card p-5">
-                        <p class="text-sm text-slate-400">Pending Queue</p>
-                        <p class="mt-3 text-3xl font-bold text-white">37</p>
-                        <p class="mt-2 text-sm text-cyan-200">3 sec polling</p>
-                    </article>
-                    <article class="rounded-3xl border border-white/10 bg-mesh-card p-5">
-                        <p class="text-sm text-slate-400">Active Nodes</p>
-                        <p class="mt-3 text-3xl font-bold text-white">128</p>
-                        <p class="mt-2 text-sm text-mesh-green">124 healthy</p>
-                    </article>
-                    <article class="rounded-3xl border border-white/10 bg-mesh-card p-5">
-                        <p class="text-sm text-slate-400">Avg Latency</p>
-                        <p class="mt-3 text-3xl font-bold text-white">1.8s</p>
-                        <p class="mt-2 text-sm text-violet-200">llama3 inference</p>
-                    </article>
-                </section>
-
-                <section class="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-                    <article class="rounded-3xl border border-white/10 bg-mesh-panel/80 p-6">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-sm uppercase tracking-[0.25em] text-cyan-200/60">Live mesh</p>
-                                <h2 class="mt-2 text-2xl font-bold text-white">Node Performance</h2>
-                            </div>
-                            <span class="rounded-full bg-white/5 px-3 py-1 text-xs text-slate-300">Realtime</span>
-                        </div>
-
-                        <div class="mt-8 grid gap-4 md:grid-cols-3">
-                            <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                                <div class="mb-4 flex items-center justify-between">
-                                    <span class="text-sm text-slate-300">node-alpha</span>
-                                    <span class="h-2 w-2 rounded-full bg-mesh-green"></span>
-                                </div>
-                                <div class="h-28 rounded-2xl bg-gradient-to-t from-cyan-400/30 to-transparent p-3">
-                                    <div class="mt-14 h-10 rounded-xl bg-cyan-300/60"></div>
-                                </div>
-                                <p class="mt-3 text-sm text-slate-400">98 jobs complete</p>
-                            </div>
-                            <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                                <div class="mb-4 flex items-center justify-between">
-                                    <span class="text-sm text-slate-300">node-orbit</span>
-                                    <span class="h-2 w-2 rounded-full bg-mesh-green"></span>
-                                </div>
-                                <div class="h-28 rounded-2xl bg-gradient-to-t from-violet-400/30 to-transparent p-3">
-                                    <div class="mt-8 h-16 rounded-xl bg-violet-300/60"></div>
-                                </div>
-                                <p class="mt-3 text-sm text-slate-400">143 jobs complete</p>
-                            </div>
-                            <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                                <div class="mb-4 flex items-center justify-between">
-                                    <span class="text-sm text-slate-300">node-spark</span>
-                                    <span class="h-2 w-2 rounded-full bg-amber-300"></span>
-                                </div>
-                                <div class="h-28 rounded-2xl bg-gradient-to-t from-amber-300/30 to-transparent p-3">
-                                    <div class="mt-20 h-4 rounded-xl bg-amber-200/70"></div>
-                                </div>
-                                <p class="mt-3 text-sm text-slate-400">Processing job #842</p>
-                            </div>
-                        </div>
-                    </article>
-
-                    <article class="rounded-3xl border border-white/10 bg-mesh-panel/80 p-6">
-                        <p class="text-sm uppercase tracking-[0.25em] text-violet-200/60">Queue</p>
-                        <h2 class="mt-2 text-2xl font-bold text-white">Recent Jobs</h2>
-                        <div class="mt-6 space-y-3">
-                            <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                                <div class="flex items-center justify-between gap-3">
-                                    <p class="font-semibold text-white">job_842</p>
-                                    <span class="rounded-full bg-cyan-400/10 px-3 py-1 text-xs text-cyan-200">processing</span>
-                                </div>
-                                <p class="mt-2 truncate text-sm text-slate-400">Summarize distributed inference logs...</p>
-                            </div>
-                            <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                                <div class="flex items-center justify-between gap-3">
-                                    <p class="font-semibold text-white">job_841</p>
-                                    <span class="rounded-full bg-mesh-green/10 px-3 py-1 text-xs text-mesh-green">complete</span>
-                                </div>
-                                <p class="mt-2 truncate text-sm text-slate-400">What is 2+2?</p>
-                            </div>
-                            <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                                <div class="flex items-center justify-between gap-3">
-                                    <p class="font-semibold text-white">job_840</p>
-                                    <span class="rounded-full bg-slate-400/10 px-3 py-1 text-xs text-slate-300">pending</span>
-                                </div>
-                                <p class="mt-2 truncate text-sm text-slate-400">Draft onboarding instructions...</p>
-                            </div>
-                        </div>
-                    </article>
-                </section>
-
-                <section class="rounded-3xl border border-white/10 bg-mesh-panel/80 p-6">
-                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                            <p class="text-sm uppercase tracking-[0.25em] text-cyan-200/60">Activity</p>
-                            <h2 class="mt-2 text-2xl font-bold text-white">Inference Timeline</h2>
-                        </div>
-                        <button class="rounded-full border border-white/10 px-4 py-2 text-sm text-slate-300 transition hover:border-cyan-300/50 hover:text-white">
-                            View all events
-                        </button>
-                    </div>
-                    <div class="mt-6 grid gap-4 md:grid-cols-3">
-                        <div class="rounded-2xl bg-white/[0.03] p-4">
-                            <p class="text-sm text-slate-400">09:44 UTC</p>
-                            <p class="mt-2 font-semibold text-white">node-alpha claimed pending job</p>
-                        </div>
-                        <div class="rounded-2xl bg-white/[0.03] p-4">
-                            <p class="text-sm text-slate-400">09:45 UTC</p>
-                            <p class="mt-2 font-semibold text-white">llama3 returned output successfully</p>
-                        </div>
-                        <div class="rounded-2xl bg-white/[0.03] p-4">
-                            <p class="text-sm text-slate-400">09:46 UTC</p>
-                            <p class="mt-2 font-semibold text-white">Supabase job row marked complete</p>
-                        </div>
-                    </div>
-                </section>
-            </div>
-        </section>
-    </main>
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[720px] text-left text-sm">
+                        <thead class="border-b border-white/10 text-xs uppercase tracking-[0.18em] text-slate-500">
+                            <tr>
+                                <th class="px-6 py-4 font-medium">Model</th>
+                                <th class="px-6 py-4 font-medium">Tokens</th>
+                                <th class="px-6 py-4 font-medium">Timestamp</th>
+                                <th class="px-6 py-4 font-medium">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-white/10">
+                            <tr class="transition hover:bg-white/[0.025]">
+                                <td class="px-6 py-5 font-medium text-white">llama3</td>
+                                <td class="px-6 py-5 text-slate-300">1,842</td>
+                                <td class="px-6 py-5 text-slate-400">Apr 27, 21:45 UTC</td>
+                                <td class="px-6 py-5"><span class="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-300">success</span></td>
+                            </tr>
+                            <tr class="transition hover:bg-white/[0.025]">
+                                <td class="px-6 py-5 font-medium text-white">mistral-7b</td>
+                                <td class="px-6 py-5 text-slate-300">932</td>
+                                <td class="px-6 py-5 text-slate-400">Apr 27, 21:42 UTC</td>
+                                <td class="px-6 py-5"><span class="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-300">success</span></td>
+                            </tr>
+                            <tr class="transition hover:bg-white/[0.025]">
+                                <td class="px-6 py-5 font-medium text-white">llama3</td>
+                                <td class="px-6 py-5 text-slate-300">2,417</td>
+                                <td class="px-6 py-5 text-slate-400">Apr 27, 21:38 UTC</td>
+                                <td class="px-6 py-5"><span class="rounded-full border border-red-400/20 bg-red-400/10 px-3 py-1 text-xs font-medium text-red-300">error</span></td>
+                            </tr>
+                            <tr class="transition hover:bg-white/[0.025]">
+                                <td class="px-6 py-5 font-medium text-white">mistral-7b</td>
+                                <td class="px-6 py-5 text-slate-300">684</td>
+                                <td class="px-6 py-5 text-slate-400">Apr 27, 21:34 UTC</td>
+                                <td class="px-6 py-5"><span class="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-300">success</span></td>
+                            </tr>
+                            <tr class="transition hover:bg-white/[0.025]">
+                                <td class="px-6 py-5 font-medium text-white">llama3</td>
+                                <td class="px-6 py-5 text-slate-300">1,206</td>
+                                <td class="px-6 py-5 text-slate-400">Apr 27, 21:29 UTC</td>
+                                <td class="px-6 py-5"><span class="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-300">success</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
 </body>
 </html>

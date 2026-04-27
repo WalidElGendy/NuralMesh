@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuralMesh Billing</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ["Space Grotesk", "sans-serif"],
+                    },
+                    colors: {
+                        mesh: {
+                            bg: "#07070F",
+                            card: "#0D0D18",
+                            line: "#232336",
+                            muted: "#A1A1AA",
+                            purple: "#7C3AED",
+                        },
+                    },
+                },
+            },
+        };
+    </script>
+</head>
+<body class="min-h-screen bg-mesh-bg font-sans text-white antialiased">
+    <div class="pointer-events-none fixed inset-0">
+        <div class="absolute left-1/2 top-[-180px] h-[420px] w-[620px] -translate-x-1/2 rounded-full bg-mesh-purple/20 blur-[130px]"></div>
+        <div class="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_32rem)]"></div>
+    </div>
+
+    <div class="relative mx-auto min-h-screen max-w-7xl px-5 py-6 sm:px-8">
+        <nav class="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4 shadow-2xl shadow-black/30 backdrop-blur-xl">
+            <a href="index.html" class="flex items-center gap-3">
+                <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-mesh-purple text-sm font-bold shadow-lg shadow-mesh-purple/30">
+                    NM
+                </div>
+                <span class="text-lg font-semibold tracking-tight">NeuralMesh</span>
+            </a>
+            <div class="flex items-center gap-1 rounded-full border border-white/10 bg-black/20 p-1 text-sm">
+                <a href="index.html" class="rounded-full px-4 py-2 font-medium text-mesh-muted transition hover:text-white">Dashboard</a>
+                <a href="nodes.html" class="rounded-full px-4 py-2 font-medium text-mesh-muted transition hover:text-white">Nodes</a>
+                <a href="billing.html" class="rounded-full bg-mesh-purple px-4 py-2 font-medium text-white shadow-lg shadow-mesh-purple/25">Billing</a>
+            </div>
+        </nav>
+
+        <main class="py-10">
+            <section class="mb-8">
+                <p class="text-sm font-medium uppercase tracking-[0.24em] text-mesh-purple">Billing</p>
+                <h1 class="mt-3 text-4xl font-semibold tracking-[-0.04em] text-white sm:text-5xl">Plan and usage</h1>
+                <p class="mt-3 max-w-2xl text-base text-zinc-400">Monitor your NeuralMesh subscription and compute consumption.</p>
+            </section>
+
+            <section class="grid gap-6 lg:grid-cols-[1fr_0.85fr]">
+                <article class="rounded-3xl border border-white/10 bg-mesh-card/90 p-6 shadow-2xl shadow-black/30">
+                    <div class="flex flex-col justify-between gap-6 sm:flex-row sm:items-start">
+                        <div>
+                            <p class="text-sm text-zinc-400">Current plan</p>
+                            <h2 class="mt-3 text-3xl font-semibold tracking-tight">Pro Plan — $49/month</h2>
+                            <p class="mt-2 text-sm text-zinc-500">Billed monthly</p>
+                        </div>
+                        <span class="w-fit rounded-full border border-mesh-purple/30 bg-mesh-purple/10 px-4 py-2 text-sm font-medium text-violet-200">
+                            Active subscription
+                        </span>
+                    </div>
+
+                    <div class="mt-8 space-y-7">
+                        <div>
+                            <div class="mb-3 flex items-center justify-between text-sm">
+                                <span class="font-medium text-white">API Requests</span>
+                                <span class="text-zinc-400">1,284 / 10,000 used</span>
+                            </div>
+                            <div class="h-3 overflow-hidden rounded-full bg-white/10">
+                                <div class="h-full w-[13%] rounded-full bg-mesh-purple shadow-[0_0_24px_rgba(124,58,237,0.55)]"></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="mb-3 flex items-center justify-between text-sm">
+                                <span class="font-medium text-white">Compute Hours</span>
+                                <span class="text-zinc-400">18.4 / 100 hours used</span>
+                            </div>
+                            <div class="h-3 overflow-hidden rounded-full bg-white/10">
+                                <div class="h-full w-[18.4%] rounded-full bg-mesh-purple shadow-[0_0_24px_rgba(124,58,237,0.55)]"></div>
+                            </div>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="rounded-3xl border border-white/10 bg-white/[0.035] p-6">
+                    <h2 class="text-xl font-semibold tracking-tight">Included features</h2>
+                    <ul class="mt-6 space-y-4 text-sm text-zinc-300">
+                        <li class="flex items-center gap-3">
+                            <span class="flex h-6 w-6 items-center justify-center rounded-full bg-mesh-purple/15 text-mesh-purple">✓</span>
+                            Unlimited nodes
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <span class="flex h-6 w-6 items-center justify-center rounded-full bg-mesh-purple/15 text-mesh-purple">✓</span>
+                            Priority inference
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <span class="flex h-6 w-6 items-center justify-center rounded-full bg-mesh-purple/15 text-mesh-purple">✓</span>
+                            99.9% uptime SLA
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <span class="flex h-6 w-6 items-center justify-center rounded-full bg-mesh-purple/15 text-mesh-purple">✓</span>
+                            Discord support
+                        </li>
+                    </ul>
+
+                    <button class="mt-8 w-full rounded-2xl bg-mesh-purple px-5 py-4 text-sm font-semibold text-white shadow-xl shadow-mesh-purple/25 transition hover:bg-violet-500">
+                        Upgrade to Enterprise
+                    </button>
+                </article>
+            </section>
+        </main>
+    </div>
+</body>
+</html>

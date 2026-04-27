@@ -1,2 +1,4 @@
 ollama
 supabase
+fastapi
+uvicorn

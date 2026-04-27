@@ -1,11 +1,20 @@
 import os
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from supabase import create_client
 
 
 app = FastAPI(title="Distributed AI Inference API")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 class JobRequest(BaseModel):
@@ -81,3 +90,6 @@ def get_job(job_id: str):
         "status": job.get("status"),
         "output": job.get("output"),
     }
+
+
+app.mount("/dashboard", StaticFiles(directory="dashboard", html=True), name="dashboard")

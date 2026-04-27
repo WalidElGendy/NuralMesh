@@ -68,8 +68,8 @@
                         <span class="rounded-full border border-purple-400/20 bg-purple-400/10 px-3 py-1 text-xs font-medium text-purple-200">Live</span>
                     </div>
                     <div class="mt-5 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/30 px-4 py-3">
-                        <code class="truncate text-sm text-slate-200">nm_live_&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;3f9a</code>
-                        <button class="rounded-full border border-mesh-primary px-4 py-2 text-sm font-semibold text-purple-200 transition hover:bg-mesh-primary hover:text-white">Copy</button>
+                        <code id="api-key" class="truncate text-sm text-slate-200">nm_live_&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;3f9a</code>
+                        <button id="copy-key" class="rounded-full border border-mesh-primary px-4 py-2 text-sm font-semibold text-purple-200 transition hover:bg-mesh-primary hover:text-white">Copy</button>
                     </div>
                 </article>
 
@@ -92,13 +92,59 @@
                 </article>
             </section>
 
+            <section class="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+                <article class="rounded-3xl border border-white/10 bg-mesh-card p-6 shadow-2xl shadow-black/30">
+                    <div class="flex items-center justify-between gap-4">
+                        <div>
+                            <h2 class="text-xl font-semibold tracking-[-0.03em]">Submit inference job</h2>
+                            <p class="mt-1 text-sm text-mesh-muted">Send a prompt to the live FastAPI backend.</p>
+                        </div>
+                        <span id="backend-status" class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-slate-400">Connecting</span>
+                    </div>
+
+                    <form id="submit-form" class="mt-5 space-y-4">
+                        <label for="prompt" class="block text-sm font-medium text-slate-300">Prompt</label>
+                        <textarea id="prompt" name="prompt" rows="5" required class="w-full resize-none rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-mesh-primary focus:ring-4 focus:ring-mesh-primary/10" placeholder="Ask NeuralMesh to summarize GPU utilization across nodes."></textarea>
+                        <button id="submit-button" type="submit" class="w-full rounded-2xl bg-mesh-primary px-5 py-3 text-sm font-semibold text-white shadow-xl shadow-purple-950/30 transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-60">
+                            Submit job
+                        </button>
+                    </form>
+                </article>
+
+                <article class="rounded-3xl border border-white/10 bg-mesh-card p-6 shadow-2xl shadow-black/30">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <h2 class="text-xl font-semibold tracking-[-0.03em]">Live job status</h2>
+                            <p class="mt-1 text-sm text-mesh-muted">Track the latest job until your worker marks it complete.</p>
+                        </div>
+                        <span id="job-status-badge" class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs font-medium text-slate-400">No job</span>
+                    </div>
+
+                    <dl class="mt-6 grid gap-4 sm:grid-cols-2">
+                        <div class="rounded-2xl border border-white/10 bg-black/20 p-4">
+                            <dt class="text-xs uppercase tracking-[0.18em] text-slate-500">Job ID</dt>
+                            <dd id="job-id" class="mt-2 truncate font-mono text-sm text-slate-300">Waiting for submission</dd>
+                        </div>
+                        <div class="rounded-2xl border border-white/10 bg-black/20 p-4">
+                            <dt class="text-xs uppercase tracking-[0.18em] text-slate-500">Status</dt>
+                            <dd id="job-status" class="mt-2 text-sm font-medium text-slate-300">Idle</dd>
+                        </div>
+                    </dl>
+
+                    <div class="mt-4 rounded-2xl border border-white/10 bg-black/30 p-4">
+                        <p class="text-xs uppercase tracking-[0.18em] text-slate-500">Output</p>
+                        <pre id="job-output" class="mt-3 min-h-28 whitespace-pre-wrap text-sm leading-6 text-slate-300">Submit a prompt to see the model response here.</pre>
+                    </div>
+                </article>
+            </section>
+
             <section class="overflow-hidden rounded-3xl border border-white/10 bg-mesh-card shadow-2xl shadow-black/30">
                 <div class="flex items-center justify-between border-b border-white/10 px-6 py-5">
                     <div>
                         <h2 class="text-xl font-semibold tracking-[-0.03em]">Recent API Calls</h2>
                         <p class="mt-1 text-sm text-mesh-muted">Latest requests routed through NeuralMesh.</p>
                     </div>
-                    <span class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-slate-400">Updated 18s ago</span>
+                    <span id="recent-updated" class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-slate-400">Updated just now</span>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full min-w-[720px] text-left text-sm">
@@ -110,7 +156,7 @@
                                 <th class="px-6 py-4 font-medium">Status</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-white/10">
+                        <tbody id="recent-calls" class="divide-y divide-white/10">
                             <tr class="transition hover:bg-white/[0.025]">
                                 <td class="px-6 py-5 font-medium text-white">llama3</td>
                                 <td class="px-6 py-5 text-slate-300">1,842</td>
@@ -147,5 +193,170 @@
             </section>
         </main>
     </div>
+    <script>
+        const API_BASE_URL = window.NEURALMESH_API_URL || "http://127.0.0.1:8000";
+        const POLL_INTERVAL_MS = 3000;
+        let activePoll = null;
+
+        const form = document.getElementById("submit-form");
+        const promptInput = document.getElementById("prompt");
+        const submitButton = document.getElementById("submit-button");
+        const backendStatus = document.getElementById("backend-status");
+        const jobIdEl = document.getElementById("job-id");
+        const jobStatusEl = document.getElementById("job-status");
+        const jobStatusBadge = document.getElementById("job-status-badge");
+        const jobOutputEl = document.getElementById("job-output");
+        const recentCalls = document.getElementById("recent-calls");
+        const recentUpdated = document.getElementById("recent-updated");
+        const copyKeyButton = document.getElementById("copy-key");
+
+        function setBackendStatus(text, tone = "neutral") {
+            const tones = {
+                neutral: "border-white/10 bg-white/[0.03] text-slate-400",
+                online: "border-emerald-400/20 bg-emerald-400/10 text-emerald-300",
+                error: "border-red-400/20 bg-red-400/10 text-red-300",
+            };
+            backendStatus.className = `rounded-full border px-3 py-1 text-xs font-medium ${tones[tone]}`;
+            backendStatus.textContent = text;
+        }
+
+        function setJobStatus(status) {
+            const tones = {
+                pending: "border-slate-400/20 bg-slate-400/10 text-slate-300",
+                processing: "border-purple-400/20 bg-purple-400/10 text-purple-200",
+                complete: "border-emerald-400/20 bg-emerald-400/10 text-emerald-300",
+                error: "border-red-400/20 bg-red-400/10 text-red-300",
+                idle: "border-white/10 bg-white/[0.03] text-slate-400",
+            };
+            const tone = tones[status] || tones.idle;
+            jobStatusBadge.className = `rounded-full border px-3 py-1 text-xs font-medium ${tone}`;
+            jobStatusBadge.textContent = status === "idle" ? "No job" : status;
+            jobStatusEl.textContent = status === "idle" ? "Idle" : status;
+        }
+
+        function addRecentCall({ model = "llama3", tokens = "pending", status = "pending" }) {
+            const statusClasses = {
+                success: "border-emerald-400/20 bg-emerald-400/10 text-emerald-300",
+                complete: "border-emerald-400/20 bg-emerald-400/10 text-emerald-300",
+                error: "border-red-400/20 bg-red-400/10 text-red-300",
+                pending: "border-slate-400/20 bg-slate-400/10 text-slate-300",
+                processing: "border-purple-400/20 bg-purple-400/10 text-purple-200",
+            };
+            const row = document.createElement("tr");
+            row.className = "transition hover:bg-white/[0.025]";
+            row.innerHTML = `
+                <td class="px-6 py-5 font-medium text-white">${model}</td>
+                <td class="px-6 py-5 text-slate-300">${tokens}</td>
+                <td class="px-6 py-5 text-slate-400">${new Date().toLocaleString()}</td>
+                <td class="px-6 py-5"><span class="rounded-full border px-3 py-1 text-xs font-medium ${statusClasses[status] || statusClasses.pending}">${status === "complete" ? "success" : status}</span></td>
+            `;
+            recentCalls.prepend(row);
+            while (recentCalls.children.length > 5) {
+                recentCalls.removeChild(recentCalls.lastElementChild);
+            }
+            recentUpdated.textContent = "Updated just now";
+        }
+
+        async function checkBackendHealth() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/`);
+                if (!response.ok) {
+                    throw new Error("Health check failed");
+                }
+                setBackendStatus("Backend online", "online");
+            } catch (error) {
+                setBackendStatus("Backend offline", "error");
+            }
+        }
+
+        async function fetchJob(jobId) {
+            const response = await fetch(`${API_BASE_URL}/job/${jobId}`);
+            if (!response.ok) {
+                throw new Error("Could not fetch job status");
+            }
+            return response.json();
+        }
+
+        async function pollJob(jobId) {
+            try {
+                const job = await fetchJob(jobId);
+                const status = job.status || "pending";
+                setJobStatus(status);
+                jobOutputEl.textContent = job.output || "Waiting for the worker node to finish inference...";
+
+                if (status === "complete" || status === "error") {
+                    clearInterval(activePoll);
+                    activePoll = null;
+                    addRecentCall({
+                        model: "llama3",
+                        tokens: job.output ? job.output.length.toLocaleString() : "0",
+                        status,
+                    });
+                }
+            } catch (error) {
+                setJobStatus("error");
+                jobOutputEl.textContent = error.message;
+                clearInterval(activePoll);
+                activePoll = null;
+            }
+        }
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const prompt = promptInput.value.trim();
+            if (!prompt) {
+                return;
+            }
+
+            submitButton.disabled = true;
+            submitButton.textContent = "Submitting...";
+            jobOutputEl.textContent = "Sending prompt to FastAPI...";
+            setJobStatus("pending");
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/submit`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ prompt }),
+                });
+
+                if (!response.ok) {
+                    const error = await response.json().catch(() => ({}));
+                    throw new Error(error.detail || "Could not submit job");
+                }
+
+                const data = await response.json();
+                jobIdEl.textContent = data.id;
+                jobOutputEl.textContent = "Job submitted. Waiting for a node to claim it...";
+                addRecentCall({ model: "llama3", status: "pending" });
+
+                if (activePoll) {
+                    clearInterval(activePoll);
+                }
+                await pollJob(data.id);
+                activePoll = setInterval(() => pollJob(data.id), POLL_INTERVAL_MS);
+                promptInput.value = "";
+            } catch (error) {
+                setJobStatus("error");
+                jobOutputEl.textContent = error.message;
+            } finally {
+                submitButton.disabled = false;
+                submitButton.textContent = "Submit job";
+            }
+        });
+
+        copyKeyButton.addEventListener("click", async () => {
+            await navigator.clipboard.writeText("nm_live_masked_demo_3f9a");
+            copyKeyButton.textContent = "Copied";
+            setTimeout(() => {
+                copyKeyButton.textContent = "Copy";
+            }, 1400);
+        });
+
+        setJobStatus("idle");
+        checkBackendHealth();
+    </script>
 </body>
 </html>

@@ -30,7 +30,7 @@ def health_check():
     return {"status": "ok"}
 
 
-@app.post("/jobs")
+@app.post("/submit")
 def submit_job(job_request: JobRequest):
     try:
         result = (
@@ -53,16 +53,16 @@ def submit_job(job_request: JobRequest):
     if not result.data:
         raise HTTPException(status_code=500, detail="Supabase did not return a job")
 
-    return result.data[0]
+    return {"id": result.data[0]["id"]}
 
 
-@app.get("/jobs/{job_id}")
+@app.get("/job/{job_id}")
 def get_job(job_id: str):
     try:
         result = (
             get_supabase_client()
             .table("jobs")
-            .select("*")
+            .select("status, output")
             .eq("id", job_id)
             .limit(1)
             .execute()
@@ -76,4 +76,8 @@ def get_job(job_id: str):
     if not result.data:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    return result.data[0]
+    job = result.data[0]
+    return {
+        "status": job.get("status"),
+        "output": job.get("output"),
+    }

@@ -36,6 +36,19 @@ class Settings(BaseSettings):
 CLASSIFY_MODEL = os.getenv("CLASSIFY_MODEL", "llama-3.1-8b")
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
 QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
+MODEL_MAP = {
+    "llama-3.1-8b": os.getenv("LLAMA_MODEL", "ollama/llama3.1:8b"),
+    "mistral-7b": os.getenv("MISTRAL_MODEL", "ollama/mistral:7b"),
+    "qwen-coder-7b": os.getenv("QWEN_MODEL", "ollama/qwen2.5-coder:7b"),
+    "deepseek-v3": os.getenv("DEEPSEEK_MODEL", "deepseek/deepseek-chat"),
+    "claude-sonnet": os.getenv("CLAUDE_MODEL", "anthropic/claude-sonnet-4-5"),
+    "gemini-2.5-pro": os.getenv("GEMINI_MODEL", "gemini/gemini-2.5-pro"),
+}
+CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", "0.72"))
+ROUTE_MODEL_PREFIX = os.getenv("ROUTE_MODEL_PREFIX", "live")
+PRUNE_THRESHOLD = int(os.getenv("PRUNE_THRESHOLD", "2000"))
+PRUNE_MODEL = os.getenv("PRUNE_MODEL", "mistral-7b")
+PRUNE_MODEL_PREFIX = os.getenv("PRUNE_MODEL_PREFIX", "live")
 
 
 @lru_cache

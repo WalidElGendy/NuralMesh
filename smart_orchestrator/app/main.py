@@ -69,17 +69,17 @@ async def health() -> dict[str, str]:
 
 @app.get("/metrics")
 async def metrics() -> dict[str, float | int]:
-    """Purpose: Return Sprint 2 in-memory cache and classification metrics.
+    """Purpose: Return Sprint 3 in-memory cache, classify, route, and prune metrics.
 
     Args:
         None.
 
     Returns:
-        Cache hit rate, hit/miss counters, classify token totals, fallback count,
-        and estimated USD savings.
+        Cache hit rate, classify counters, route counters, prune counters, and
+        estimated USD savings.
 
     Cost/quality target:
-        Zero external dependency metrics endpoint for Sprint 2; Prometheus is deferred.
+        Zero external dependency metrics endpoint for Sprint 3; Prometheus is deferred.
     """
 
     return await get_metrics()

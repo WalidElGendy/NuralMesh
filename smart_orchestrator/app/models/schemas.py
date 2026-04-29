@@ -76,6 +76,11 @@ class ChatResponse(BaseModel):
     low_confidence: bool = False
     cache_source: str = "miss"
     classify_tokens: int = 0
+    route_model: str | None = None
+    route_tokens: int = 0
+    escalation_count: int = 0
+    prune_tokens_saved: int = 0
+    sensitive_override: bool = False
 
 
 class PromptClassification(BaseModel):
@@ -174,6 +179,36 @@ class CacheResult(BaseModel):
     tokens_saved: int = 0
     source: Literal["redis", "qdrant", "miss"] = "miss"
     latency_ms: float = 0.0
+
+
+class RouteResult(BaseModel):
+    """Sprint 3 route cascade result."""
+
+    model_used: str
+    response: str
+    confidence: float
+    tokens_used: int
+    escalation_count: int
+    ladder_domain: str
+    sensitive_override: bool
+
+
+class PruneResult(BaseModel):
+    """Sprint 3 context pruning result."""
+
+    history: list[dict[str, str]]
+    was_pruned: bool
+    original_tokens: int
+    pruned_tokens: int = 0
+    tokens_saved: int = 0
+
+
+class ModelResponse(BaseModel):
+    """LiteLLM client response normalized for route and prune stages."""
+
+    content: str
+    tokens: int = 0
+    model_key: str = ""
 
 
 class CachedAnswer(BaseModel):
@@ -378,6 +413,8 @@ class PipelineContext(BaseModel):
     provider_touches: list[MeshResponse] = Field(default_factory=list)
     providers_touched: list[MeshResponse] = Field(default_factory=list)
     route_attempts: list[RouteAttempt] = Field(default_factory=list)
+    route_result: RouteResult | None = None
+    prune_result: PruneResult | None = None
     external_costs: list["ExternalCostEntry"] = Field(default_factory=list)
     verifier_verdict: VerifierVerdict | None = None
     low_confidence: bool = False
@@ -389,6 +426,9 @@ class PipelineContext(BaseModel):
     compression_ratio: float = 1.0
     classify_tokens: int = 0
     route_tokens: int = 0
+    route_model: str | None = None
+    sensitive_override: bool = False
+    prune_tokens_saved: int = 0
     compress_savings: int = 0
     escalations: int = 0
     cost_usd: float = 0.0
@@ -585,6 +625,10 @@ class JobRecord(BaseModel):
     classify_tokens: int = 0
     cache_hit: bool = False
     cache_source: str = "miss"
+    route_model: str | None = None
+    route_tokens: int = 0
+    escalation_count: int = 0
+    prune_tokens_saved: int = 0
 
 
 class ComputeUnitEntry(BaseModel):

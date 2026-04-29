@@ -7,6 +7,7 @@ from app.stages.compress import compress_prompt
 from app.stages.prune import prune_history
 from app.stages.route import route_request
 from app.stages.settle import settle
+from app.stages.verify import verify_response
 
 Emit = Callable[[StageEvent], Awaitable[None]]
 
@@ -53,10 +54,21 @@ async def run_pipeline(request: ChatRequest, emit: Emit | None = None) -> ChatRe
     )
 
     if not context.cache_hit:
-        for stage_name, stage_func in (("prune", prune_history), ("compress", compress_prompt)):
-            await _emit(emit, StageEvent(type="stage", stage=stage_name, message="started"))
-            await stage_func(context)
-            await _emit(emit, StageEvent(type="stage", stage=stage_name, message="done"))
+        await _emit(emit, StageEvent(type="stage", stage="prune", message="started"))
+        await prune_history(context)
+        await _emit(
+            emit,
+            StageEvent(
+                type="stage",
+                stage="prune",
+                message="done",
+                data={"tokens_saved": context.prune_tokens_saved},
+            ),
+        )
+
+        await _emit(emit, StageEvent(type="stage", stage="compress", message="started"))
+        await compress_prompt(context)
+        await _emit(emit, StageEvent(type="stage", stage="compress", message="done"))
 
         await _emit(emit, StageEvent(type="stage", stage="route", message="started"))
         await route_request(context)
@@ -72,6 +84,10 @@ async def run_pipeline(request: ChatRequest, emit: Emit | None = None) -> ChatRe
                 },
             ),
         )
+
+        await _emit(emit, StageEvent(type="stage", stage="verify", message="started"))
+        await verify_response(context)
+        await _emit(emit, StageEvent(type="stage", stage="verify", message="done"))
     else:
         context.final_answer = context.cache_hit.answer
 
@@ -87,4 +103,9 @@ async def run_pipeline(request: ChatRequest, emit: Emit | None = None) -> ChatRe
         low_confidence=context.low_confidence,
         cache_source=context.cache_result.source if context.cache_result else "miss",
         classify_tokens=context.classify_tokens,
+        route_model=context.route_result.model_used if context.route_result else None,
+        route_tokens=context.route_tokens,
+        escalation_count=context.escalations,
+        prune_tokens_saved=context.prune_tokens_saved,
+        sensitive_override=context.route_result.sensitive_override if context.route_result else False,
     )

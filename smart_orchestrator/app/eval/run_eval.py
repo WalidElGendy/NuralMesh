@@ -91,6 +91,9 @@ async def run_config(name: str, prompts: list[dict[str, str]], limit: int | None
     cache_hits = 0
     escalations = 0
     classify_tokens = 0
+    route_tokens = 0
+    prune_tokens_saved = 0
+    sensitive_overrides = 0
 
     for item in selected:
         request = ChatRequest(
@@ -113,8 +116,11 @@ async def run_config(name: str, prompts: list[dict[str, str]], limit: int | None
             cost = response.cost_usd
             answer = response.answer
             cache_hit = response.cache_source != "miss"
-            escalation = 0
+            escalation = response.escalation_count
             classify_tokens += response.classify_tokens
+            route_tokens += response.route_tokens
+            prune_tokens_saved += response.prune_tokens_saved
+            sensitive_overrides += int(response.sensitive_override)
 
         verdict = await judge_response(item["prompt"], answer, item["expected_answer_type"])
         total_cost += cost
@@ -131,6 +137,10 @@ async def run_config(name: str, prompts: list[dict[str, str]], limit: int | None
         "cache_hits": cache_hits,
         "escalations": escalations,
         "classify_tokens": classify_tokens,
+        "route_tokens": route_tokens,
+        "prune_tokens_saved": prune_tokens_saved,
+        "avg_escalation_count": round(escalations / count, 3),
+        "sensitive_overrides": sensitive_overrides,
     }
 
 

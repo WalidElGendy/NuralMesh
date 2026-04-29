@@ -51,6 +51,10 @@ class InMemoryLedger:
                 classify_tokens=context.classify_tokens,
                 cache_hit=context.cache_result.hit if context.cache_result else False,
                 cache_source=context.cache_result.source if context.cache_result else "miss",
+                route_model=context.route_result.model_used if context.route_result else None,
+                route_tokens=context.route_tokens,
+                escalation_count=context.route_result.escalation_count if context.route_result else 0,
+                prune_tokens_saved=context.prune_result.tokens_saved if context.prune_result else 0,
             )
         )
         for response in context.providers_touched:

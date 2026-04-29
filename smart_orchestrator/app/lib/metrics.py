@@ -11,6 +11,11 @@ _COUNTERS = {
     "classify_tokens_total": 0,
     "classify_fallbacks": 0,
     "tokens_saved_total": 0,
+    "route_escalations_total": 0,
+    "route_local_hits": 0,
+    "route_frontier_hits": 0,
+    "prune_activations": 0,
+    "prune_tokens_saved_total": 0,
 }
 
 
@@ -88,6 +93,47 @@ async def record_classify(tokens_used: int, fallback: bool) -> None:
             _COUNTERS["classify_fallbacks"] += 1
 
 
+async def record_route(escalation_count: int, model_used: str) -> None:
+    """Record route cascade outcome.
+
+    Args:
+        escalation_count: Number of failed/low-confidence rungs before success.
+        model_used: Final model key selected by the route stage.
+
+    Returns:
+        None.
+
+    Cost/quality target:
+        Tracks whether confidence gating keeps most traffic on local models.
+    """
+    frontier = {"claude-sonnet", "gemini-2.5-pro", "deepseek-v3"}
+    async with _LOCK:
+        _COUNTERS["route_escalations_total"] += max(escalation_count, 0)
+        if escalation_count == 0 and model_used not in frontier:
+            _COUNTERS["route_local_hits"] += 1
+        if model_used in frontier:
+            _COUNTERS["route_frontier_hits"] += 1
+
+
+async def record_prune(was_pruned: bool, tokens_saved: int) -> None:
+    """Record context pruning savings.
+
+    Args:
+        was_pruned: Whether summarization was applied.
+        tokens_saved: Original token count minus pruned token count.
+
+    Returns:
+        None.
+
+    Cost/quality target:
+        Measures prompt budget saved before route calls.
+    """
+    async with _LOCK:
+        if was_pruned:
+            _COUNTERS["prune_activations"] += 1
+            _COUNTERS["prune_tokens_saved_total"] += max(tokens_saved, 0)
+
+
 async def get_metrics() -> dict[str, float | int]:
     """Return current in-memory Sprint 2 metrics.
 
@@ -115,4 +161,9 @@ async def get_metrics() -> dict[str, float | int]:
         "classify_tokens_total": counters["classify_tokens_total"],
         "classify_fallbacks": counters["classify_fallbacks"],
         "estimated_cost_savings_usd": round(savings, 6),
+        "route_escalations_total": counters["route_escalations_total"],
+        "route_local_hits": counters["route_local_hits"],
+        "route_frontier_hits": counters["route_frontier_hits"],
+        "prune_activations": counters["prune_activations"],
+        "prune_tokens_saved_total": counters["prune_tokens_saved_total"],
     }

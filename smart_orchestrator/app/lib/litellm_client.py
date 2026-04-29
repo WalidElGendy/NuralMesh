@@ -1,98 +1,80 @@
 import asyncio
+import hashlib
+import logging
 import os
-import random
 from typing import Any
 
-from app.lib.mesh_dispatch import LOCAL_MODELS, dispatch_to_mesh
-from app.models.schemas import MeshResponse, PipelineContext
+from app.config import MODEL_MAP
+from app.models.schemas import ModelResponse
+
+try:
+    from litellm import acompletion, token_counter
+except Exception:  # pragma: no cover - dependency is installed in normal runtime
+    acompletion = None  # type: ignore[assignment]
+    token_counter = None  # type: ignore[assignment]
 
 
-FRONTIER_MODELS = {
-    "claude-sonnet": "anthropic/claude-3-5-sonnet-20241022",
-    "gemini-2.5-pro": "gemini/gemini-2.5-pro",
-    "deepseek-api": "deepseek/deepseek-chat",
-}
+logger = logging.getLogger(__name__)
 
 
-async def call_model(model: str, prompt: str, context: PipelineContext) -> MeshResponse:
-    """Call a local mocked model or frontier LiteLLM provider.
+def _prompt_hash(messages: list[dict[str, str]]) -> str:
+    return hashlib.sha256(str(messages).encode("utf-8")).hexdigest()[:16]
+
+
+async def call_model(model_key: str, messages: list[dict[str, str]], timeout: int = 30) -> ModelResponse:
+    """Call a model through LiteLLM using the configured model map.
 
     Args:
-        model: Logical model name from route ladders.
-        prompt: Prompt text for the model.
-        context: Pipeline context used for job metadata and provider tracking.
+        model_key: Logical model key from route or prune stages.
+        messages: Chat messages to send to LiteLLM.
+        timeout: Request timeout in seconds.
 
     Returns:
-        MeshResponse with response, confidence, cost, and provider metadata.
+        ModelResponse containing content and token usage.
 
     Cost/quality target:
-        Prefer mocked local mesh calls for zero-key Sprint 1 operation; use real
-        LiteLLM only when the relevant provider API key exists.
+        Local model call ~500 tokens, escalation to frontier ~2000 tokens; target
+        <1000 average tokens per route call across the eval set.
     """
-    if model in LOCAL_MODELS:
-        return await dispatch_to_mesh(model, prompt, context)
+    if model_key not in MODEL_MAP:
+        raise ValueError(f"Unknown model key: {model_key}")
 
-    has_key = (
-        (model == "claude-sonnet" and os.environ.get("ANTHROPIC_API_KEY"))
-        or (model == "gemini-2.5-pro" and os.environ.get("GEMINI_API_KEY"))
-        or (model == "deepseek-api" and os.environ.get("DEEPSEEK_API_KEY"))
-        or (model.startswith("deepseek") and os.environ.get("DEEPSEEK_API_KEY"))
+    if os.environ.get("ROUTE_MODEL_PREFIX", "live") == "mock":
+        return ModelResponse(content="[MOCK]", tokens=0, model=model_key)
+
+    if acompletion is None:
+        raise RuntimeError("litellm is unavailable")
+
+    logger.debug("litellm_call model_key=%s prompt_hash=%s", model_key, _prompt_hash(messages))
+    response: Any = await asyncio.wait_for(
+        acompletion(model=MODEL_MAP[model_key], messages=messages, timeout=timeout),
+        timeout=timeout,
     )
-    if not has_key:
-        return await _mock_frontier_call(model, prompt, context)
+    content = response.choices[0].message.content or ""
+    usage = getattr(response, "usage", None)
+    tokens = int(getattr(usage, "total_tokens", 0) or 0)
+    return ModelResponse(content=content, tokens=tokens, model=model_key)
 
+
+async def count_tokens(model_key: str, messages: list[dict[str, str]]) -> int:
+    """Count tokens for a set of messages.
+
+    Args:
+        model_key: Logical model key to resolve through MODEL_MAP.
+        messages: Chat messages to count.
+
+    Returns:
+        Integer token count, using a rough fallback if LiteLLM counting fails.
+
+    Cost/quality target:
+        Free local accounting helper for pruning and route cost visibility.
+    """
+    if model_key not in MODEL_MAP:
+        raise ValueError(f"Unknown model key: {model_key}")
     try:
-        from litellm import acompletion
-
-        response: Any = await acompletion(
-            model=FRONTIER_MODELS.get(model, model),
-            messages=[{"role": "user", "content": prompt}],
-        )
-        content = response.choices[0].message.content
-        return MeshResponse(
-            model=model,
-            provider_id=f"frontier-{model}",
-            content=content,
-            confidence=0.9,
-            self_critique="Frontier provider response; confidence estimated high.",
-            latency_ms=int(getattr(response, "_response_ms", 250) or 250),
-            cost_usd=0.004,
-            provider_paid_usd=0.0,
-            proof_of_compute=f"frontier-api-{model}",
-            external=True,
-        )
+        if token_counter is None:
+            raise RuntimeError("token_counter unavailable")
+        value = token_counter(model=MODEL_MAP[model_key], messages=messages)
+        return int(value)
     except Exception:
-        return await _mock_frontier_call(model, prompt, context)
-
-
-async def _mock_frontier_call(model: str, prompt: str, context: PipelineContext) -> MeshResponse:
-    """Return a deterministic frontier-style mock when API keys are absent.
-
-    Args:
-        model: Frontier model name.
-        prompt: Prompt text.
-        context: Pipeline context for job ID.
-
-    Returns:
-        MeshResponse suitable for route escalation.
-
-    Cost/quality target:
-        Keep Sprint 1 fully functional offline while mimicking higher quality and
-        higher cost than mesh-local models.
-    """
-    await asyncio.sleep(random.uniform(0.05, 0.16))
-    return MeshResponse(
-        model=model,
-        provider_id=f"mock-frontier-{model}",
-        content=(
-            f"[{model} mock] High-confidence answer for job {context.job_id}. "
-            f"Prompt summary: {prompt[:180]}"
-        ),
-        confidence=random.uniform(0.82, 0.96),
-        self_critique="Mock frontier response; likely complete and well grounded.",
-        latency_ms=random.randint(180, 520),
-        cost_usd=random.uniform(0.003, 0.012),
-        provider_paid_usd=0.0,
-        proof_of_compute=f"mock-frontier-signature-{context.job_id}-{model}",
-        external=True,
-    )
+        return max(1, len(str(messages)) // 4)

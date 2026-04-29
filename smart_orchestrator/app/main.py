@@ -5,6 +5,7 @@ from collections.abc import AsyncIterator
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 
+from app.lib.metrics import get_metrics
 from app.models.schemas import ChatRequest, ChatResponse, PipelineEvent
 from app.pipeline import run_pipeline
 
@@ -64,6 +65,24 @@ async def health() -> dict[str, str]:
         Zero model cost; fast liveness response.
     """
     return {"status": "ok"}
+
+
+@app.get("/metrics")
+async def metrics() -> dict[str, float | int]:
+    """Purpose: Return Sprint 2 in-memory cache and classification metrics.
+
+    Args:
+        None.
+
+    Returns:
+        Cache hit rate, hit/miss counters, classify token totals, fallback count,
+        and estimated USD savings.
+
+    Cost/quality target:
+        Zero external dependency metrics endpoint for Sprint 2; Prometheus is deferred.
+    """
+
+    return await get_metrics()
 
 
 @app.post("/chat")

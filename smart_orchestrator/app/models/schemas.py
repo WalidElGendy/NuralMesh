@@ -8,7 +8,8 @@ from pydantic import BaseModel, Field
 
 
 Domain = Literal["code", "creative", "factual", "reasoning", "chat", "math"]
-Complexity = Literal["trivial", "simple", "medium", "hard"]
+Complexity = Literal["trivial", "simple", "medium", "hard", "complex"]
+ClassifyComplexity = Literal["simple", "medium", "complex"]
 Sensitivity = Literal["none", "pii", "confidential"]
 
 
@@ -73,6 +74,8 @@ class ChatResponse(BaseModel):
     cost_usd: float
     providers_paid: float
     low_confidence: bool = False
+    cache_source: str = "miss"
+    classify_tokens: int = 0
 
 
 class PromptClassification(BaseModel):
@@ -93,10 +96,84 @@ class PromptClassification(BaseModel):
     """
 
     domain: Domain
-    complexity: Complexity
-    needs_freshness: bool
-    sensitivity: Sensitivity
-    expected_output_tokens: int
+    complexity: Complexity | ClassifyComplexity
+    needs_freshness: bool = False
+    sensitivity: Sensitivity = "none"
+    sensitive: bool = False
+    expected_output_tokens: int = 256
+    confidence: float = 0.85
+    tokens_used: int = 0
+
+
+class ClassifyResult(BaseModel):
+    """Sprint 2 LiteLLM classifier result.
+
+    Args:
+        domain: Prompt domain for routing.
+        complexity: Prompt complexity bucket from the classifier prompt.
+        sensitive: Whether the prompt contains PII, medical, legal, or financial advice.
+        confidence: Classifier confidence in [0, 1].
+        tokens_used: Actual LiteLLM token usage, or 0 for mocked/fallback paths.
+
+    Returns:
+        Parsed classification payload from the real classifier stage.
+
+    Cost/quality target:
+        Real classify call costs ~200 tokens, target <250 tokens per call.
+    """
+
+    domain: Domain
+    complexity: ClassifyComplexity
+    sensitive: bool
+    confidence: float = 0.85
+    tokens_used: int = 0
+
+    def to_prompt_classification(self) -> PromptClassification:
+        """Convert Sprint 2 result to the existing pipeline classification shape.
+
+        Args:
+            None.
+
+        Returns:
+            PromptClassification consumed by downstream mocked stages.
+
+        Cost/quality target:
+            Preserves Sprint 1 stage compatibility with no additional model cost.
+        """
+
+        return PromptClassification(
+            domain=self.domain,
+            complexity=self.complexity,
+            needs_freshness=False,
+            sensitivity="pii" if self.sensitive else "none",
+            expected_output_tokens=512,
+            confidence=self.confidence,
+            tokens_used=self.tokens_used,
+        )
+
+
+class CacheResult(BaseModel):
+    """Sprint 2 cache lookup result.
+
+    Args:
+        hit: Whether an answer was found.
+        answer: Cached answer text on hit.
+        tokens_saved: Estimated downstream route tokens avoided.
+        source: Cache layer that answered the lookup.
+        latency_ms: Lookup latency.
+
+    Returns:
+        Cache decision and accounting metadata.
+
+    Cost/quality target:
+        Avoid model routing cost on safe exact or semantic hits.
+    """
+
+    hit: bool
+    answer: str | None = None
+    tokens_saved: int = 0
+    source: Literal["redis", "qdrant", "miss"] = "miss"
+    latency_ms: float = 0.0
 
 
 class CachedAnswer(BaseModel):
@@ -295,6 +372,7 @@ class PipelineContext(BaseModel):
     working_messages: list[ChatMessage] = Field(default_factory=list)
     classification: PromptClassification | None = None
     cached_answer: CachedAnswer | None = None
+    cache_result: CacheResult = Field(default_factory=lambda: CacheResult(hit=False))
     compressed_prompt: str | None = None
     selected_response: MeshResponse | None = None
     provider_touches: list[MeshResponse] = Field(default_factory=list)
@@ -305,8 +383,13 @@ class PipelineContext(BaseModel):
     low_confidence: bool = False
     cache_hit: CachedAnswer | None = None
     cache_checked: bool = False
+    cache_source: str = "miss"
+    tokens_saved: int = 0
     cache_allowed: bool = True
     compression_ratio: float = 1.0
+    classify_tokens: int = 0
+    route_tokens: int = 0
+    compress_savings: int = 0
     escalations: int = 0
     cost_usd: float = 0.0
     providers_paid: float = 0.0
@@ -486,6 +569,7 @@ class PipelineContext(BaseModel):
 
 
 Classification = PromptClassification
+PipelineResult = ChatResponse
 ProviderResponse = MeshResponse
 Message = ChatMessage
 
@@ -498,6 +582,9 @@ class JobRecord(BaseModel):
     domain: Domain
     status: str
     low_confidence: bool
+    classify_tokens: int = 0
+    cache_hit: bool = False
+    cache_source: str = "miss"
 
 
 class ComputeUnitEntry(BaseModel):

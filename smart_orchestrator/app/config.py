@@ -1,5 +1,6 @@
 """Runtime configuration for the NeuralMesh Smart Orchestrator."""
 
+import os
 from functools import lru_cache
 from typing import Literal
 
@@ -30,6 +31,11 @@ class Settings(BaseSettings):
     cache_similarity_threshold: float = 0.95
     valid_subscribers: set[str] = Field(default_factory=lambda: {"demo-sub", "sub_pro_demo", "sub_enterprise_demo"})
     enable_real_frontier_calls: bool = True
+
+
+CLASSIFY_MODEL = os.getenv("CLASSIFY_MODEL", "llama-3.1-8b")
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
+QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
 
 
 @lru_cache

@@ -85,4 +85,6 @@ async def run_pipeline(request: ChatRequest, emit: Emit | None = None) -> ChatRe
         cost_usd=round(context.cost_usd, 6),
         providers_paid=round(context.providers_paid, 6),
         low_confidence=context.low_confidence,
+        cache_source=context.cache_result.source if context.cache_result else "miss",
+        classify_tokens=context.classify_tokens,
     )

@@ -48,6 +48,9 @@ class InMemoryLedger:
                 domain=context.classification.domain if context.classification else "chat",
                 status="complete" if context.final_answer else "error",
                 low_confidence=context.low_confidence,
+                classify_tokens=context.classify_tokens,
+                cache_hit=context.cache_result.hit if context.cache_result else False,
+                cache_source=context.cache_result.source if context.cache_result else "miss",
             )
         )
         for response in context.providers_touched:

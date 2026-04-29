@@ -30,6 +30,7 @@ async def settle(ctx: PipelineContext) -> PipelineContext:
 
     await ledger.write_settlement(ctx)
 
+    # Cache write-back happens after the mocked verifier clears the answer.
     if ctx.cache_allowed and ctx.verifier_verdict and ctx.verifier_verdict.pass_ and not ctx.low_confidence:
         await write_cache(ctx)
 

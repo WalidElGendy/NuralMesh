@@ -19,6 +19,7 @@ def response(model: str, confidence: float, content: str | None = None) -> Model
 
 @pytest.mark.asyncio
 async def test_code_domain_uses_qwen_first(monkeypatch):
+    monkeypatch.setenv("ROUTE_MODEL_PREFIX", "live")
     calls = []
 
     async def fake_call(model_key, messages, timeout=30):
@@ -34,6 +35,7 @@ async def test_code_domain_uses_qwen_first(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_code_domain_escalates_on_low_confidence(monkeypatch):
+    monkeypatch.setenv("ROUTE_MODEL_PREFIX", "live")
     calls = []
 
     async def fake_call(model_key, messages, timeout=30):
@@ -49,6 +51,7 @@ async def test_code_domain_escalates_on_low_confidence(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_all_models_fail_returns_mock(monkeypatch):
+    monkeypatch.setenv("ROUTE_MODEL_PREFIX", "live")
     async def failing_call(model_key, messages, timeout=30):
         raise RuntimeError("down")
 
@@ -60,6 +63,7 @@ async def test_all_models_fail_returns_mock(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_sensitive_jumps_to_claude(monkeypatch):
+    monkeypatch.setenv("ROUTE_MODEL_PREFIX", "live")
     calls = []
 
     async def fake_call(model_key, messages, timeout=30):
@@ -83,6 +87,7 @@ async def test_route_model_prefix_mock(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_chat_single_model_ladder(monkeypatch):
+    monkeypatch.setenv("ROUTE_MODEL_PREFIX", "live")
     calls = []
 
     async def fake_call(model_key, messages, timeout=30):
@@ -98,6 +103,7 @@ async def test_chat_single_model_ladder(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_missing_confidence_defaults_to_075(monkeypatch):
+    monkeypatch.setenv("ROUTE_MODEL_PREFIX", "live")
     async def fake_call(model_key, messages, timeout=30):
         return ModelResponse(content="plain answer", tokens=77)
 

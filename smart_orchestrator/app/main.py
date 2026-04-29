@@ -1,18 +1,34 @@
 import asyncio
 import json
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
+from app.lib.logger import get_logger
 from app.lib.metrics import get_metrics
+from app.lib.telemetry import init_telemetry
 from app.models.schemas import ChatRequest, ChatResponse, PipelineEvent
 from app.pipeline import run_pipeline
 
 
 VALID_SUBSCRIBERS = {"demo-sub", "pro-demo", "enterprise-demo", "sub_demo_pro", "demo-pro"}
+logger = get_logger(__name__)
 
-app = FastAPI(title="NeuralMesh Smart Orchestrator")
+
+@asynccontextmanager
+async def lifespan(app_instance: FastAPI) -> AsyncIterator[None]:
+    """Initialize telemetry once when the FastAPI app starts."""
+
+    init_telemetry()
+    logger.info("orchestrator_startup")
+    yield
+
+
+app = FastAPI(title="NeuralMesh Smart Orchestrator", lifespan=lifespan)
+FastAPIInstrumentor().instrument_app(app)
 
 
 def sse(event: str, payload: dict[str, object]) -> str:

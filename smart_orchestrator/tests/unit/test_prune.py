@@ -28,6 +28,7 @@ async def test_short_history_unchanged(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.mark.asyncio
 async def test_long_history_summarized(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("PRUNE_MODEL_PREFIX", "live")
     monkeypatch.setattr(prune, "PRUNE_THRESHOLD", 10)
     call_model = AsyncMock(return_value=type("Resp", (), {"content": "Key facts and decisions."})())
     monkeypatch.setattr(prune, "call_model", call_model)
@@ -44,6 +45,7 @@ async def test_long_history_summarized(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.mark.asyncio
 async def test_mistral_failure_returns_original(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("PRUNE_MODEL_PREFIX", "live")
     monkeypatch.setattr(prune, "PRUNE_THRESHOLD", 10)
     monkeypatch.setattr(prune, "call_model", AsyncMock(side_effect=RuntimeError("down")))
     ctx = PipelineContext(subscriber_id="sub_demo", messages=make_history())

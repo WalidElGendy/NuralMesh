@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import hashlib
-import logging
 import os
 import re
 
 from app.config import CONFIDENCE_THRESHOLD
 from app.lib.litellm_client import call_model
+from app.lib.logger import get_logger
 from app.lib.metrics import record_route
+from app.lib.telemetry import tracer
 from app.models.schemas import MeshResponse, PipelineContext, RouteAttempt, RouteResult
 
 
@@ -28,7 +29,7 @@ CONFIDENCE_SUFFIX = (
 )
 CONFIDENCE_RE = re.compile(r"Confidence:\s*(0\.\d+|1\.0+)", re.IGNORECASE)
 FRONTIER_MODELS = {"claude-sonnet", "gemini-2.5-pro"}
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def _prompt_hash(prompt: str) -> str:
@@ -101,101 +102,109 @@ async def route_request(context: PipelineContext) -> PipelineContext:
     if sensitive_override:
         logger.info("routing sensitive query to claude-sonnet prompt_hash=%s", _prompt_hash(prompt))
 
-    if os.environ.get("ROUTE_MODEL_PREFIX", "live") == "mock":
+    with tracer.start_as_current_span("route") as route_span:
+        route_span.set_attribute("route.ladder_domain", domain)
+        route_span.set_attribute("route.sensitive_override", sensitive_override)
+
+        if os.environ.get("ROUTE_MODEL_PREFIX", "live") == "mock":
+            route_result = _mock_route_result(domain)
+            route_span.set_attribute("route.escalation_count", route_result.escalation_count)
+            context.route_result = route_result
+            context.selected_response = MeshResponse(
+                provider_id="mock-route",
+                model=route_result.model_used,
+                content=route_result.response,
+                confidence=route_result.confidence,
+                self_critique="Sprint 3 route mock.",
+                latency_ms=0,
+                proof_of_compute="mock-route-proof",
+                cost_usd=0.0,
+                provider_paid_usd=0.0,
+            )
+            context.final_answer = route_result.response
+            context.route_tokens = 0
+            await record_route(0, route_result.model_used)
+            return context
+
+        last_error: Exception | None = None
+        for index, model_key in enumerate(ladder):
+            escalated = index > 0
+            with tracer.start_as_current_span("route.attempt") as attempt_span:
+                attempt_span.set_attribute("route.model", model_key)
+                attempt_span.set_attribute("route.escalated", escalated)
+                attempt_span.set_attribute("route.sensitive_override", sensitive_override)
+                try:
+                    raw = await _call_route_model(model_key, prompt, context.system)
+                except Exception as error:
+                    last_error = error
+                    context.escalations += int(index < len(ladder) - 1)
+                    attempt_span.record_exception(error)
+                    continue
+
+                answer, confidence = _extract_confidence(raw.content or raw.text or "")
+                attempt_span.set_attribute("route.confidence", confidence)
+                result = MeshResponse(
+                    provider_id=f"litellm-{model_key}",
+                    model=model_key,
+                    content=answer,
+                    confidence=confidence,
+                    self_critique="Confidence extracted from model response footer.",
+                    latency_ms=0,
+                    proof_of_compute=f"litellm-route-{_prompt_hash(prompt)}-{model_key}",
+                    cost_usd=0.0,
+                    provider_paid_usd=0.0,
+                    external=model_key in FRONTIER_MODELS,
+                )
+                context.providers_touched.append(result)
+                context.provider_touches.append(result)
+                context.route_attempts.append(
+                    RouteAttempt(
+                        model=model_key,
+                        provider_id=result.provider_id,
+                        confidence=result.confidence,
+                        verifier_passed=False,
+                    )
+                )
+                if confidence >= CONFIDENCE_THRESHOLD or index == len(ladder) - 1:
+                    escalation_count = index
+                    route_result = RouteResult(
+                        model_used=model_key,
+                        response=answer,
+                        confidence=confidence,
+                        tokens_used=raw.tokens,
+                        escalation_count=escalation_count,
+                        ladder_domain=domain,
+                        sensitive_override=sensitive_override,
+                    )
+                    route_span.set_attribute("route.escalation_count", escalation_count)
+                    context.route_result = route_result
+                    context.selected_response = result
+                    context.final_answer = answer
+                    context.route_tokens = raw.tokens
+                    context.escalations = escalation_count
+                    await record_route(escalation_count, model_key)
+                    return context
+                context.escalations += 1
+
+        logger.error("route fallback", prompt_hash=_prompt_hash(prompt), error=type(last_error).__name__)
         route_result = _mock_route_result(domain)
+        route_result.model_used = "mock-fallback"
+        route_result.escalation_count = max(len(ladder) - 1, 0)
+        route_span.set_attribute("route.escalation_count", route_result.escalation_count)
         context.route_result = route_result
         context.selected_response = MeshResponse(
-            provider_id="mock-route",
+            provider_id="mock-route-fallback",
             model=route_result.model_used,
             content=route_result.response,
             confidence=route_result.confidence,
-            self_critique="Sprint 3 route mock.",
+            self_critique="All route models failed; returned safe mock fallback.",
             latency_ms=0,
-            proof_of_compute="mock-route-proof",
-            cost_usd=0.0,
-            provider_paid_usd=0.0,
+            proof_of_compute="mock-route-fallback-proof",
         )
         context.final_answer = route_result.response
         context.route_tokens = 0
-        await record_route(0, route_result.model_used)
+        await record_route(route_result.escalation_count, route_result.model_used)
         return context
-
-    last_error: Exception | None = None
-    for index, model_key in enumerate(ladder):
-        try:
-            raw = await _call_route_model(model_key, prompt, context.system)
-        except Exception as error:
-            last_error = error
-            context.escalations += int(index < len(ladder) - 1)
-            continue
-
-        answer, confidence = _extract_confidence(raw.content or raw.text or "")
-        result = MeshResponse(
-            provider_id=f"litellm-{model_key}",
-            model=model_key,
-            content=answer,
-            confidence=confidence,
-            self_critique="Confidence extracted from model response footer.",
-            latency_ms=0,
-            proof_of_compute=f"litellm-route-{_prompt_hash(prompt)}-{model_key}",
-            cost_usd=0.0,
-            provider_paid_usd=0.0,
-            external=model_key in FRONTIER_MODELS,
-        )
-        context.providers_touched.append(result)
-        context.provider_touches.append(result)
-        context.route_attempts.append(
-            RouteAttempt(
-                model=model_key,
-                provider_id=result.provider_id,
-                confidence=result.confidence,
-                verifier_passed=False,
-            )
-        )
-        if confidence >= CONFIDENCE_THRESHOLD or index == len(ladder) - 1:
-            escalation_count = index
-            route_result = RouteResult(
-                model_used=model_key,
-                response=answer,
-                confidence=confidence,
-                tokens_used=raw.tokens,
-                escalation_count=escalation_count,
-                ladder_domain=domain,
-                sensitive_override=sensitive_override,
-            )
-            context.route_result = route_result
-            context.selected_response = result
-            context.final_answer = answer
-            context.route_tokens = raw.tokens
-            context.escalations = escalation_count
-            await record_route(escalation_count, model_key)
-            return context
-        context.escalations += 1
-
-    logger.error("route fallback prompt_hash=%s error=%s", _prompt_hash(prompt), type(last_error).__name__)
-    route_result = RouteResult(
-        model_used="mock-fallback",
-        response=f"[MOCK] Sprint 3 mocked response for domain={domain}",
-        confidence=0.85,
-        tokens_used=0,
-        escalation_count=max(len(ladder) - 1, 0),
-        ladder_domain=domain,
-        sensitive_override=sensitive_override,
-    )
-    context.route_result = route_result
-    context.selected_response = MeshResponse(
-        provider_id="mock-route-fallback",
-        model=route_result.model_used,
-        content=route_result.response,
-        confidence=route_result.confidence,
-        self_critique="All route models failed; returned safe mock fallback.",
-        latency_ms=0,
-        proof_of_compute="mock-route-fallback-proof",
-    )
-    context.final_answer = route_result.response
-    context.route_tokens = 0
-    await record_route(route_result.escalation_count, route_result.model_used)
-    return context
 
 
 async def route_stage(context: PipelineContext) -> RouteResult:

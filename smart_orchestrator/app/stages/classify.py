@@ -1,12 +1,14 @@
 from __future__ import annotations
 
-import hashlib
 import json
-import logging
+import hashlib
 import os
 from typing import Any
 
+from app.config import CLASSIFY_MODEL
+from app.lib.logger import get_logger
 from app.lib.metrics import record_classify
+from app.lib.telemetry import tracer
 from app.models.schemas import ClassifyResult, PipelineContext
 
 try:
@@ -31,7 +33,7 @@ CLASSIFY_SYSTEM_PROMPT = (
     "\"complexity\": \"...\", \"sensitive\": false}"
 )
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def _prompt_hash(prompt: str) -> str:
@@ -248,22 +250,31 @@ async def classify_prompt(context: PipelineContext) -> PipelineContext:
     """
     prompt = context.prompt_text
     fallback = False
-    if os.getenv("CLASSIFY_MODEL", "llama-3.1-8b") == "mock":
-        result = _mock_classify(prompt)
-    else:
-        try:
-            content, tokens_used = await _call_litellm_classifier(prompt)
-            result = _parse_classify_json(content, prompt, tokens_used)
-        except Exception as error:
-            fallback = True
-            logger.warning("classify_fallback prompt_hash=%s error=%s", _prompt_hash(prompt), type(error).__name__)
-            result = _default_fallback(prompt)
+    model_name = os.getenv("CLASSIFY_MODEL", CLASSIFY_MODEL)
+    with tracer.start_as_current_span("classify") as span:
+        if model_name == "mock":
+            result = _mock_classify(prompt)
+        else:
+            try:
+                content, tokens_used = await _call_litellm_classifier(prompt)
+                result = _parse_classify_json(content, prompt, tokens_used)
+            except Exception as error:
+                fallback = True
+                logger.warning(
+                    "classify_fallback",
+                    prompt_hash=_prompt_hash(prompt),
+                    error=type(error).__name__,
+                )
+                result = _default_fallback(prompt)
 
-    await record_classify(result.tokens_used, fallback=fallback)
-    context.classification = result
-    context.classify_tokens = result.tokens_used
-    context.stage_events.append("classified")
-    return context
+        span.set_attribute("classify.domain", result.domain)
+        span.set_attribute("classify.model", model_name)
+        span.set_attribute("classify.mock", model_name == "mock")
+        await record_classify(result.tokens_used, fallback=fallback)
+        context.classification = result
+        context.classify_tokens = result.tokens_used
+        context.stage_events.append("classified")
+        return context
 
 
 async def classify_stage(context: PipelineContext) -> ClassifyResult:

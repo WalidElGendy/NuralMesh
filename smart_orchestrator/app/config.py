@@ -49,6 +49,11 @@ ROUTE_MODEL_PREFIX = os.getenv("ROUTE_MODEL_PREFIX", "live")
 PRUNE_THRESHOLD = int(os.getenv("PRUNE_THRESHOLD", "2000"))
 PRUNE_MODEL = os.getenv("PRUNE_MODEL", "mistral-7b")
 PRUNE_MODEL_PREFIX = os.getenv("PRUNE_MODEL_PREFIX", "live")
+VERSION = os.getenv("APP_VERSION", "0.4.0")
+OTEL_ENABLED = os.getenv("OTEL_ENABLED", "false").lower() == "true"
+OTEL_EXPORTER_OTLP_ENDPOINT = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317")
+LOKI_ENABLED = os.getenv("LOKI_ENABLED", "false").lower() == "true"
+LOKI_URL = os.getenv("LOKI_URL", "http://localhost:3100/loki/api/v1/push")
 
 
 @lru_cache

@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
-import logging
 import os
 
 from app.config import PRUNE_MODEL, PRUNE_MODEL_PREFIX, PRUNE_THRESHOLD
 from app.lib.litellm_client import call_model, count_tokens
+from app.lib.logger import get_logger
 from app.lib.metrics import record_prune
+from app.lib.telemetry import tracer
 from app.models.schemas import ChatMessage, PipelineContext, PruneResult, StageEvent
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 SUMMARY_SYSTEM_PROMPT = (
     "You are a conversation summarizer. Summarize the following conversation history concisely "
@@ -109,28 +110,32 @@ async def prune_history(ctx: PipelineContext) -> PipelineContext:
         Avoid expensive context windows while preserving recent turns and memory.
     """
 
-    if not ctx.working_messages:
-        ctx.working_messages = list(ctx.messages)
-    result = await prune_conversation(_as_dicts(ctx.working_messages))
-    ctx.prune_result = result
-    ctx.prune_tokens_saved = result.tokens_saved
-    if not result.was_pruned:
-        ctx.stage_events.append(StageEvent(stage="prune", message="history within token budget"))
-        return ctx
+    with tracer.start_as_current_span("prune") as span:
+        if not ctx.working_messages:
+            ctx.working_messages = list(ctx.messages)
+        result = await prune_conversation(_as_dicts(ctx.working_messages))
+        span.set_attribute("prune.was_pruned", result.was_pruned)
+        span.set_attribute("prune.original_tokens", result.original_tokens)
+        span.set_attribute("prune.tokens_saved", result.tokens_saved)
+        ctx.prune_result = result
+        ctx.prune_tokens_saved = result.tokens_saved
+        if not result.was_pruned:
+            ctx.stage_events.append(StageEvent(stage="prune", message="history within token budget"))
+            return ctx
 
-    ctx.working_messages = _as_messages(result.history)
-    ctx.stage_events.append(
-        StageEvent(
-            stage="prune",
-            message="summarized old turns",
-            metadata={
-                "original_tokens": result.original_tokens,
-                "pruned_tokens": result.pruned_tokens,
-                "tokens_saved": result.tokens_saved,
-            },
+        ctx.working_messages = _as_messages(result.history)
+        ctx.stage_events.append(
+            StageEvent(
+                stage="prune",
+                message="summarized old turns",
+                metadata={
+                    "original_tokens": result.original_tokens,
+                    "pruned_tokens": result.pruned_tokens,
+                    "tokens_saved": result.tokens_saved,
+                },
+            )
         )
-    )
-    return ctx
+        return ctx
 
 
 async def prune_stage(ctx: PipelineContext) -> PruneResult:

@@ -1,10 +1,10 @@
 import asyncio
 import hashlib
-import logging
 import os
 from typing import Any
 
 from app.config import MODEL_MAP
+from app.lib.logger import get_logger
 from app.models.schemas import ModelResponse
 
 try:
@@ -14,7 +14,7 @@ except Exception:  # pragma: no cover - dependency is installed in normal runtim
     token_counter = None  # type: ignore[assignment]
 
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def _prompt_hash(messages: list[dict[str, str]]) -> str:
@@ -45,7 +45,7 @@ async def call_model(model_key: str, messages: list[dict[str, str]], timeout: in
     if acompletion is None:
         raise RuntimeError("litellm is unavailable")
 
-    logger.debug("litellm_call model_key=%s prompt_hash=%s", model_key, _prompt_hash(messages))
+    logger.debug("litellm_call", model_key=model_key, prompt_hash=_prompt_hash(messages))
     response: Any = await asyncio.wait_for(
         acompletion(model=MODEL_MAP[model_key], messages=messages, timeout=timeout),
         timeout=timeout,

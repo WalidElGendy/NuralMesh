@@ -14,11 +14,13 @@ from qdrant_client.http.models import Distance, PointStruct, VectorParams
 from redis.exceptions import ConnectionError as RedisConnectionError
 
 from app.lib.embeddings import embed_text
+from app.lib.logger import get_logger
 from app.lib.metrics import record_cache_hit, record_cache_miss
+from app.lib.telemetry import tracer
 from app.models.schemas import CachedAnswer, CacheResult, PipelineContext, StageEvent
 
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
 QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
 COLLECTION_NAME = "prompt_cache"
@@ -202,40 +204,45 @@ async def semantic_cache_lookup(
         Achieve token-cost savings through safe cache hits while never crashing
         the pipeline if Redis or Qdrant is unavailable.
     """
-    started = time.perf_counter()
-    if context.classification is None:
-        raise ValueError("classification is required before cache lookup")
-    if not _safe_to_read_cache(context):
-        await record_cache_miss()
-        result = CacheResult(hit=False, source="miss", latency_ms=(time.perf_counter() - started) * 1000)
+    with tracer.start_as_current_span("cache.read") as span:
+        started = time.perf_counter()
+        if context.classification is None:
+            raise ValueError("classification is required before cache lookup")
+        if not _safe_to_read_cache(context):
+            await record_cache_miss()
+            result = CacheResult(hit=False, source="miss", latency_ms=(time.perf_counter() - started) * 1000)
+            context.cache_result = result
+            context.cache_checked = True
+            span.set_attribute("cache.hit", False)
+            span.set_attribute("cache.layer", "miss")
+            return result
+
+        result = await _lookup_redis(context, redis_client)
+        if result is None:
+            result = await _lookup_qdrant(context, qdrant_client)
+
+        if result is None:
+            await record_cache_miss()
+            result = CacheResult(hit=False, source="miss", latency_ms=(time.perf_counter() - started) * 1000)
+        else:
+            result.latency_ms = (time.perf_counter() - started) * 1000
+            cached = CachedAnswer(
+                prompt=context.latest_user_prompt,
+                answer=result.answer or "",
+                domain=context.classification.domain,
+                embedding=context.embedding or [],
+                metadata={"source": result.source},
+            )
+            context.cache_hit = cached
+            context.cached_answer = cached
+            context.final_answer = result.answer
+
         context.cache_result = result
+        context.cache_source = result.source
         context.cache_checked = True
+        span.set_attribute("cache.hit", result.hit)
+        span.set_attribute("cache.layer", result.source)
         return result
-
-    result = await _lookup_redis(context, redis_client)
-    if result is None:
-        result = await _lookup_qdrant(context, qdrant_client)
-
-    if result is None:
-        await record_cache_miss()
-        result = CacheResult(hit=False, source="miss", latency_ms=(time.perf_counter() - started) * 1000)
-    else:
-        result.latency_ms = (time.perf_counter() - started) * 1000
-        cached = CachedAnswer(
-            prompt=context.latest_user_prompt,
-            answer=result.answer or "",
-            domain=context.classification.domain,
-            embedding=context.embedding or [],
-            metadata={"source": result.source},
-        )
-        context.cache_hit = cached
-        context.cached_answer = cached
-        context.final_answer = result.answer
-
-    context.cache_result = result
-    context.cache_source = result.source
-    context.cache_checked = True
-    return result
 
 
 async def semantic_cache_stage(

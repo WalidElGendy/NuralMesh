@@ -3,15 +3,19 @@ import json
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Response
 from fastapi.responses import StreamingResponse
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
+from app.lib.auth import ApiKeyDep
 from app.lib.logger import get_logger
 from app.lib.metrics import get_metrics
+from app.lib.ratelimit import RateLimiter
 from app.lib.telemetry import init_telemetry
-from app.models.schemas import ChatRequest, ChatResponse, PipelineEvent
+from app.models.schemas import ApiKeyRecord, ChatRequest, ChatResponse, PipelineEvent
 from app.pipeline import run_pipeline
+from app.routers.admin import router as admin_router
+from app.stages.cache import get_redis_client
 
 
 VALID_SUBSCRIBERS = {"demo-sub", "pro-demo", "enterprise-demo", "sub_demo_pro", "demo-pro"}
@@ -29,6 +33,7 @@ async def lifespan(app_instance: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(title="NeuralMesh Smart Orchestrator", lifespan=lifespan)
 FastAPIInstrumentor().instrument_app(app)
+app.include_router(admin_router, prefix="/admin")
 
 
 def sse(event: str, payload: dict[str, object]) -> str:
@@ -83,8 +88,24 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+async def enforce_rate_limit(
+    response: Response,
+    api_key: ApiKeyRecord = Depends(ApiKeyDep),
+) -> ApiKeyRecord:
+    """Authenticate and rate-limit one protected request."""
+
+    result = await RateLimiter(get_redis_client(), api_key.tier).check_and_increment(
+        api_key.hash,
+        api_key.tier,
+    )
+    response.headers["X-RateLimit-Limit"] = str(result.limit)
+    response.headers["X-RateLimit-Remaining"] = str(result.remaining)
+    response.headers["X-RateLimit-Reset"] = str(result.reset_at)
+    return api_key
+
+
 @app.get("/metrics")
-async def metrics() -> dict[str, float | int]:
+async def metrics(api_key: ApiKeyRecord = Depends(enforce_rate_limit)) -> dict[str, float | int]:
     """Purpose: Return Sprint 3 in-memory cache, classify, route, and prune metrics.
 
     Args:
@@ -102,7 +123,11 @@ async def metrics() -> dict[str, float | int]:
 
 
 @app.post("/chat")
-async def chat(request: ChatRequest) -> StreamingResponse:
+async def chat(
+    request: ChatRequest,
+    response: Response,
+    api_key: ApiKeyRecord = Depends(enforce_rate_limit),
+) -> StreamingResponse:
     """Purpose: Accept chat requests and stream Smart Orchestrator output.
 
     Args:
@@ -117,4 +142,8 @@ async def chat(request: ChatRequest) -> StreamingResponse:
     if request.subscriber_id not in VALID_SUBSCRIBERS:
         raise HTTPException(status_code=401, detail="Unknown subscriber_id")
 
-    return StreamingResponse(stream_chat(request), media_type="text/event-stream")
+    stream = StreamingResponse(stream_chat(request), media_type="text/event-stream")
+    for header in ("X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"):
+        if header in response.headers:
+            stream.headers[header] = response.headers[header]
+    return stream

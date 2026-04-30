@@ -211,6 +211,52 @@ class ModelResponse(BaseModel):
     model_key: str = ""
 
 
+class ApiKeyRecord(BaseModel):
+    """Authenticated API key metadata stored in Redis."""
+
+    hash: str
+    name: str
+    tier: str
+    created_at: str
+    active: bool = True
+
+
+class RateLimitResult(BaseModel):
+    """Rate limit decision returned by the Redis sliding-window limiter."""
+
+    allowed: bool
+    limit: int
+    remaining: int
+    reset_at: int
+
+
+class CreateKeyRequest(BaseModel):
+    """Admin request for creating an API key."""
+
+    name: str
+    tier: str = "free"
+
+
+class CreateKeyResponse(BaseModel):
+    """Admin response containing the raw API key exactly once."""
+
+    key: str
+    hash: str
+    name: str
+    tier: str
+    created_at: str
+
+
+class KeyListItem(BaseModel):
+    """Admin API key list item without raw key material."""
+
+    hash: str
+    name: str
+    tier: str
+    created_at: str
+    active: bool
+
+
 class CachedAnswer(BaseModel):
     """Semantic cache answer.
 

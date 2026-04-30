@@ -54,6 +54,8 @@ OTEL_ENABLED = os.getenv("OTEL_ENABLED", "false").lower() == "true"
 OTEL_EXPORTER_OTLP_ENDPOINT = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317")
 LOKI_ENABLED = os.getenv("LOKI_ENABLED", "false").lower() == "true"
 LOKI_URL = os.getenv("LOKI_URL", "http://localhost:3100/loki/api/v1/push")
+ADMIN_SECRET = os.getenv("ADMIN_SECRET", "change-me-in-prod")
+AUTH_ENABLED = os.getenv("AUTH_ENABLED", "true").lower() == "true"
 
 
 @lru_cache

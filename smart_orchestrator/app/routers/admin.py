@@ -5,9 +5,10 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Header, HTTPException
 
 from app.config import ADMIN_SECRET
+from app.lib.billing import get_usage
 from app.lib.auth import generate_key, hash_key
 from app.lib.metrics import get_metrics
-from app.models.schemas import CreateKeyRequest, CreateKeyResponse, KeyListItem
+from app.models.schemas import UsageRecord, CreateKeyRequest, CreateKeyResponse, KeyListItem
 from app.stages.cache import get_redis_client
 
 router = APIRouter()
@@ -83,3 +84,24 @@ async def stats(x_admin_secret: str | None = Header(default=None)) -> dict[str, 
     """Return the current in-memory metrics snapshot."""
     _require_admin_secret(x_admin_secret)
     return await get_metrics()
+
+
+@router.get("/usage/{key_hash}", response_model=UsageRecord)
+async def get_key_usage(key_hash: str, x_admin_secret: str | None = Header(None)):
+    """Get usage stats for a specific API key."""
+    _require_admin_secret(x_admin_secret)
+    redis = await get_redis_client()
+    return await get_usage(redis, key_hash)
+
+
+@router.get("/usage", response_model=list[UsageRecord])
+async def list_usage(x_admin_secret: str | None = Header(None)):
+    """List usage stats for all API keys."""
+    _require_admin_secret(x_admin_secret)
+    redis = await get_redis_client()
+    keys = []
+    async for key in redis.scan_iter("usage:*"):
+        key_hash = key.decode().split(":", 1)[1] if isinstance(key, bytes) else key.split(":", 1)[1]
+        usage = await get_usage(redis, key_hash)
+        keys.append(usage)
+    return keys

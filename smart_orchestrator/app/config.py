@@ -73,3 +73,9 @@ def get_settings() -> Settings:
     """
 
     return Settings()
+
+STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+STRIPE_FREE_PRICE_ID = os.getenv("STRIPE_FREE_PRICE_ID", "price_free")
+STRIPE_PRO_PRICE_ID = os.getenv("STRIPE_PRO_PRICE_ID", "price_pro")
+STRIPE_ADMIN_PRICE_ID = os.getenv("STRIPE_ADMIN_PRICE_ID", "price_admin")

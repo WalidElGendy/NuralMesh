@@ -280,7 +280,7 @@
         const SUPABASE_URL = "https://hsvzciskkwgokhtbsyfe.supabase.co";
         // Public anon key was not present in this repository. Replace this value
         // with the project's Supabase anon key before deploying the static page.
-        const SUPABASE_ANON_KEY = "PASTE_SUPABASE_ANON_KEY_HERE";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhzdnpjaXNra3dnb2todGJzeWZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczMTQ1NzAsImV4cCI6MjA5Mjg5MDU3MH0.st4YyG3N9tKTlVwZUOVgUNE_MA7KW1_-f2F6EjUo0Js";
 
         const observer = new IntersectionObserver((entries) => {
             entries.forEach((entry) => {
@@ -304,7 +304,7 @@
         }
 
         async function insertWaitlistRow(table, payload) {
-            if (!SUPABASE_ANON_KEY || SUPABASE_ANON_KEY === "PASTE_SUPABASE_ANON_KEY_HERE") {
+            if (!SUPABASE_ANON_KEY || SUPABASE_ANON_KEY === "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhzdnpjaXNra3dnb2todGJzeWZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczMTQ1NzAsImV4cCI6MjA5Mjg5MDU3MH0.st4YyG3N9tKTlVwZUOVgUNE_MA7KW1_-f2F6EjUo0Js") {
                 throw new Error("Supabase anon key is missing. Add the public anon key in landing/index.html.");
             }
 

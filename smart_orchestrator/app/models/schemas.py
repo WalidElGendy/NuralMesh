@@ -704,3 +704,14 @@ class BillingLedgerEntry(BaseModel):
     subscriber_id: str
     amount_usd: float
     providers_paid_usd: float
+
+
+class UsageRecord(BaseModel):
+    key_hash: str
+    requests: int = 0
+    tokens_total: int = 0
+
+
+class StripeWebhookResponse(BaseModel):
+    received: bool
+    action: str = "ignored"

@@ -128,3 +128,17 @@ async def ApiKeyDep(request: Request) -> ApiKeyRecord:
 
         trace.get_current_span().set_attribute("auth.key_name", record.name)
     return record
+
+
+async def verify_api_key(raw_key: str, redis_client) -> "ApiKeyRecord":
+    """Validate a raw API key string and return ApiKeyRecord. Raises ValueError on failure."""
+    if not _auth_enabled():
+        return ApiKeyRecord(hash="dev", name="dev", tier="admin", created_at="", active=True)
+    key_hash = hash_key(raw_key)
+    data = await redis_client.hgetall(f"auth:keys:{key_hash}")
+    if not data:
+        raise ValueError("Invalid or expired API key")
+    record = _record_from_hash(key_hash, data)
+    if not record.active:
+        raise ValueError("API key has been revoked")
+    return record

@@ -715,3 +715,17 @@ class UsageRecord(BaseModel):
 class StripeWebhookResponse(BaseModel):
     received: bool
     action: str = "ignored"
+
+
+class JobRequest(BaseModel):
+    prompt: str
+    model_hint: Optional[str] = None
+
+
+class JobResult(BaseModel):
+    job_id: str
+    status: str
+    result: Optional[str] = None
+    model: Optional[str] = None
+    tokens: Optional[int] = None
+    error: Optional[str] = None

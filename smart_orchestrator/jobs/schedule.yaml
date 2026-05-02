@@ -24,11 +24,11 @@ loops:
     description: "EWMA reputation scoring per GPU provider, updates provider_reputation.json"
     sla_max_minutes: 30
 
-  loop4_router_finetuner:
+  loop4_winrate_optimizer:
     type: cron
     schedule: "0 3 * * 0"   # Weekly Sunday at 03:00 UTC
-    path: loops/loop4_router_finetuner.py
-    entrypoint: run_finetuner
+    path: loops/loop4_winrate_optimizer.py
+    entrypoint: run
     description: "LoRA fine-tune of classifier on week's decisions, A/B gate"
     sla_max_minutes: 120
     enabled: false   # Enable after Loop 1-3 are producing data

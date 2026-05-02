@@ -54,3 +54,24 @@ def update_provider_reputation(provider_id: str, new_score: float) -> None:
         policy["providers"] = {}
     policy["providers"][provider_id] = {"reputation": round(new_score, 4)}
     save_policy("provider_reputation", policy)
+
+
+def reputation_to_multiplier(reputation: float) -> float:
+    """Convert provider reputation score to rate multiplier.
+
+    Rate multipliers (per spec):
+        rep >= 0.95  ->  1.20x
+        rep >= 0.90  ->  1.10x
+        rep >= 0.80  ->  1.00x  (baseline)
+        rep >= 0.70  ->  0.90x
+        else         ->  0.80x
+    """
+    if reputation >= 0.95:
+        return 1.20
+    if reputation >= 0.90:
+        return 1.10
+    if reputation >= 0.80:
+        return 1.00
+    if reputation >= 0.70:
+        return 0.90
+    return 0.80

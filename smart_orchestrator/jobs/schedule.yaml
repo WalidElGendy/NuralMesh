@@ -1,0 +1,52 @@
+# NeuralMesh Self-Improvement Loop Cron Schedule
+# All times UTC
+
+loops:
+  loop1_decision_logger:
+    type: in-process-middleware
+    trigger: every_request
+    path: loops/loop1_decision_logger.py
+    description: "Captures every /infer decision to Redis stream in real-time"
+
+  loop2_cache_curator:
+    type: cron
+    schedule: "0 * * * *"   # Every hour at :00
+    path: loops/loop2_cache_curator.py
+    entrypoint: run_cache_curator
+    description: "Scores cache freshness and evicts stale entries"
+    sla_max_minutes: 5
+
+  loop3_provider_scorer:
+    type: cron
+    schedule: "0 2 * * *"   # Daily at 02:00 UTC
+    path: loops/loop3_provider_scorer.py
+    entrypoint: run_provider_scorer
+    description: "EWMA reputation scoring per GPU provider, updates provider_reputation.json"
+    sla_max_minutes: 30
+
+  loop4_router_finetuner:
+    type: cron
+    schedule: "0 3 * * 0"   # Weekly Sunday at 03:00 UTC
+    path: loops/loop4_router_finetuner.py
+    entrypoint: run_finetuner
+    description: "LoRA fine-tune of classifier on week's decisions, A/B gate"
+    sla_max_minutes: 120
+    enabled: false   # Enable after Loop 1-3 are producing data
+
+  loop5_ladder_optimizer:
+    type: cron
+    schedule: "0 4 1 * *"   # Monthly 1st at 04:00 UTC
+    path: loops/loop5_ladder_optimizer.py
+    entrypoint: run_ladder_optimizer
+    description: "Pareto-optimal model ladder selection, updates ladders.json"
+    sla_max_minutes: 240
+    enabled: false
+
+  loop6_meta_eval:
+    type: cron
+    schedule: "0 9 1 1,4,7,10 *"  # Quarterly at 09:00 UTC
+    path: loops/loop6_meta_eval.py
+    entrypoint: run_meta_eval
+    description: "Generate quarterly PDF report + drift detection"
+    sla_max_minutes: 60
+    enabled: false

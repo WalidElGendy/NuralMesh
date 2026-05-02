@@ -1,0 +1,12 @@
+{
+  "version": "1.0.0",
+  "updated_at": "2026-05-02T00:00:00Z",
+  "ladders": {
+    "code":      ["qwen-coder-7b", "deepseek-v3", "claude-sonnet"],
+    "creative":  ["llama-3.1-8b", "claude-sonnet"],
+    "factual":   ["llama-3.1-8b", "gemini-2.5-pro"],
+    "reasoning": ["llama-3.1-8b", "deepseek-v3", "claude-sonnet"],
+    "math":      ["qwen-coder-7b", "deepseek-v3", "gemini-2.5-pro"],
+    "chat":      ["llama-3.1-8b"]
+  }
+}

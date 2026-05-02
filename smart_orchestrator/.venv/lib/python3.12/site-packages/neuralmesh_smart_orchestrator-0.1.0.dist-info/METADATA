@@ -1,0 +1,24 @@
+Metadata-Version: 2.4
+Name: neuralmesh-smart-orchestrator
+Version: 0.1.0
+Summary: Sprint 1 Smart Orchestrator for NeuralMesh decentralized AI inference.
+Requires-Python: <3.13,>=3.11
+Requires-Dist: fastapi>=0.115.0
+Requires-Dist: uvicorn[standard]>=0.30.0
+Requires-Dist: pydantic>=2.8.0
+Requires-Dist: pydantic-settings>=2.4.0
+Requires-Dist: litellm>=1.45.0
+Requires-Dist: redis>=5.0.0
+Requires-Dist: qdrant-client>=1.11.0
+Requires-Dist: asyncpg>=0.29.0
+Requires-Dist: opentelemetry-api>=1.26.0
+Requires-Dist: opentelemetry-sdk>=1.26.0
+Requires-Dist: opentelemetry-exporter-otlp-proto-grpc>=1.24
+Requires-Dist: opentelemetry-instrumentation-fastapi>=0.45b0
+Requires-Dist: python-logging-loki>=0.3.1
+Requires-Dist: structlog>=24.1.0
+Requires-Dist: pytest>=8.3.0
+Requires-Dist: pytest-asyncio>=0.24.0
+Requires-Dist: httpx>=0.27.0
+Provides-Extra: compression
+Requires-Dist: llmlingua>=0.2.2; extra == "compression"

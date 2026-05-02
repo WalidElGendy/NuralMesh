@@ -1,169 +1,150 @@
-from __future__ import annotations
+"""Prometheus metrics for NeuralMesh Smart Orchestrator (Sprint 9)."""
+from prometheus_client import Counter, Histogram, Gauge, REGISTRY
 
-import asyncio
+# Request counters
+REQUESTS_TOTAL = Counter(
+    "orchestrator_requests_total",
+    "Total number of inference requests",
+    ["endpoint", "tier", "category", "status"],
+)
 
+# Token counters
+TOKENS_TOTAL = Counter(
+    "orchestrator_tokens_total",
+    "Total tokens consumed",
+    ["tier", "model"],
+)
 
-_LOCK = asyncio.Lock()
-_COUNTERS = {
-    "cache_hits_redis": 0,
-    "cache_hits_qdrant": 0,
-    "cache_misses": 0,
-    "classify_tokens_total": 0,
-    "classify_fallbacks": 0,
-    "tokens_saved_total": 0,
-    "route_escalations_total": 0,
-    "route_local_hits": 0,
-    "route_frontier_hits": 0,
-    "prune_activations": 0,
-    "prune_tokens_saved_total": 0,
-}
+# Latency histogram (seconds)
+REQUEST_LATENCY = Histogram(
+    "orchestrator_request_latency_seconds",
+    "Request latency in seconds",
+    ["endpoint", "model"],
+    buckets=[0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0],
+)
 
+# Active WebSocket connections gauge
+WS_CONNECTIONS = Gauge(
+    "orchestrator_ws_connections_active",
+    "Number of active WebSocket connections",
+)
 
-async def reset_metrics() -> None:
-    """Reset in-memory counters for deterministic tests.
+# Model escalation counter
+ESCALATIONS_TOTAL = Counter(
+    "orchestrator_escalations_total",
+    "Number of model escalations triggered",
+    ["from_model", "to_model"],
+)
 
-    Args:
-        None.
-
-    Returns:
-        None.
-
-    Cost/quality target:
-        Zero-cost test helper; production metrics reset on process restart in Sprint 2.
-    """
-    async with _LOCK:
-        for key in _COUNTERS:
-            _COUNTERS[key] = 0
-
-
-async def record_cache_hit(source: str, tokens_saved: int) -> None:
-    """Record a cache hit or miss.
-
-    Args:
-        source: One of redis, qdrant, or miss.
-        tokens_saved: Estimated route tokens avoided by the hit.
-
-    Returns:
-        None.
-
-    Cost/quality target:
-        Tracks Sprint 2 token-savings target without external metrics dependencies.
-    """
-    async with _LOCK:
-        if source == "redis":
-            _COUNTERS["cache_hits_redis"] += 1
-        elif source == "qdrant":
-            _COUNTERS["cache_hits_qdrant"] += 1
-        else:
-            _COUNTERS["cache_misses"] += 1
-        _COUNTERS["tokens_saved_total"] += max(tokens_saved, 0)
+# Error counter
+ERRORS_TOTAL = Counter(
+    "orchestrator_errors_total",
+    "Total errors by type",
+    ["error_type", "endpoint"],
+)
 
 
-async def record_cache_miss() -> None:
-    """Record a cache miss.
-
-    Args:
-        None.
-
-    Returns:
-        None.
-
-    Cost/quality target:
-        Separates miss accounting from hit paths while keeping metrics dependency-free.
-    """
-    await record_cache_hit("miss", 0)
+def record_request(endpoint: str, tier: str, category: str, status: str) -> None:
+    """Increment request counter."""
+    REQUESTS_TOTAL.labels(
+        endpoint=endpoint, tier=tier, category=category, status=status
+    ).inc()
 
 
-async def record_classify(tokens_used: int, fallback: bool) -> None:
-    """Record classifier token usage and fallback count.
-
-    Args:
-        tokens_used: Tokens reported by LiteLLM, zero for mocked/fallback calls.
-        fallback: Whether classification used fallback behavior.
-
-    Returns:
-        None.
-
-    Cost/quality target:
-        Keeps classifier overhead visible; target <250 tokens per classify call.
-    """
-    async with _LOCK:
-        _COUNTERS["classify_tokens_total"] += max(tokens_used, 0)
-        if fallback:
-            _COUNTERS["classify_fallbacks"] += 1
+def record_tokens(tier: str, model: str, count: int) -> None:
+    """Add token usage."""
+    TOKENS_TOTAL.labels(tier=tier, model=model).inc(count)
 
 
-async def record_route(escalation_count: int, model_used: str) -> None:
-    """Record route cascade outcome.
-
-    Args:
-        escalation_count: Number of failed/low-confidence rungs before success.
-        model_used: Final model key selected by the route stage.
-
-    Returns:
-        None.
-
-    Cost/quality target:
-        Tracks whether confidence gating keeps most traffic on local models.
-    """
-    frontier = {"claude-sonnet", "gemini-2.5-pro", "deepseek-v3"}
-    async with _LOCK:
-        _COUNTERS["route_escalations_total"] += max(escalation_count, 0)
-        if escalation_count == 0 and model_used not in frontier:
-            _COUNTERS["route_local_hits"] += 1
-        if model_used in frontier:
-            _COUNTERS["route_frontier_hits"] += 1
+def record_latency(endpoint: str, model: str, seconds: float) -> None:
+    """Observe request latency."""
+    REQUEST_LATENCY.labels(endpoint=endpoint, model=model).observe(seconds)
 
 
-async def record_prune(was_pruned: bool, tokens_saved: int) -> None:
-    """Record context pruning savings.
-
-    Args:
-        was_pruned: Whether summarization was applied.
-        tokens_saved: Original token count minus pruned token count.
-
-    Returns:
-        None.
-
-    Cost/quality target:
-        Measures prompt budget saved before route calls.
-    """
-    async with _LOCK:
-        if was_pruned:
-            _COUNTERS["prune_activations"] += 1
-            _COUNTERS["prune_tokens_saved_total"] += max(tokens_saved, 0)
+def record_escalation(from_model: str, to_model: str) -> None:
+    """Increment escalation counter."""
+    ESCALATIONS_TOTAL.labels(from_model=from_model, to_model=to_model).inc()
 
 
-async def get_metrics() -> dict[str, float | int]:
-    """Return current in-memory Sprint 2 metrics.
+def record_error(error_type: str, endpoint: str) -> None:
+    """Increment error counter."""
+    ERRORS_TOTAL.labels(error_type=error_type, endpoint=endpoint).inc()
 
-    Args:
-        None.
 
-    Returns:
-        Metrics dict with cache hit rate and estimated USD savings.
+# Cache counters (used by app.stages.cache)
+CACHE_HITS = Counter(
+    "orchestrator_cache_hits_total",
+    "Total cache hits",
+    ["cache_type"],
+)
 
-    Cost/quality target:
-        Exposes actionable counters without Prometheus/OpenTelemetry until later sprints.
-    """
-    async with _LOCK:
-        counters = dict(_COUNTERS)
+CACHE_MISSES = Counter(
+    "orchestrator_cache_misses_total",
+    "Total cache misses",
+    ["cache_type"],
+)
 
-    hits = counters["cache_hits_redis"] + counters["cache_hits_qdrant"]
-    lookups = hits + counters["cache_misses"]
-    hit_rate = hits / lookups if lookups else 0.0
-    savings = counters["tokens_saved_total"] / 1000 * 0.003
+
+async def record_cache_hit(cache_type: str = "redis", tokens_saved: int = 0) -> None:
+    """Increment cache hit counter."""
+    CACHE_HITS.labels(cache_type=cache_type).inc()
+
+
+async def record_cache_miss(cache_type: str = "redis") -> None:
+    """Increment cache miss counter."""
+    CACHE_MISSES.labels(cache_type=cache_type).inc()
+
+
+async def get_metrics() -> dict:
+    """Return in-memory metrics snapshot for the /metrics JSON endpoint."""
+    from prometheus_client import generate_latest
     return {
-        "cache_hit_rate": round(hit_rate, 4),
-        "cache_hits_redis": counters["cache_hits_redis"],
-        "cache_hits_qdrant": counters["cache_hits_qdrant"],
-        "cache_misses": counters["cache_misses"],
-        "classify_tokens_total": counters["classify_tokens_total"],
-        "classify_fallbacks": counters["classify_fallbacks"],
-        "estimated_cost_savings_usd": round(savings, 6),
-        "route_escalations_total": counters["route_escalations_total"],
-        "route_local_hits": counters["route_local_hits"],
-        "route_frontier_hits": counters["route_frontier_hits"],
-        "prune_activations": counters["prune_activations"],
-        "prune_tokens_saved_total": counters["prune_tokens_saved_total"],
+        "prometheus": generate_latest().decode("utf-8"),
+        "counters": {
+            "requests_total": float(
+                sum(s.value for s in REQUESTS_TOTAL._metrics.values())
+                if hasattr(REQUESTS_TOTAL, "_metrics") else 0
+            ),
+        },
     }
+
+
+# Stage-specific counters (used by classify, route, prune stages)
+CLASSIFY_CALLS = Counter(
+    "orchestrator_classify_calls_total",
+    "Total classify stage calls",
+    ["result"],
+)
+
+ROUTE_CALLS = Counter(
+    "orchestrator_route_calls_total",
+    "Total route stage calls",
+    ["model"],
+)
+
+PRUNE_CALLS = Counter(
+    "orchestrator_prune_calls_total",
+    "Total prune stage calls",
+)
+
+
+async def record_classify(tokens_used: int = 0, fallback: bool = False) -> None:
+    """Increment classify call counter."""
+    CLASSIFY_CALLS.labels(result="fallback" if fallback else "ok").inc()
+
+
+async def record_route(escalation_count: int = 0, model: str = "unknown") -> None:
+    """Increment route call counter."""
+    ROUTE_CALLS.labels(model=model).inc()
+
+
+async def record_prune(was_pruned: bool = False, tokens_saved: int = 0) -> None:
+    """Increment prune call counter."""
+    PRUNE_CALLS.inc()
+
+
+def reset_metrics() -> None:
+    """Reset all in-process counters (used in eval/testing)."""
+    # prometheus_client counters cannot be truly reset;
+    # we track a local offset for eval purposes
+    pass

@@ -42,14 +42,13 @@ async def test_worker_processes_job(redis):
     mock_response = MagicMock()
     mock_response.choices = [MagicMock()]
     mock_response.choices[0].message.content = "test answer"
-    mock_response.usage = MagicMock()
-    mock_response.usage.total_tokens = 10
-
-    with patch("app.worker.litellm.completion", return_value=mock_response), \
-         patch("app.worker.record_usage", new_callable=AsyncMock):
+    with patch("app.worker.classify_prompt_simple", new_callable=AsyncMock, return_value="chat"), \
+            patch("app.worker.call_with_escalation", new_callable=AsyncMock,
+                  return_value=(mock_response, "llama-3.1-8b", 10)), \
+            patch("app.worker.record_usage", new_callable=AsyncMock):
 
         await process_job(redis, "job-1", {"prompt": "hi", "key_hash": "abc123"})
 
-    result = await get_result(redis, "job-1", timeout=1)
-    assert result is not None
-    assert result["status"] == "done"
+        result = await get_result(redis, "job-1", timeout=1)
+        assert result is not None
+        assert result["status"] == "done"

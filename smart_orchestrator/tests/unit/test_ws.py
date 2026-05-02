@@ -1,6 +1,6 @@
+"""Tests for WebSocket /ws/chat endpoint (Sprint 7/8 compatible)."""
 import json
 import pytest
-import fakeredis.aioredis as fakeredis
 from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi.testclient import TestClient
 
@@ -8,20 +8,17 @@ from app.main import app
 
 
 def make_fake_redis():
-    return fakeredis.FakeRedis()
+    import fakeredis.aioredis
+    return fakeredis.aioredis.FakeRedis()
 
 
 def _make_key_record():
-    return type("K", (), {"hash": "abc", "tier": "free"})()
+    return type("K", (), {"hash": "abc123", "tier": "free"})()
 
 
-def _chunk(text):
-    m = MagicMock()
-    m.choices = [MagicMock()]
-    m.choices[0].delta.content = text
-    return m
-
-
+# ---------------------------------------------------------------------------
+# test_ws_rejects_invalid_key
+# ---------------------------------------------------------------------------
 @patch("app.routers.ws.get_redis_client", new_callable=AsyncMock)
 @patch("app.routers.ws.verify_api_key", new_callable=AsyncMock)
 def test_ws_rejects_invalid_key(mock_verify, mock_redis):
@@ -35,6 +32,9 @@ def test_ws_rejects_invalid_key(mock_verify, mock_redis):
             ws.receive_text()
 
 
+# ---------------------------------------------------------------------------
+# test_ws_rejects_rate_limited
+# ---------------------------------------------------------------------------
 @patch("app.routers.ws.get_redis_client", new_callable=AsyncMock)
 @patch("app.routers.ws.verify_api_key", new_callable=AsyncMock)
 @patch("app.routers.ws.check_rate_limit", new_callable=AsyncMock)
@@ -50,35 +50,62 @@ def test_ws_rejects_rate_limited(mock_rl, mock_verify, mock_redis):
             ws.receive_text()
 
 
+# ---------------------------------------------------------------------------
+# test_ws_streams_chunks
+# ---------------------------------------------------------------------------
 @patch("app.routers.ws.get_redis_client", new_callable=AsyncMock)
 @patch("app.routers.ws.verify_api_key", new_callable=AsyncMock)
 @patch("app.routers.ws.check_rate_limit", new_callable=AsyncMock)
+@patch("app.routers.ws.classify_prompt_simple", new_callable=AsyncMock)
+@patch("app.routers.ws.call_with_escalation", new_callable=AsyncMock)
 @patch("app.routers.ws.record_usage", new_callable=AsyncMock)
-@patch("app.routers.ws.litellm.completion")
-def test_ws_streams_chunks(mock_litellm, mock_record, mock_rl, mock_verify, mock_redis):
+def test_ws_streams_chunks(mock_record, mock_escalate, mock_classify,
+                           mock_rl, mock_verify, mock_redis):
     mock_redis.return_value = make_fake_redis()
     mock_verify.return_value = _make_key_record()
     mock_rl.return_value = None
-    mock_litellm.return_value = [_chunk("Hi"), _chunk(" there")]
+    mock_classify.return_value = "chat"
+
+    chunk = MagicMock()
+    chunk.choices = [MagicMock()]
+    chunk.choices[0].delta.content = "Hi"
+    mock_escalate.return_value = ([chunk], "llama-3.1-8b", 0)
 
     client = TestClient(app)
     with client.websocket_connect("/ws/chat") as ws:
         ws.send_text(json.dumps({"api_key": "valid", "prompt": "hello"}))
-        msg1 = json.loads(ws.receive_text())
-        assert msg1["type"] == "chunk"
-        assert msg1["text"] == "Hi"
+        messages = []
+        for _ in range(5):
+            try:
+                messages.append(json.loads(ws.receive_text()))
+            except Exception:
+                break
+
+    chunk_msgs = [m for m in messages if m.get("type") == "chunk"]
+    assert len(chunk_msgs) >= 1
+    assert chunk_msgs[0]["text"] == "Hi"
 
 
+# ---------------------------------------------------------------------------
+# test_ws_sends_done_message
+# ---------------------------------------------------------------------------
 @patch("app.routers.ws.get_redis_client", new_callable=AsyncMock)
 @patch("app.routers.ws.verify_api_key", new_callable=AsyncMock)
 @patch("app.routers.ws.check_rate_limit", new_callable=AsyncMock)
+@patch("app.routers.ws.classify_prompt_simple", new_callable=AsyncMock)
+@patch("app.routers.ws.call_with_escalation", new_callable=AsyncMock)
 @patch("app.routers.ws.record_usage", new_callable=AsyncMock)
-@patch("app.routers.ws.litellm.completion")
-def test_ws_sends_done_message(mock_litellm, mock_record, mock_rl, mock_verify, mock_redis):
+def test_ws_sends_done_message(mock_record, mock_escalate, mock_classify,
+                               mock_rl, mock_verify, mock_redis):
     mock_redis.return_value = make_fake_redis()
     mock_verify.return_value = _make_key_record()
     mock_rl.return_value = None
-    mock_litellm.return_value = [_chunk("Hi")]
+    mock_classify.return_value = "chat"
+
+    chunk = MagicMock()
+    chunk.choices = [MagicMock()]
+    chunk.choices[0].delta.content = "Hi"
+    mock_escalate.return_value = ([chunk], "llama-3.1-8b", 0)
 
     client = TestClient(app)
     with client.websocket_connect("/ws/chat") as ws:
@@ -96,15 +123,21 @@ def test_ws_sends_done_message(mock_litellm, mock_record, mock_rl, mock_verify, 
     assert "tokens" in done_msgs[0]
 
 
+# ---------------------------------------------------------------------------
+# test_ws_handles_llm_error
+# ---------------------------------------------------------------------------
 @patch("app.routers.ws.get_redis_client", new_callable=AsyncMock)
 @patch("app.routers.ws.verify_api_key", new_callable=AsyncMock)
 @patch("app.routers.ws.check_rate_limit", new_callable=AsyncMock)
-@patch("app.routers.ws.litellm.completion")
-def test_ws_handles_litellm_error(mock_litellm, mock_rl, mock_verify, mock_redis):
+@patch("app.routers.ws.classify_prompt_simple", new_callable=AsyncMock)
+@patch("app.routers.ws.call_with_escalation", new_callable=AsyncMock)
+def test_ws_handles_llm_error(mock_escalate, mock_classify,
+                              mock_rl, mock_verify, mock_redis):
     mock_redis.return_value = make_fake_redis()
     mock_verify.return_value = _make_key_record()
     mock_rl.return_value = None
-    mock_litellm.side_effect = Exception("LLM unavailable")
+    mock_classify.return_value = "chat"
+    mock_escalate.side_effect = Exception("LLM unavailable")
 
     client = TestClient(app)
     with client.websocket_connect("/ws/chat") as ws:

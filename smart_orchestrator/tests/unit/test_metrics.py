@@ -1,40 +1,58 @@
-import asyncio
-
+"""Tests for Prometheus metrics module and /prometheus endpoint (Sprint 9)."""
 import pytest
+from fastapi.testclient import TestClient
 
-from app.lib import metrics
-
-
-@pytest.mark.asyncio
-async def test_record_cache_hit_increments_correct_counter() -> None:
-    await metrics.reset_metrics()
-
-    await metrics.record_cache_hit("redis", 100)
-    snapshot = await metrics.get_metrics()
-
-    assert snapshot["cache_hits_redis"] == 1
-    assert snapshot["cache_hits_qdrant"] == 0
-    assert snapshot["estimated_cost_savings_usd"] == 0.0003
+from app.main import app
+from app.lib.metrics import (
+    record_request,
+    record_tokens,
+    record_latency,
+    record_error,
+    REQUESTS_TOTAL,
+    TOKENS_TOTAL,
+)
 
 
-@pytest.mark.asyncio
-async def test_get_metrics_returns_hit_rate() -> None:
-    await metrics.reset_metrics()
-
-    await metrics.record_cache_hit("redis", 100)
-    await metrics.record_cache_hit("miss", 0)
-    snapshot = await metrics.get_metrics()
-
-    assert snapshot["cache_hit_rate"] == 0.5
-    assert snapshot["cache_misses"] == 1
+@pytest.fixture
+def client():
+    return TestClient(app)
 
 
-@pytest.mark.asyncio
-async def test_concurrent_metric_updates_are_safe() -> None:
-    await metrics.reset_metrics()
+# ---------------------------------------------------------------------------
+# test_prometheus_endpoint_returns_200
+# ---------------------------------------------------------------------------
+def test_prometheus_endpoint_returns_200(client):
+    resp = client.get("/prometheus")
+    assert resp.status_code == 200
 
-    await asyncio.gather(*(metrics.record_cache_hit("qdrant", 10) for _ in range(10)))
-    snapshot = await metrics.get_metrics()
 
-    assert snapshot["cache_hits_qdrant"] == 10
-    assert snapshot["cache_hit_rate"] == 1.0
+# ---------------------------------------------------------------------------
+# test_prometheus_endpoint_content_type
+# ---------------------------------------------------------------------------
+def test_prometheus_endpoint_content_type(client):
+    resp = client.get("/prometheus")
+    assert "text/plain" in resp.headers["content-type"]
+
+
+# ---------------------------------------------------------------------------
+# test_record_request_increments_counter
+# ---------------------------------------------------------------------------
+def test_record_request_increments_counter():
+    before = REQUESTS_TOTAL.labels(
+        endpoint="test_ep", tier="free", category="chat", status="ok"
+    )._value.get()
+    record_request("test_ep", "free", "chat", "ok")
+    after = REQUESTS_TOTAL.labels(
+        endpoint="test_ep", tier="free", category="chat", status="ok"
+    )._value.get()
+    assert after == before + 1
+
+
+# ---------------------------------------------------------------------------
+# test_record_tokens_increments_counter
+# ---------------------------------------------------------------------------
+def test_record_tokens_increments_counter():
+    before = TOKENS_TOTAL.labels(tier="pro", model="llama-3.1-8b")._value.get()
+    record_tokens("pro", "llama-3.1-8b", 42)
+    after = TOKENS_TOTAL.labels(tier="pro", model="llama-3.1-8b")._value.get()
+    assert after == before + 42

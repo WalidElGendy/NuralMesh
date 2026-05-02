@@ -20,6 +20,7 @@ from app.routers.webhook import router as webhook_router
 from app.routers.ws import router as ws_router
 from app.routers.jobs import router as jobs_router
 from app.routers.health import router as health_router
+from app.routers.usage import router as usage_router
 from app.routers.metrics_router import router as metrics_router
 from app.stages.cache import get_redis_client
 
@@ -44,6 +45,7 @@ app.include_router(webhook_router, prefix="/webhook")
 app.include_router(ws_router)
 app.include_router(jobs_router, prefix="/jobs")
 app.include_router(health_router)
+app.include_router(usage_router)
 app.include_router(metrics_router)
 
 

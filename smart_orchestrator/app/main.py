@@ -25,6 +25,8 @@ from app.routers.metrics_router import router as metrics_router
 from app.routers.node import router as node_router
 from app.routers.provider import router as provider_router
 from app.routers.admin_payouts import router as admin_payouts_router
+from app.routers.user_dashboard import router as user_dashboard_router
+from app.routers.gpu_dashboard import router as gpu_dashboard_router
 from app.stages.cache import get_redis_client
 
 
@@ -53,6 +55,8 @@ app.include_router(metrics_router)
 app.include_router(node_router)
 app.include_router(provider_router)
 app.include_router(admin_payouts_router)
+app.include_router(user_dashboard_router)
+app.include_router(gpu_dashboard_router)
 
 
 def sse(event: str, payload: dict[str, object]) -> str:

@@ -22,6 +22,7 @@ from app.routers.jobs import router as jobs_router
 from app.routers.health import router as health_router
 from app.routers.usage import router as usage_router
 from app.routers.metrics_router import router as metrics_router
+from app.routers.node import router as node_router
 from app.stages.cache import get_redis_client
 
 
@@ -47,6 +48,7 @@ app.include_router(jobs_router, prefix="/jobs")
 app.include_router(health_router)
 app.include_router(usage_router)
 app.include_router(metrics_router)
+app.include_router(node_router)
 
 
 def sse(event: str, payload: dict[str, object]) -> str:

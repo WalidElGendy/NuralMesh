@@ -295,3 +295,13 @@ async def classify_stage(context: PipelineContext) -> ClassifyResult:
 
 
 run = classify_prompt
+
+
+async def classify_prompt_simple(prompt: str) -> str:
+    """Returns category string for use outside pipeline context."""
+    import os
+    if os.getenv("CLASSIFY_MODEL", "") == "mock":
+        return "chat"
+    ctx = PipelineContext(prompt=prompt)
+    await classify(ctx)
+    return ctx.category or "chat"

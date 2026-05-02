@@ -5,7 +5,9 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from app.lib.auth import verify_api_key
 from app.lib.ratelimit import check_and_increment as check_rate_limit
 from app.lib.billing import record_usage
+from app.lib.escalation import call_with_escalation
 from app.stages.cache import get_redis_client
+from app.stages.classify import classify_prompt_simple
 
 router = APIRouter()
 
@@ -27,16 +29,17 @@ async def ws_chat(websocket: WebSocket):
 
         api_key = data.get("api_key", "")
         prompt = data.get("prompt", "")
-        model = data.get("model_hint") or DEFAULT_MODEL
+        model_hint = data.get("model_hint") or None
 
         # Auth
         try:
-            key_info = await verify_api_key(api_key, redis_client)
-            key_hash = key_info.hash
-            tier = key_info.tier
+            key_record = await verify_api_key(api_key, redis_client)
         except Exception:
             await websocket.close(code=4001)
             return
+
+        key_hash = key_record.hash
+        tier = key_record.tier
 
         # Rate limit
         try:
@@ -45,21 +48,20 @@ async def ws_chat(websocket: WebSocket):
             await websocket.close(code=4029)
             return
 
-        # Stream LLM response
+        # Classify & escalate
         try:
-            total_tokens = 0
-            response_stream = litellm.completion(
-                model=model,
-                messages=[{"role": "user", "content": prompt}],
-                stream=True,
+            category = await classify_prompt_simple(prompt)
+            stream, model, _ = await call_with_escalation(
+                prompt, category, tier, redis_client, key_hash,
+                hint=model_hint, stream=True
             )
-            for chunk in response_stream:
+            total_tokens = 0
+            for chunk in stream:
                 delta = chunk.choices[0].delta.content
                 if delta is None:
                     continue
                 total_tokens += 1
                 await websocket.send_text(json.dumps({"type": "chunk", "text": delta}))
-
             await record_usage(redis_client, key_hash, total_tokens)
             await websocket.send_text(json.dumps({"type": "done", "model": model, "tokens": total_tokens}))
             await websocket.close()

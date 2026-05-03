@@ -12,9 +12,13 @@ logger = get_logger(__name__)
 
 TIER_LIMITS = {
     "free": 10,
+    "beta": 10,   # 10 req/min during beta (100 req/day enforced separately)
     "pro": 60,
     "admin": 9999,
 }
+
+BETA_DAILY_LIMIT = 100  # max requests per day for beta tier
+DAY_SECONDS = 86400
 WINDOW_SECONDS = 60
 
 

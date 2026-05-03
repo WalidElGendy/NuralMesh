@@ -13,6 +13,25 @@ STRIPE_FREE_PRICE_ID = os.getenv("STRIPE_FREE_PRICE_ID", "price_free")
 STRIPE_PRO_PRICE_ID = os.getenv("STRIPE_PRO_PRICE_ID", "price_pro")
 STRIPE_ADMIN_PRICE_ID = os.getenv("STRIPE_ADMIN_PRICE_ID", "price_admin")
 
+# ---------------------------------------------------------------------------
+# STRIPE_MODE: mock | test | live
+# Set to 'mock' in unit tests to bypass real Stripe calls.
+# Set to 'test' to hit Stripe test-mode endpoints (requires sk_test_ key).
+# Set to 'live' in production (requires sk_live_ key).
+# ---------------------------------------------------------------------------
+STRIPE_MODE = os.getenv("STRIPE_MODE", "mock").lower()
+
+def log_stripe_mode_banner() -> None:
+    """Log a startup banner so the mode is never ambiguous."""
+    banners = {
+        "mock": "[STRIPE] Mode: MOCK  Stripe calls bypassed (unit-test safe)",
+        "test": "[STRIPE] Mode: TEST  Using Stripe test-mode keys",
+        "live": "[STRIPE] *** Mode: LIVE ***  Real money transactions enabled",
+    }
+    msg = banners.get(STRIPE_MODE, f"[STRIPE] Mode: {STRIPE_MODE.upper()} (unrecognised)")
+    logger.info(msg)
+
+
 PRICE_TIER_MAP: dict[str, str] = {}
 
 def _build_price_tier_map() -> None:

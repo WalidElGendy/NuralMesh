@@ -7,7 +7,7 @@ from fastapi import Depends, FastAPI, HTTPException, Response
 from fastapi.responses import StreamingResponse
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
-from app.lib.billing import record_usage
+from app.lib.billing import log_stripe_mode_banner, record_usage
 from app.lib.auth import ApiKeyDep
 from app.lib.logger import get_logger
 from app.lib.metrics import get_metrics
@@ -27,6 +27,7 @@ from app.routers.provider import router as provider_router
 from app.routers.admin_payouts import router as admin_payouts_router
 from app.routers.user_dashboard import router as user_dashboard_router
 from app.routers.gpu_dashboard import router as gpu_dashboard_router
+from app.routers.internal import router as internal_router
 from app.stages.cache import get_redis_client
 
 
@@ -43,6 +44,7 @@ async def lifespan(app_instance: FastAPI) -> AsyncIterator[None]:
     yield
 
 
+log_stripe_mode_banner()
 app = FastAPI(title="NeuralMesh Smart Orchestrator", lifespan=lifespan)
 FastAPIInstrumentor().instrument_app(app)
 app.include_router(admin_router, prefix="/admin")
@@ -57,6 +59,7 @@ app.include_router(provider_router)
 app.include_router(admin_payouts_router)
 app.include_router(user_dashboard_router)
 app.include_router(gpu_dashboard_router)
+app.include_router(internal_router)
 
 
 def sse(event: str, payload: dict[str, object]) -> str:

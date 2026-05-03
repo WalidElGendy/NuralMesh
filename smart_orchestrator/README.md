@@ -57,3 +57,43 @@ The pipeline passes a `PipelineContext` through seven stages:
 7. Settle
 
 Secrets are read from environment variables only. Prompt bodies are not logged at INFO level.
+
+
+## Soft launch checklist
+
+Every env var that must be set in production for the system to actually work:
+
+### Render (backend)
+| Env Var | Description | Required |
+|---|---|---|
+|  | Stripe live secret key () | Yes |
+|  | Webhook signing secret () | Yes |
+|  | Set to  | Yes |
+|  | Stripe price ID for Free plan | Yes |
+|  | Stripe price ID for Pro plan | Yes |
+|  | Stripe price ID for Admin plan | Yes |
+|  | Resend API key for waitlist emails | Yes |
+|  | Sender address, e.g.  | Yes |
+|  | Secret for  | Yes |
+|  | Your Supabase project URL | Yes |
+|  | Supabase service role key | Yes |
+|  | Redis connection string | Yes |
+|  | Qdrant vector store URL | Yes |
+|  | Secret for  endpoints | Yes |
+|  | DeepSeek model identifier | Yes (if using) |
+|  | Anthropic model identifier | Yes (if using) |
+|  | Google Gemini model identifier | Yes (if using) |
+|  | Ollama Llama model path | Yes (if using) |
+|  |  to enable tracing | Optional |
+
+### Vercel (landing + dashboard)
+| Env Var | Description |
+|---|---|
+|  | Backend URL from Render |
+|  | Supabase URL |
+|  | Supabase anon key |
+
+### Supabase (database)
+- Run migrations 001-006 in order
+- Configure Database Webhook for  and  INSERT events
+  pointing to  with  header

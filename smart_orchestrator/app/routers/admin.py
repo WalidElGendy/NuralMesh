@@ -105,3 +105,50 @@ async def list_usage(x_admin_secret: str | None = Header(None)):
         usage = await get_usage(redis, key_hash)
         keys.append(usage)
     return keys
+
+
+# ---------------------------------------------------------------------------
+# Node heartbeat and listing (Step 7  first external GPU node)
+# ---------------------------------------------------------------------------
+from datetime import datetime, timezone
+
+_NODES_STORE: dict[str, dict] = {}  # in-memory store; replace with DB in production
+
+from pydantic import BaseModel as _PBM
+class NodeHeartbeatRequest(_PBM):
+    node_id: str
+    name: str
+    location: str = "unknown"
+
+@router.post("/nodes/heartbeat")
+async def node_heartbeat(
+    payload: NodeHeartbeatRequest,
+    x_admin_secret: str | None = Header(default=None),
+) -> dict:
+    """Register or update node heartbeat. Called by node.py every 30 s."""
+    _require_admin_secret(x_admin_secret)
+    now = datetime.now(timezone.utc).isoformat()
+    _NODES_STORE[payload.node_id] = {
+        "node_id": payload.node_id,
+        "name": payload.name,
+        "location": payload.location,
+        "last_seen_at": now,
+    }
+    return {"ok": True, "node_id": payload.node_id, "last_seen_at": now}
+
+@router.get("/nodes")
+async def list_nodes(x_admin_secret: str | None = Header(default=None)) -> list[dict]:
+    """Return nodes seen in the last 5 minutes."""
+    _require_admin_secret(x_admin_secret)
+    cutoff_secs = 300  # 5 minutes
+    now = datetime.now(timezone.utc)
+    active = []
+    for n in _NODES_STORE.values():
+        try:
+            last_seen = datetime.fromisoformat(n["last_seen_at"])
+            age = (now - last_seen.replace(tzinfo=timezone.utc) if last_seen.tzinfo is None else now - last_seen).total_seconds()
+            if age <= cutoff_secs:
+                active.append({**n, "age_seconds": int(age)})
+        except Exception:
+            pass
+    return active

@@ -1,87 +1,152 @@
-const Database = require('better-sqlite3');
+const low = require('lowdb');
+const FileSync = require('lowdb/adapters/FileSync');
 const path = require('path');
-const fs = require('fs');
+const { v4: uuidv4 } = require('uuid');
+const bcrypt = require('bcryptjs');
 
 const dataDir = process.env.RAILWAY_VOLUME_MOUNT_PATH || '/tmp';
-const dbPath = path.join(dataDir, 'meshnet.db');
+const dbPath = path.join(dataDir, 'meshnet-db.json');
 
-const db = new Database(dbPath);
+const adapter = new FileSync(dbPath);
+const db = low(adapter);
 
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
-
-db.exec(`
-  CREATE TABLE IF NOT EXISTS users (
-    id TEXT PRIMARY KEY,
-    email TEXT UNIQUE NOT NULL,
-    password_hash TEXT NOT NULL,
-    name TEXT NOT NULL,
-    role TEXT NOT NULL DEFAULT 'user',
-    created_at TEXT NOT NULL
-  );
-
-  CREATE TABLE IF NOT EXISTS api_keys (
-    id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL,
-    label TEXT NOT NULL,
-    key_value TEXT UNIQUE NOT NULL,
-    active INTEGER NOT NULL DEFAULT 1,
-    created_at TEXT NOT NULL,
-    FOREIGN KEY (user_id) REFERENCES users(id)
-  );
-
-  CREATE TABLE IF NOT EXISTS nodes (
-    id TEXT PRIMARY KEY,
-    provider_id TEXT NOT NULL,
-    name TEXT NOT NULL,
-    location TEXT NOT NULL DEFAULT 'Unknown',
-    gpu_model TEXT NOT NULL DEFAULT 'CPU',
-    status TEXT NOT NULL DEFAULT 'offline',
-    payout_currency TEXT NOT NULL DEFAULT 'USD',
-    bank_details TEXT NOT NULL DEFAULT '{}',
-    jobs_completed INTEGER NOT NULL DEFAULT 0,
-    uptime_pct REAL NOT NULL DEFAULT 0,
-    last_heartbeat TEXT,
-    created_at TEXT NOT NULL,
-    FOREIGN KEY (provider_id) REFERENCES users(id)
-  );
-
-  CREATE TABLE IF NOT EXISTS jobs (
-    id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL,
-    node_id TEXT,
-    model TEXT NOT NULL,
-    tokens_used INTEGER NOT NULL DEFAULT 0,
-    latency_ms INTEGER NOT NULL DEFAULT 0,
-    status TEXT NOT NULL DEFAULT 'completed',
-    created_at TEXT NOT NULL,
-    FOREIGN KEY (user_id) REFERENCES users(id)
-  );
-
-  CREATE TABLE IF NOT EXISTS payouts (
-    id TEXT PRIMARY KEY,
-    provider_id TEXT NOT NULL,
-    amount REAL NOT NULL,
-    currency TEXT NOT NULL DEFAULT 'USD',
-    reference TEXT NOT NULL,
-    status TEXT NOT NULL DEFAULT 'pending',
-    created_at TEXT NOT NULL,
-    FOREIGN KEY (provider_id) REFERENCES users(id)
-  );
-`);
+// Set defaults
+db.defaults({
+  users: [],
+  api_keys: [],
+  nodes: [],
+  jobs: [],
+  payouts: []
+}).write();
 
 // Seed iPad node SA-01 if not exists
-const existing = db.prepare('SELECT id FROM nodes WHERE id = ?').get('node-ipad-01');
-if (!existing) {
-  // Create a seed provider user if none exists
-  let providerId = 'provider-seed-01';
-  const providerExists = db.prepare('SELECT id FROM users WHERE id = ?').get(providerId);
-  if (!providerExists) {
-    const bcrypt = require('bcryptjs');
+const existingNode = db.get('nodes').find({ id: 'node-ipad-01' }).value();
+if (!existingNode) {
+  const providerId = 'provider-seed-01';
+  const existingProvider = db.get('users').find({ id: providerId }).value();
+  if (!existingProvider) {
     const hash = bcrypt.hashSync('MeshNet2026!', 10);
-    db.prepare('INSERT OR IGNORE INTO users (id, email, password_hash, name, role, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(providerId, 'node@meshnet.co', hash, 'Node SA-01', 'provider', new Date().toISOString());
+    db.get('users').push({
+      id: providerId,
+      email: 'node@meshnet.co',
+      password_hash: hash,
+      name: 'Node SA-01',
+      role: 'provider',
+      created_at: new Date().toISOString()
+    }).write();
   }
-  db.prepare('INSERT OR IGNORE INTO nodes (id, provider_id, name, location, gpu_model, status, payout_currency, bank_details, jobs_completed, uptime_pct, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run('node-ipad-01', providerId, 'Node SA-01', 'Saudi Arabia', 'iPad (Groq Proxy)', 'online', 'SAR', '{}', 0, 99.9, new Date().toISOString());
+  db.get('nodes').push({
+    id: 'node-ipad-01',
+    provider_id: providerId,
+    name: 'Node SA-01',
+    location: 'Saudi Arabia',
+    gpu_model: 'iPad (Groq Proxy)',
+    status: 'online',
+    payout_currency: 'SAR',
+    bank_details: '{}',
+    jobs_completed: 0,
+    uptime_pct: 99.9,
+    last_heartbeat: new Date().toISOString(),
+    created_at: new Date().toISOString()
+  }).write();
 }
 
-module.exports = db;
+// Sync-style DB wrapper to keep server.js API compatible
+const dbWrapper = {
+  prepare: (sql) => {
+    // Parse SQL to determine operation
+    return {
+      get: (...params) => dbWrapper._get(sql, params),
+      all: (...params) => dbWrapper._all(sql, params),
+      run: (...params) => dbWrapper._run(sql, params)
+    };
+  },
+  _get: (sql, params) => {
+    const s = sql.toLowerCase().trim();
+    if (s.includes('from users where email')) {
+      return db.get('users').find({ email: params[0] }).value() || null;
+    }
+    if (s.includes('from users where id')) {
+      const u = db.get('users').find({ id: params[0] }).value();
+      if (!u) return null;
+      if (s.includes('select id from users')) return { id: u.id };
+      return u;
+    }
+    if (s.includes('from api_keys where key_value')) {
+      return db.get('api_keys').find({ key_value: params[0], active: 1 }).value() || null;
+    }
+    if (s.includes('from nodes where id')) {
+      return db.get('nodes').find({ id: params[0] }).value() || null;
+    }
+    if (s.includes('count(*) as count from nodes')) {
+      const status = params[0];
+      return { count: db.get('nodes').filter({ status }).value().length };
+    }
+    if (s.includes('count(*) as count from jobs')) {
+      const cutoff = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+      return { count: db.get('jobs').filter(j => j.created_at >= cutoff).value().length };
+    }
+    if (s.includes('sum(tokens_used)')) {
+      const cutoff = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
+      const total = db.get('jobs').filter(j => j.created_at >= cutoff).reduce((sum, j) => sum + (j.tokens_used || 0), 0).value();
+      return { total };
+    }
+    return null;
+  },
+  _all: (sql, params) => {
+    const s = sql.toLowerCase().trim();
+    if (s.includes('from api_keys where user_id')) {
+      return db.get('api_keys').filter({ user_id: params[0] }).value();
+    }
+    if (s.includes('from nodes where status !=')) {
+      return db.get('nodes').filter(n => n.status !== params[0]).value();
+    }
+    if (s.includes('from nodes where status =')) {
+      return db.get('nodes').filter({ status: params[0] }).value();
+    }
+    if (s.includes('from jobs where user_id')) {
+      return db.get('jobs').filter({ user_id: params[0] }).sortBy('created_at').reverse().take(50).value();
+    }
+    if (s.includes('from jobs j left join')) {
+      const jobs = db.get('jobs').sortBy('created_at').reverse().take(100).value();
+      return jobs.map(j => {
+        const user = db.get('users').find({ id: j.user_id }).value();
+        return { ...j, email: user ? user.email : 'unknown' };
+      });
+    }
+    return [];
+  },
+  _run: (sql, params) => {
+    const s = sql.toLowerCase().trim();
+    if (s.startsWith('insert into users')) {
+      db.get('users').push({
+        id: params[0], email: params[1], password_hash: params[2],
+        name: params[3], role: params[4], created_at: params[5]
+      }).write();
+    } else if (s.startsWith('insert into api_keys')) {
+      db.get('api_keys').push({
+        id: params[0], user_id: params[1], label: params[2],
+        key_value: params[3], active: 1, created_at: params[4]
+      }).write();
+    } else if (s.startsWith('update api_keys set active = 0')) {
+      db.get('api_keys').find({ id: params[0], user_id: params[1] }).assign({ active: 0 }).write();
+    } else if (s.startsWith('insert into nodes')) {
+      db.get('nodes').push({
+        id: params[0], provider_id: params[1], name: params[2], location: params[3],
+        gpu_model: params[4], status: params[5], payout_currency: params[6],
+        bank_details: params[7], jobs_completed: 0, uptime_pct: 0,
+        created_at: params[8]
+      }).write();
+    } else if (s.startsWith('update nodes set status')) {
+      db.get('nodes').find({ id: params[2] }).assign({ status: params[0], last_heartbeat: params[1] }).write();
+    } else if (s.startsWith('insert into jobs') || s.startsWith('insert or ignore into jobs')) {
+      db.get('jobs').push({
+        id: params[0], user_id: params[1], node_id: params[2], model: params[3],
+        tokens_used: params[4], latency_ms: params[5], status: params[6], created_at: params[7]
+      }).write();
+    }
+    return { changes: 1 };
+  }
+};
+
+module.exports = dbWrapper;

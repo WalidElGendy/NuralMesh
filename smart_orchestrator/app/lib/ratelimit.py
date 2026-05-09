@@ -59,9 +59,22 @@ class RateLimiter:
         now = time.time()
         reset_at = int(now + WINDOW_SECONDS)
         key = f"ratelimit:{key_hash}"
+        daily_key = f"{key}:daily"
         member = f"{now}:{id(self)}"
 
         try:
+            if selected_tier == "beta":
+                daily_count = int(await self.redis_client.get(daily_key) or 0)
+                if daily_count >= BETA_DAILY_LIMIT:
+                    raise HTTPException(
+                        status_code=429,
+                        detail="You've reached your daily limit. Upgrade to keep chatting.",
+                        headers={
+                            "X-RateLimit-Limit": str(BETA_DAILY_LIMIT),
+                            "X-RateLimit-Remaining": "0",
+                            "X-RateLimit-Reset": str(int(now + DAY_SECONDS)),
+                        },
+                    )
             await self.redis_client.zremrangebyscore(key, 0, now - WINDOW_SECONDS)
             current = await self.redis_client.zcard(key)
             if current >= limit:
@@ -82,6 +95,10 @@ class RateLimiter:
                 )
             await self.redis_client.zadd(key, {member: now})
             await self.redis_client.expire(key, WINDOW_SECONDS)
+            if selected_tier == "beta":
+                daily_after = await self.redis_client.incr(daily_key)
+                if daily_after == 1:
+                    await self.redis_client.expire(daily_key, DAY_SECONDS)
             remaining = max(limit - int(current) - 1, 0)
             return RateLimitResult(
                 allowed=True,

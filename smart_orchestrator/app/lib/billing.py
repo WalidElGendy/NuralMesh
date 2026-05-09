@@ -6,7 +6,7 @@ from typing import Any
 
 import stripe
 from fastapi import HTTPException
-from app.config import APP_BASE_URL, STRIPE_BETA_PRICE_ID, STRIPE_MODE
+from app.config import APP_BASE_URL, STRIPE_BETA_PRICE_ID
 from app.lib.analytics import track_event
 from app.lib.email import render_template, send_email
 from app.lib.logger import get_logger

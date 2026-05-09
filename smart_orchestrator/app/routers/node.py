@@ -9,7 +9,7 @@ GET  /node/attest/{req_id} : Retrieve a stored attestation
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from app.stages.cache import get_redis_client

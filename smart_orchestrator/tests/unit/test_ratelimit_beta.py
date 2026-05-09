@@ -1,5 +1,3 @@
-
-import pytest
 from app.lib.ratelimit import TIER_LIMITS, BETA_DAILY_LIMIT, DAY_SECONDS
 
 class TestBetaTier:

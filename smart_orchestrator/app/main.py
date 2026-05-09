@@ -1,4 +1,3 @@
-import asyncio
 import json
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -9,13 +8,13 @@ from fastapi.responses import StreamingResponse
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
 from app.config import ALLOWED_ORIGINS
-from app.lib.billing import log_stripe_mode_banner, record_usage
+from app.lib.billing import log_stripe_mode_banner
 from app.lib.auth import ApiKeyDep
 from app.lib.logger import get_logger
 from app.lib.metrics import get_metrics
 from app.lib.ratelimit import RateLimiter
 from app.lib.telemetry import init_telemetry
-from app.models.schemas import ApiKeyRecord, ChatRequest, ChatResponse, PipelineEvent
+from app.models.schemas import ApiKeyRecord, ChatRequest
 from app.pipeline import run_pipeline
 from app.routers.admin import router as admin_router
 from app.routers.webhook import router as webhook_router

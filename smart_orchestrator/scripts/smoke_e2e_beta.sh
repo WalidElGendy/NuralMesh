@@ -25,6 +25,15 @@ SIGNUP=$(curl -sf -X POST "$API_BASE/api/auth/signup" \
   -H "Content-Type: application/json" \
   -d "{\"email\":\"$EMAIL\",\"password\":\"$PASSWORD\",\"invite_code\":\"$INVITE\",\"intent\":\"user\"}")
 CONFIRM_URL=$(echo "$SIGNUP" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("confirmation_url",""))')
+CONFIRM_URL=$(python3 - "$API_BASE" "$CONFIRM_URL" <<'PY'
+import sys
+from urllib.parse import urlparse, urlunparse
+api_base, confirm_url = sys.argv[1], sys.argv[2]
+api = urlparse(api_base)
+url = urlparse(confirm_url)
+print(urlunparse((api.scheme, api.netloc, url.path, url.params, url.query, url.fragment)))
+PY
+)
 test -n "$CONFIRM_URL"
 echo "OK: signup created confirmation link"
 

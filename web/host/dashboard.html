@@ -49,41 +49,42 @@
             </section>
 
             <section class="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-                <article class="overflow-hidden rounded-3xl border border-white/10 bg-mesh-card">
-                    <div class="border-b border-white/10 px-6 py-5">
-                        <h2 class="text-xl font-semibold">Nodes</h2>
-                        <p class="mt-1 text-sm text-mesh-muted">Last heartbeat and per-node performance.</p>
-                    </div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full min-w-[860px] text-left text-sm">
-                            <thead class="border-b border-white/10 text-xs uppercase tracking-[0.18em] text-zinc-500"><tr><th class="px-6 py-4">Node</th><th class="px-6 py-4">Last seen</th><th class="px-6 py-4">p50 / p95</th><th class="px-6 py-4">Success</th><th class="px-6 py-4">Models</th></tr></thead>
-                            <tbody id="node-rows" class="divide-y divide-white/10"></tbody>
-                        </table>
-                    </div>
-                </article>
-                <article class="rounded-3xl border border-white/10 bg-mesh-card p-6">
-                    <h2 class="text-xl font-semibold">Payouts</h2>
-                    <p class="mt-4 text-sm text-mesh-muted">Pending payout</p>
-                    <p id="pending-payout" class="mt-2 text-4xl font-bold">$0.00</p>
-                    <div id="payout-history" class="mt-6 space-y-3 text-sm"></div>
-                </article>
-            </section>
-
-            <section class="grid gap-6 border-t border-white/10 pt-8 lg:grid-cols-[1fr_1fr]">
-                <article class="rounded-3xl border border-white/10 bg-mesh-card p-6">
-                    <h2 class="text-xl font-semibold">Recent jobs</h2>
-                    <div id="recent-jobs" class="mt-5 space-y-3 text-sm"></div>
-                </article>
-                <article class="rounded-3xl border border-white/10 bg-mesh-card p-6">
-                    <h2 class="text-xl font-semibold">Settings</h2>
-                    <div class="mt-5 grid gap-4">
-                        <label class="grid gap-2 text-sm text-zinc-300">PayPal email<input class="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none focus:border-mesh-primary" placeholder="host@example.com"></label>
-                        <label class="grid gap-2 text-sm text-zinc-300">Wire details<textarea rows="3" class="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none focus:border-mesh-primary" placeholder="Bank name, account holder, routing/SWIFT"></textarea></label>
-                        <label class="grid gap-2 text-sm text-zinc-300">BTC address<input class="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none focus:border-mesh-primary" placeholder="bc1..."></label>
-                        <p class="rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4 text-sm text-amber-200">Tax info reminder: before your first payout, MeshNet will request tax documentation appropriate for your country.</p>
-                        <button class="rounded-2xl border border-red-400/30 bg-red-400/10 px-5 py-3 text-sm font-bold text-red-200 transition hover:bg-red-400/20">Leave the network</button>
-                    </div>
-                </article>
+                <div class="space-y-6">
+                    <article class="overflow-hidden rounded-3xl border border-white/10 bg-mesh-card">
+                        <div class="border-b border-white/10 px-6 py-5">
+                            <h2 class="text-xl font-semibold">Nodes</h2>
+                            <p class="mt-1 text-sm text-mesh-muted">Last heartbeat and per-node performance.</p>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full min-w-[860px] text-left text-sm">
+                                <thead class="border-b border-white/10 text-xs uppercase tracking-[0.18em] text-zinc-500"><tr><th class="px-6 py-4">Node</th><th class="px-6 py-4">Last seen</th><th class="px-6 py-4">p50 / p95</th><th class="px-6 py-4">Success</th><th class="px-6 py-4">Models</th></tr></thead>
+                                <tbody id="node-rows" class="divide-y divide-white/10"></tbody>
+                            </table>
+                        </div>
+                    </article>
+                    <article class="rounded-3xl border border-white/10 bg-mesh-card p-6">
+                        <h2 class="text-xl font-semibold">Recent jobs</h2>
+                        <div id="recent-jobs" class="mt-5 space-y-3 text-sm"></div>
+                    </article>
+                </div>
+                <div class="space-y-6">
+                    <article class="rounded-3xl border border-white/10 bg-mesh-card p-6">
+                        <h2 class="text-xl font-semibold">Payouts</h2>
+                        <p class="mt-4 text-sm text-mesh-muted">Pending payout</p>
+                        <p id="pending-payout" class="mt-2 text-4xl font-bold">$0.00</p>
+                        <div id="payout-history" class="mt-6 space-y-3 text-sm"></div>
+                    </article>
+                    <article class="rounded-3xl border border-white/10 bg-mesh-card p-6">
+                        <h2 class="text-xl font-semibold">Settings</h2>
+                        <div class="mt-5 grid gap-4">
+                            <label class="grid gap-2 text-sm text-zinc-300">PayPal email<input class="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none focus:border-mesh-primary" style="display:block;width:100%;box-sizing:border-box;" placeholder="host@example.com"></label>
+                            <label class="grid gap-2 text-sm text-zinc-300">Wire details<textarea rows="3" class="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none focus:border-mesh-primary" style="display:block;width:100%;box-sizing:border-box;" placeholder="Bank name, account holder, routing/SWIFT"></textarea></label>
+                            <label class="grid gap-2 text-sm text-zinc-300">BTC address<input class="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 outline-none focus:border-mesh-primary" style="display:block;width:100%;box-sizing:border-box;" placeholder="bc1..."></label>
+                            <p class="rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4 text-sm text-amber-200">Tax info reminder: before your first payout, MeshNet will request tax documentation appropriate for your country.</p>
+                            <button class="w-full rounded-2xl border border-red-400/30 bg-red-400/10 px-5 py-3 text-sm font-bold text-red-200 transition hover:bg-red-400/20">Leave the network</button>
+                        </div>
+                    </article>
+                </div>
             </section>
         </main>
     </div>

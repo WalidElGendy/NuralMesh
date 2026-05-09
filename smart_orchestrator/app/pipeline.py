@@ -105,6 +105,7 @@ async def run_pipeline(request: ChatRequest, emit: Emit | None = None) -> ChatRe
         classify_tokens=context.classify_tokens,
         route_model=context.route_result.model_used if context.route_result else None,
         route_tokens=context.route_tokens,
+        served_by=context.selected_response.served_by if context.selected_response else None,
         escalation_count=context.escalations,
         prune_tokens_saved=context.prune_tokens_saved,
         sensitive_override=context.route_result.sensitive_override if context.route_result else False,

@@ -11,7 +11,7 @@ async def enqueue_job(redis_client, job: dict) -> str:
     job_id = await redis_client.xadd(STREAM_KEY, fields)
     if isinstance(job_id, bytes):
         job_id = job_id.decode()
-    return job_id
+    return str(job.get("job_id") or job_id)
 
 
 async def store_result(redis_client, job_id: str, result: dict, ttl: int = 300):

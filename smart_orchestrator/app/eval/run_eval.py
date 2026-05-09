@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -10,6 +11,7 @@ from app.lib.embeddings import embed_text
 from app.lib.metrics import get_metrics, reset_metrics
 from app.models.schemas import ChatMessage, ChatRequest
 from app.pipeline import run_pipeline
+from app.routers.admin import _NODES_STORE
 from app.stages import cache as cache_stage_module
 
 
@@ -72,19 +74,27 @@ async def run_config(name: str, prompts: list[dict[str, str]], limit: int | None
         Produces deterministic baseline numbers without external API keys.
     """
     selected = prompts[:limit] if limit else prompts
-    if name == "orchestrator":
-        eval_redis = EvalRedis()
-        eval_qdrant = EvalQdrant()
-        cache_stage_module.get_redis_client = lambda: eval_redis
-        cache_stage_module.get_qdrant_client = lambda: eval_qdrant
-        for item in selected:
-            await run_pipeline(
-                ChatRequest(
-                    subscriber_id="demo-pro",
-                    messages=[ChatMessage(role="user", content=item["prompt"])],
-                    stream=False,
-                )
-            )
+    previous_percent = os.environ.get("NM_AUTO_ROUTE_GROQ_PERCENT")
+    previous_prefix = os.environ.get("ROUTE_MODEL_PREFIX")
+    os.environ["ROUTE_MODEL_PREFIX"] = "mock"
+    if name == "sovereign_only":
+        os.environ["NM_AUTO_ROUTE_GROQ_PERCENT"] = "0"
+    elif name == "groq_only":
+        os.environ["NM_AUTO_ROUTE_GROQ_PERCENT"] = "100"
+    else:
+        os.environ["NM_AUTO_ROUTE_GROQ_PERCENT"] = os.getenv("NM_AUTO_ROUTE_GROQ_PERCENT", "20")
+
+    eval_redis = EvalRedis()
+    eval_qdrant = EvalQdrant()
+    cache_stage_module.get_redis_client = lambda: eval_redis
+    cache_stage_module.get_qdrant_client = lambda: eval_qdrant
+    _NODES_STORE["eval-node"] = {
+        "node_id": "eval-node",
+        "name": "eval-node",
+        "location": "local",
+        "model_versions": ["llama3.3:70b-instruct-q4_K_M"],
+        "last_seen_at": "2999-01-01T00:00:00+00:00",
+    }
 
     total_cost = 0.0
     wins = 0
@@ -101,26 +111,15 @@ async def run_config(name: str, prompts: list[dict[str, str]], limit: int | None
             messages=[ChatMessage(role="user", content=item["prompt"])],
             stream=False,
         )
-        if name == "baseline_claude_only":
-            cost = 0.018
-            answer = f"Claude baseline response for {item['domain']} prompt."
-            cache_hit = False
-            escalation = 1
-        elif name == "baseline_cheap_only":
-            cost = 0.0012
-            answer = f"Cheap local response for {item['domain']} prompt."
-            cache_hit = False
-            escalation = 0
-        else:
-            response = await run_pipeline(request)
-            cost = response.cost_usd
-            answer = response.answer
-            cache_hit = response.cache_source != "miss"
-            escalation = response.escalation_count
-            classify_tokens += response.classify_tokens
-            route_tokens += response.route_tokens
-            prune_tokens_saved += response.prune_tokens_saved
-            sensitive_overrides += int(response.sensitive_override)
+        response = await run_pipeline(request)
+        cost = response.cost_usd
+        answer = response.answer
+        cache_hit = response.cache_source != "miss"
+        escalation = response.escalation_count
+        classify_tokens += response.classify_tokens
+        route_tokens += response.route_tokens
+        prune_tokens_saved += response.prune_tokens_saved
+        sensitive_overrides += int(response.sensitive_override)
 
         verdict = await judge_response(item["prompt"], answer, item["expected_answer_type"])
         total_cost += cost
@@ -129,6 +128,15 @@ async def run_config(name: str, prompts: list[dict[str, str]], limit: int | None
         escalations += escalation
 
     count = max(len(selected), 1)
+    if previous_percent is None:
+        os.environ.pop("NM_AUTO_ROUTE_GROQ_PERCENT", None)
+    else:
+        os.environ["NM_AUTO_ROUTE_GROQ_PERCENT"] = previous_percent
+    if previous_prefix is None:
+        os.environ.pop("ROUTE_MODEL_PREFIX", None)
+    else:
+        os.environ["ROUTE_MODEL_PREFIX"] = previous_prefix
+
     return {
         "config": name,
         "prompts": len(selected),
@@ -158,12 +166,12 @@ async def main() -> None:
     """
     parser = argparse.ArgumentParser()
     parser.add_argument("--limit", type=int, default=None)
-    parser.add_argument("--output", type=Path, default=None)
+    parser.add_argument("--output", type=Path, default=Path("docs/eval-results-beta-baseline.md"))
     args = parser.parse_args()
 
     ensure_datasets()
     prompts = load_all_datasets()
-    configs = ["baseline_claude_only", "baseline_cheap_only", "orchestrator"]
+    configs = ["sovereign_only", "groq_only", "auto_routed"]
     await reset_metrics()
     results = [await run_config(config, prompts, args.limit) for config in configs]
     metrics = await get_metrics()
@@ -174,7 +182,7 @@ async def main() -> None:
         "results": results,
         "metrics": metrics,
     }
-    text = json.dumps(payload, indent=2)
+    text = "# Beta Baseline Eval Results\n\n```json\n" + json.dumps(payload, indent=2) + "\n```\n"
     if args.output:
         args.output.write_text(text + "\n")
     print(text)

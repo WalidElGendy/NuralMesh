@@ -7,6 +7,7 @@ import os
 import re
 
 from app.config import CONFIDENCE_THRESHOLD
+from app.lib.mesh_dispatch import dispatch_to_mesh
 from app.lib.litellm_client import call_model
 from app.lib.logger import get_logger
 from app.lib.metrics import record_route
@@ -105,6 +106,39 @@ async def route_request(context: PipelineContext) -> PipelineContext:
     with tracer.start_as_current_span("route") as route_span:
         route_span.set_attribute("route.ladder_domain", domain)
         route_span.set_attribute("route.sensitive_override", sensitive_override)
+
+        if os.environ.get("NM_BETA_ROUTER_ENABLED", "true").lower() == "true":
+            model_key = ladder[0]
+            routed = await dispatch_to_mesh(model_key, prompt, context, system=context.system)
+            tokens = routed.prompt_tokens + routed.completion_tokens
+            route_result = RouteResult(
+                model_used=routed.model,
+                response=routed.content or "",
+                confidence=routed.confidence,
+                tokens_used=tokens,
+                escalation_count=0,
+                ladder_domain=domain,
+                sensitive_override=sensitive_override,
+            )
+            context.route_result = route_result
+            context.selected_response = routed
+            context.final_answer = routed.content or ""
+            context.route_tokens = tokens
+            context.route_model = routed.model
+            context.providers_touched.append(routed)
+            context.provider_touches.append(routed)
+            context.route_attempts.append(
+                RouteAttempt(
+                    model=routed.model,
+                    provider_id=routed.provider_id,
+                    confidence=routed.confidence,
+                    verifier_passed=False,
+                )
+            )
+            route_span.set_attribute("route.served_by", routed.served_by or "")
+            route_span.set_attribute("route.escalation_count", 0)
+            await record_route(0, routed.model)
+            return context
 
         if os.environ.get("ROUTE_MODEL_PREFIX", "live") == "mock":
             route_result = _mock_route_result(domain)

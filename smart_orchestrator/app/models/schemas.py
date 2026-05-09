@@ -50,7 +50,9 @@ class ChatRequest(BaseModel):
     subscriber_id: str
     messages: list[ChatMessage]
     system: str | None = None
+    mode: Literal["auto", "fast", "sovereign"] = "auto"
     stream: bool = True
+    mode: Literal["auto", "fast", "sovereign"] = "auto"
 
 
 class ChatResponse(BaseModel):
@@ -78,6 +80,7 @@ class ChatResponse(BaseModel):
     classify_tokens: int = 0
     route_model: str | None = None
     route_tokens: int = 0
+    served_by: str | None = None
     escalation_count: int = 0
     prune_tokens_saved: int = 0
     sensitive_override: bool = False
@@ -317,6 +320,9 @@ class MeshResponse(BaseModel):
     cost_usd: float = 0.0
     provider_paid_usd: float = 0.0
     external: bool = False
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    served_by: str | None = None
 
     @property
     def output_text(self) -> str:
@@ -503,6 +509,7 @@ class PipelineContext(BaseModel):
             subscriber_id=request.subscriber_id,
             messages=request.messages,
             system=request.system,
+            mode=request.mode,
             working_messages=list(request.messages),
         )
 
@@ -591,6 +598,7 @@ class PipelineContext(BaseModel):
             subscriber_id=self.subscriber_id,
             messages=self.messages,
             system=self.system,
+            mode=self.mode,
             stream=True,
         )
 
@@ -673,6 +681,7 @@ class JobRecord(BaseModel):
     cache_source: str = "miss"
     route_model: str | None = None
     route_tokens: int = 0
+    served_by: str | None = None
     escalation_count: int = 0
     prune_tokens_saved: int = 0
 
@@ -684,6 +693,7 @@ class ComputeUnitEntry(BaseModel):
     provider_id: str
     model: str
     latency_ms: int
+    tokens: int = 0
     proof_of_compute: str
     confidence: float
 
@@ -719,13 +729,15 @@ class StripeWebhookResponse(BaseModel):
 
 class JobRequest(BaseModel):
     prompt: str
-    model_hint: Optional[str] = None
+    model_hint: str | None = None
+    mode: Literal["auto", "fast", "sovereign"] = "auto"
 
 
 class JobResult(BaseModel):
     job_id: str
     status: str
-    result: Optional[str] = None
-    model: Optional[str] = None
-    tokens: Optional[int] = None
-    error: Optional[str] = None
+    result: str | None = None
+    model: str | None = None
+    tokens: int | None = None
+    served_by: str | None = None
+    error: str | None = None

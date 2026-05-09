@@ -156,6 +156,8 @@
                     throw new Error(data.detail || "Could not create claim token");
                 }
                 sessionStorage.setItem("meshnet_claim_token", data.claim_token);
+                sessionStorage.setItem("meshnet_provider_email", payload.email);
+                sessionStorage.setItem("meshnet_provider_gpu", payload.gpu_model);
                 window.location.href = `/host/setup?claim_token=${encodeURIComponent(data.claim_token)}`;
             } catch (error) {
                 signupMessage.className = "mt-4 min-h-6 text-sm text-red-300";

@@ -38,7 +38,9 @@ CSRF=$(python3 - "$COOKIE_JAR" <<'PY'
 import sys
 for line in open(sys.argv[1]):
     if "nm_csrf" in line:
-        print(line.strip().split("\t")[-1])
+        value = line.strip().split("\t")[-1]
+if "value" in locals():
+    print(value)
 PY
 )
 test -n "$CSRF"

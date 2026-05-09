@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import datetime, timezone
+import os
 from typing import Any, Protocol
 from uuid import uuid4
 
@@ -260,10 +261,17 @@ class MemoryChatHistoryStore:
 
 
 _postgres_store: PostgresChatHistoryStore | None = None
+_memory_store: MemoryChatHistoryStore | None = None
 
 
 def get_chat_history_store() -> ChatHistoryStore:
-    global _postgres_store
+    global _memory_store, _postgres_store
+    if os.getenv("NM_CHAT_HISTORY_BACKEND", "").lower() == "memory":
+        if os.getenv("NM_ENV", "").lower() in {"prod", "production"}:
+            raise RuntimeError("memory chat history backend is disabled in production")
+        if _memory_store is None:
+            _memory_store = MemoryChatHistoryStore()
+        return _memory_store
     if _postgres_store is None:
         _postgres_store = PostgresChatHistoryStore()
     return _postgres_store

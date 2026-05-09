@@ -8,6 +8,7 @@ from pydantic import BaseModel as _PBM
 from app.config import ADMIN_SECRET
 from app.lib.billing import get_usage
 from app.lib.auth import generate_key, hash_key
+from app.lib.analytics import track_event
 from app.lib.metrics import get_metrics
 from app.models.schemas import UsageRecord, CreateKeyRequest, CreateKeyResponse, KeyListItem
 from app.stages.cache import get_redis_client
@@ -156,6 +157,7 @@ async def node_heartbeat(
         "model_versions": payload.model_versions,
         "last_seen_at": now,
     }
+    await track_event("node-online", payload.node_id, {"source": "admin.nodes.heartbeat"})
     return {"ok": True, "node_id": payload.node_id, "last_seen_at": now}
 
 @router.get("/nodes")

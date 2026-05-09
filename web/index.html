@@ -19,6 +19,9 @@
     a { color: inherit; text-decoration: none; }
     nav, main, footer { width: min(1120px, calc(100% - 40px)); margin: 0 auto; }
     nav { display: flex; align-items: center; justify-content: space-between; padding: 24px 0; }
+    .banner { width: 100%; margin: 0; padding: 10px 20px; text-align: center; background: linear-gradient(135deg, var(--violet), var(--cyan)); color: #020617; font-weight: 800; }
+    .banner a { color: #020617; text-decoration: underline; }
+    .banner button { margin-left: 12px; border: 0; border-radius: 999px; padding: 6px 10px; color: #020617; background: rgba(255,255,255,.42); font-weight: 800; cursor: pointer; }
     .brand { font-weight: 800; letter-spacing: -.04em; }
     .links { display: flex; gap: 18px; color: var(--muted); font-size: 14px; }
     .hero { min-height: 72vh; display: grid; align-items: center; padding: 64px 0; }
@@ -36,10 +39,16 @@
   </style>
 </head>
 <body>
+  <div id="beta-launch-banner" class="banner">
+    Beta launched: real signups are open.
+    <a href="/signup.html">Join with an invite</a>
+    <button type="button" onclick="document.getElementById('beta-launch-banner').remove()">Dismiss</button>
+  </div>
   <nav>
     <a class="brand" href="/">NeuralMesh Beta</a>
     <div class="links">
       <a href="/pricing.html">Pricing</a>
+      <a href="/signup.html">Signup</a>
       <a href="/login.html">Login</a>
       <a href="/terms.html">Terms</a>
       <a href="/privacy.html">Privacy</a>
@@ -50,10 +59,10 @@
       <div>
         <span class="eyebrow">Private beta foundation is live</span>
         <h1>Get Llama 3.3 70B inference on the sovereign GPU mesh</h1>
-        <p>NeuralMesh routes AI workloads across independent GPU providers with production API access, invite-based onboarding, and infrastructure ready for the beta launch.</p>
+        <p>NeuralMesh routes AI workloads across independent GPU providers with production API access, invite-based onboarding, Supabase Auth, and Stripe subscriptions ready for beta launch.</p>
         <div class="cta-row">
-          <a class="button primary" href="/login.html">I want AI inference</a>
-          <a class="button" href="/login.html#provider">I want to host a node</a>
+          <a class="button primary" href="/signup.html">I want AI inference</a>
+          <a class="button" href="/signup.html#provider">I want to host a node</a>
         </div>
       </div>
     </section>

@@ -31,3 +31,10 @@ async def health_check():
         "checks": checks,
         "latency_s": elapsed,
     }
+
+
+@router.get("/status")
+async def status_check():
+    """Launch checklist status endpoint; all dependency checks must be green."""
+
+    return await health_check()

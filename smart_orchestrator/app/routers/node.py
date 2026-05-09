@@ -13,6 +13,7 @@ from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
 
 from app.stages.cache import get_redis_client
+from app.lib.analytics import track_event
 from app.lib.trust import (
     register_node,
     record_attestation,
@@ -75,6 +76,7 @@ async def register(body: NodeRegisterRequest):
 
     redis = await get_redis_client()
     await register_node(redis, body.node_id, body.public_key_hex)
+    await track_event("node-online", body.node_id, {"source": "node.register"})
     return NodeRegisterResponse(node_id=body.node_id, status="registered")
 
 

@@ -62,7 +62,11 @@
     </style>
 </head>
 <body class="bg-mesh-black font-sans text-white antialiased">
-    <nav class="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-black/70 backdrop-blur-2xl">
+    <div id="beta-launch-banner" class="fixed inset-x-0 top-0 z-[60] bg-mesh-purple px-4 py-2 text-center text-sm font-bold text-white">
+        Beta launched: invite-only signup is open. <a class="underline" href="/signup.html">Join the beta</a>
+        <button class="ml-4 rounded-full bg-black/20 px-3 py-1 text-xs" onclick="document.getElementById('beta-launch-banner').remove(); document.querySelector('nav').classList.remove('top-10'); document.querySelector('nav').classList.add('top-0'); document.querySelector('main').classList.remove('pt-28'); document.querySelector('main').classList.add('pt-20');">Dismiss</button>
+    </div>
+    <nav class="fixed inset-x-0 top-10 z-50 border-b border-white/10 bg-black/70 backdrop-blur-2xl">
         <div class="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 lg:px-8">
             <a href="#top" class="flex items-center gap-2 text-xl font-bold tracking-[-0.04em] text-mesh-purple"><img src="logo.jpg" alt="NeuralNet logo" style="height:36px;width:36px;object-fit:contain;" /><span>NeuralNet</span></a>
             <div class="hidden items-center gap-7 text-sm font-medium text-zinc-400 md:flex">
@@ -75,7 +79,7 @@
         </div>
     </nav>
 
-    <main id="top" class="overflow-hidden pt-20">
+    <main id="top" class="overflow-hidden pt-28">
         <section class="relative min-h-[calc(100vh-5rem)] border-b border-white/10 bg-black">
             <div class="pointer-events-none absolute inset-0">
                 <div class="absolute left-1/2 top-[-220px] h-[660px] w-[900px] -translate-x-1/2 rounded-full bg-mesh-purple/35 blur-[170px] animate-pulseGlow"></div>

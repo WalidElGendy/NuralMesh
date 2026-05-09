@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Host on MeshNet</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        const BETA_CREDIT_USD = 0.0025;
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ["Space Grotesk", "sans-serif"] },
+                    colors: {
+                        mesh: {
+                            bg: "#07070F",
+                            card: "#10101B",
+                            border: "#26263A",
+                            muted: "#A1A1AA",
+                            primary: "#7C3AED",
+                            glow: "#A855F7",
+                        },
+                    },
+                    boxShadow: { glow: "0 0 90px rgba(124,58,237,0.28)" },
+                },
+            },
+        };
+    </script>
+</head>
+<body class="bg-mesh-bg font-sans text-white antialiased">
+    <div class="pointer-events-none fixed inset-0 overflow-hidden">
+        <div class="absolute left-1/2 top-[-220px] h-[560px] w-[820px] -translate-x-1/2 rounded-full bg-mesh-primary/25 blur-[150px]"></div>
+        <div class="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_34rem)]"></div>
+    </div>
+
+    <nav class="relative z-10 mx-auto flex max-w-7xl items-center justify-between px-5 py-6 lg:px-8">
+        <a href="/host" class="flex items-center gap-3">
+            <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-mesh-primary font-bold shadow-glow">M</span>
+            <span class="text-xl font-semibold tracking-[-0.04em]">MeshNet Host</span>
+        </a>
+        <div class="flex items-center gap-3 text-sm">
+            <a href="/host/dashboard" class="hidden text-mesh-muted transition hover:text-white sm:inline">Dashboard</a>
+            <a href="#signup" class="rounded-full bg-mesh-primary px-5 py-2.5 font-semibold shadow-glow transition hover:bg-violet-500">Start hosting</a>
+        </div>
+    </nav>
+
+    <main class="relative z-10">
+        <section class="mx-auto grid max-w-7xl gap-10 px-5 pb-20 pt-12 lg:grid-cols-[1.05fr_0.95fr] lg:px-8 lg:pt-20">
+            <div>
+                <p class="text-sm font-semibold uppercase tracking-[0.28em] text-purple-300">Provider beta</p>
+                <h1 class="mt-5 max-w-4xl text-5xl font-bold tracking-[-0.075em] sm:text-7xl">Earn from your GPU. Help build sovereign AI.</h1>
+                <p class="mt-6 max-w-2xl text-lg leading-8 text-zinc-300">Run a verified MeshNet node, serve inference from your own hardware, and earn monthly beta payouts while the network scales.</p>
+                <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+                    <a href="#installer" class="rounded-full bg-mesh-primary px-7 py-4 text-center text-sm font-bold shadow-glow transition hover:bg-violet-500">Get installer</a>
+                    <a href="#requirements" class="rounded-full border border-white/15 bg-white/[0.04] px-7 py-4 text-center text-sm font-bold transition hover:border-purple-300/60">Check requirements</a>
+                </div>
+            </div>
+            <form id="signup" class="rounded-[2rem] border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-black/30 backdrop-blur-xl sm:p-8">
+                <h2 class="text-2xl font-semibold tracking-[-0.04em]">Create your host account</h2>
+                <p class="mt-2 text-sm leading-6 text-mesh-muted">Sign up to receive a single-use claim token for your first node.</p>
+                <div class="mt-6 grid gap-4">
+                    <label class="grid gap-2 text-sm font-medium text-zinc-300">Email<input name="email" required type="email" class="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none focus:border-mesh-primary"></label>
+                    <label class="grid gap-2 text-sm font-medium text-zinc-300">GPU model<input name="gpu_model" required placeholder="RTX 4090, A6000, A5000..." class="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none placeholder:text-zinc-600 focus:border-mesh-primary"></label>
+                    <label class="grid gap-2 text-sm font-medium text-zinc-300">Region<input name="region" required placeholder="US West, EU Central..." class="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none placeholder:text-zinc-600 focus:border-mesh-primary"></label>
+                </div>
+                <button class="mt-6 w-full rounded-2xl bg-mesh-primary px-5 py-4 text-sm font-bold text-white transition hover:bg-violet-500" type="submit">Create account and token</button>
+                <p id="signup-message" class="mt-4 min-h-6 text-sm text-zinc-400"></p>
+            </form>
+        </section>
+
+        <section id="requirements" class="border-y border-white/10 bg-black/20 px-5 py-16 lg:px-8">
+            <div class="mx-auto max-w-7xl">
+                <p class="text-sm font-semibold uppercase tracking-[0.28em] text-purple-300">Requirements</p>
+                <div class="mt-6 grid gap-4 md:grid-cols-3">
+                    <article class="rounded-3xl border border-white/10 bg-mesh-card p-6"><h3 class="text-xl font-semibold">24GB+ VRAM</h3><p class="mt-3 text-sm leading-6 text-mesh-muted">RTX 3090, 4090, A6000, A5000, L40S, A100, or comparable GPUs.</p></article>
+                    <article class="rounded-3xl border border-white/10 bg-mesh-card p-6"><h3 class="text-xl font-semibold">Linux or macOS</h3><p class="mt-3 text-sm leading-6 text-mesh-muted">Windows hosts run through WSL2. Native Windows services are not supported in beta.</p></article>
+                    <article class="rounded-3xl border border-white/10 bg-mesh-card p-6"><h3 class="text-xl font-semibold">200GB free disk</h3><p class="mt-3 text-sm leading-6 text-mesh-muted">The 70B quantized model is large and needs room for cache, logs, and upgrades.</p></article>
+                </div>
+            </div>
+        </section>
+
+        <section class="mx-auto grid max-w-7xl gap-6 px-5 py-16 lg:grid-cols-[0.9fr_1.1fr] lg:px-8">
+            <article class="rounded-[2rem] border border-purple-400/20 bg-purple-400/10 p-7">
+                <p class="text-sm font-semibold uppercase tracking-[0.24em] text-purple-200">Earnings</p>
+                <h2 class="mt-4 text-4xl font-bold tracking-[-0.06em]">1 credit per 1000 tokens served.</h2>
+                <p class="mt-5 text-lg leading-8 text-zinc-200">During beta, each credit pays approximately <span id="credit-rate" class="font-bold text-white"></span>. Paid out monthly via PayPal, wire, or crypto.</p>
+                <p class="mt-4 text-sm text-zinc-400">Adjust <code>BETA_CREDIT_USD</code> in this page before launch to update the displayed beta rate.</p>
+            </article>
+            <article class="rounded-[2rem] border border-white/10 bg-mesh-card p-7">
+                <p class="text-sm font-semibold uppercase tracking-[0.24em] text-purple-300">Onboarding</p>
+                <ol class="mt-6 grid gap-4">
+                    <li class="rounded-2xl border border-white/10 bg-black/30 p-4"><b>1. Create account</b> <a href="#signup" class="text-purple-300 underline">Sign up here</a> to get a claim token.</li>
+                    <li class="rounded-2xl border border-white/10 bg-black/30 p-4"><b>2. Verify GPU</b> The installer auto-detects VRAM with <code>nvidia-smi</code>.</li>
+                    <li class="rounded-2xl border border-white/10 bg-black/30 p-4"><b>3. Run installer</b> It installs Ollama, pulls the model, and registers the node.</li>
+                    <li class="rounded-2xl border border-white/10 bg-black/30 p-4"><b>4. Watch it go online</b> Open the dashboard when the heartbeat succeeds.</li>
+                </ol>
+            </article>
+        </section>
+
+        <section id="installer" class="mx-auto max-w-7xl px-5 pb-16 lg:px-8">
+            <div class="rounded-[2rem] border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-black/30">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <p class="text-sm font-semibold uppercase tracking-[0.24em] text-purple-300">One-line installer</p>
+                        <code id="install-command" class="mt-4 block break-all rounded-2xl border border-white/10 bg-black/50 px-4 py-4 text-sm text-purple-100">curl -sSL https://install.beta.meshnet.co | bash</code>
+                    </div>
+                    <button id="copy-installer" class="rounded-2xl bg-mesh-primary px-6 py-4 text-sm font-bold shadow-glow transition hover:bg-violet-500">Copy command</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="mx-auto max-w-7xl px-5 pb-24 lg:px-8">
+            <p class="text-sm font-semibold uppercase tracking-[0.28em] text-purple-300">FAQ</p>
+            <div class="mt-6 grid gap-4 md:grid-cols-2">
+                <details class="rounded-2xl border border-white/10 bg-mesh-card p-5"><summary class="cursor-pointer font-semibold">What bandwidth do I need?</summary><p class="mt-3 text-sm leading-6 text-mesh-muted">A stable 50 Mbps connection is enough for beta; lower latency improves routing score.</p></details>
+                <details class="rounded-2xl border border-white/10 bg-mesh-card p-5"><summary class="cursor-pointer font-semibold">Can I run multiple nodes?</summary><p class="mt-3 text-sm leading-6 text-mesh-muted">Yes. Each machine claims its own token and appears separately in the dashboard.</p></details>
+                <details class="rounded-2xl border border-white/10 bg-mesh-card p-5"><summary class="cursor-pointer font-semibold">What data passes through my GPU?</summary><p class="mt-3 text-sm leading-6 text-mesh-muted">Inference prompts and model outputs. Sensitive customer metadata stays on MeshNet control services.</p></details>
+                <details class="rounded-2xl border border-white/10 bg-mesh-card p-5"><summary class="cursor-pointer font-semibold">Can users see my IP?</summary><p class="mt-3 text-sm leading-6 text-mesh-muted">No. Users talk to MeshNet APIs; provider addresses are not exposed to end users.</p></details>
+                <details class="rounded-2xl border border-white/10 bg-mesh-card p-5"><summary class="cursor-pointer font-semibold">What if power dies mid-job?</summary><p class="mt-3 text-sm leading-6 text-mesh-muted">The backend marks the heartbeat stale, requeues the job, and the node resumes when power returns.</p></details>
+                <details class="rounded-2xl border border-white/10 bg-mesh-card p-5"><summary class="cursor-pointer font-semibold">When do I get paid?</summary><p class="mt-3 text-sm leading-6 text-mesh-muted">Beta payouts are processed manually within 7 days of month-end. Stripe Connect is coming post-beta.</p></details>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const command = document.getElementById("install-command");
+        const copyButton = document.getElementById("copy-installer");
+        const signupForm = document.getElementById("signup");
+        const signupMessage = document.getElementById("signup-message");
+        document.getElementById("credit-rate").textContent = `$${BETA_CREDIT_USD.toFixed(4)} per credit`;
+
+        copyButton.addEventListener("click", async () => {
+            await navigator.clipboard.writeText(command.textContent.trim());
+            copyButton.textContent = "Copied";
+            setTimeout(() => { copyButton.textContent = "Copy command"; }, 1400);
+        });
+
+        signupForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const button = signupForm.querySelector("button");
+            button.disabled = true;
+            button.textContent = "Creating token...";
+            signupMessage.textContent = "";
+            try {
+                const payload = Object.fromEntries(new FormData(signupForm).entries());
+                const response = await fetch("/api/provider/signup", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                });
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.detail || "Could not create claim token");
+                }
+                sessionStorage.setItem("meshnet_claim_token", data.claim_token);
+                window.location.href = `/host/setup?claim_token=${encodeURIComponent(data.claim_token)}`;
+            } catch (error) {
+                signupMessage.className = "mt-4 min-h-6 text-sm text-red-300";
+                signupMessage.textContent = error.message;
+                button.disabled = false;
+                button.textContent = "Create account and token";
+            }
+        });
+    </script>
+</body>
+</html>

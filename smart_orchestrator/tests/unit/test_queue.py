@@ -3,7 +3,7 @@ import fakeredis.aioredis as fakeredis
 from unittest.mock import AsyncMock, patch
 
 from app.models.schemas import MeshResponse
-from app.lib.queue import enqueue_job, store_result, get_result, STREAM_KEY, RESULT_PREFIX
+from app.lib.queue import enqueue_job, store_result, get_result
 
 
 @pytest.fixture

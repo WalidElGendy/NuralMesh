@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Header, HTTPException
+from pydantic import BaseModel as _PBM
 
 from app.config import ADMIN_SECRET
 from app.lib.billing import get_usage
@@ -110,11 +111,10 @@ async def list_usage(x_admin_secret: str | None = Header(None)):
 # ---------------------------------------------------------------------------
 # Node heartbeat and listing (Step 7  first external GPU node)
 # ---------------------------------------------------------------------------
-from datetime import datetime, timezone
 
 _NODES_STORE: dict[str, dict] = {}  # in-memory store; replace with DB in production
 
-from pydantic import BaseModel as _PBM
+
 class NodeHeartbeatRequest(_PBM):
     node_id: str
     name: str

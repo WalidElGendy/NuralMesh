@@ -7,12 +7,12 @@ from typing import Any
 
 from app.eval.datasets import DOMAINS, ensure_datasets, load_all_datasets
 from app.eval.judge import judge_response
-from app.lib.embeddings import embed_text
 from app.lib.metrics import get_metrics, reset_metrics
 from app.models.schemas import ChatMessage, ChatRequest
 from app.pipeline import run_pipeline
 from app.routers.admin import _NODES_STORE
 from app.stages import cache as cache_stage_module
+from app.stages import settle as settle_stage_module
 
 
 class EvalRedis:
@@ -20,12 +20,27 @@ class EvalRedis:
 
     def __init__(self) -> None:
         self.store: dict[str, str] = {}
+        self.hashes: dict[str, dict[str, float | int]] = {}
 
     async def get(self, key: str) -> str | None:
         return self.store.get(key)
 
     async def setex(self, key: str, ttl: int, value: str) -> None:
         self.store[key] = value
+
+    def pipeline(self) -> "EvalRedis":
+        return self
+
+    def hincrbyfloat(self, key: str, field: str, amount: float) -> None:
+        current = float(self.hashes.setdefault(key, {}).get(field, 0.0))
+        self.hashes[key][field] = current + amount
+
+    def hincrby(self, key: str, field: str, amount: int) -> None:
+        current = int(self.hashes.setdefault(key, {}).get(field, 0))
+        self.hashes[key][field] = current + amount
+
+    async def execute(self) -> None:
+        return None
 
 
 class EvalQdrant:
@@ -88,6 +103,7 @@ async def run_config(name: str, prompts: list[dict[str, str]], limit: int | None
     eval_qdrant = EvalQdrant()
     cache_stage_module.get_redis_client = lambda: eval_redis
     cache_stage_module.get_qdrant_client = lambda: eval_qdrant
+    settle_stage_module.get_redis_client = lambda: eval_redis
     _NODES_STORE["eval-node"] = {
         "node_id": "eval-node",
         "name": "eval-node",
@@ -172,7 +188,7 @@ async def main() -> None:
     ensure_datasets()
     prompts = load_all_datasets()
     configs = ["sovereign_only", "groq_only", "auto_routed"]
-    await reset_metrics()
+    reset_metrics()
     results = [await run_config(config, prompts, args.limit) for config in configs]
     metrics = await get_metrics()
 

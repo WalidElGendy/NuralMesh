@@ -52,7 +52,6 @@ class ChatRequest(BaseModel):
     system: str | None = None
     mode: Literal["auto", "fast", "sovereign"] = "auto"
     stream: bool = True
-    mode: Literal["auto", "fast", "sovereign"] = "auto"
 
 
 class ChatResponse(BaseModel):
@@ -455,6 +454,7 @@ class PipelineContext(BaseModel):
     subscriber_id: str
     messages: list[ChatMessage]
     system: str | None = None
+    mode: Literal["auto", "fast", "sovereign"] = "auto"
     job_id: str = Field(default_factory=lambda: f"job_{uuid4().hex[:16]}")
     working_messages: list[ChatMessage] = Field(default_factory=list)
     classification: PromptClassification | None = None

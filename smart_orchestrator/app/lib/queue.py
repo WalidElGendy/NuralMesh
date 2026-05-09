@@ -26,7 +26,7 @@ async def get_result(redis_client, job_id: str, timeout: int = 30) -> dict | Non
     """Poll for job result. Returns dict if found, None on timeout."""
     key = RESULT_PREFIX + job_id
     elapsed = 0.0
-    while elapsed < timeout:
+    while elapsed <= timeout:
         data = await redis_client.hgetall(key)
         if data:
             decoded = {}
@@ -40,6 +40,8 @@ async def get_result(redis_client, job_id: str, timeout: int = 30) -> dict | Non
                 except Exception:
                     decoded[k] = v
             return decoded
+        if timeout == 0:
+            break
         await asyncio.sleep(0.5)
         elapsed += 0.5
     return None

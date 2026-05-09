@@ -1,4 +1,3 @@
-import pytest
 from app.lib.router import choose_route, get_ladder, resolve_model, pick_model, MODEL_MAP
 
 

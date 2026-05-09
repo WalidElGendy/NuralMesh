@@ -70,12 +70,12 @@ def chat_fixture(monkeypatch: pytest.MonkeyPatch):
     app.dependency_overrides[chat.get_store] = lambda: store
     monkeypatch.setattr(chat, "get_redis_client", lambda: redis)
     monkeypatch.setattr(chat, "run_pipeline", fake_run_pipeline)
-    yield TestClient(app), store, str(uuid4())
+    yield TestClient(app), store, redis, str(uuid4())
     app.dependency_overrides.clear()
 
 
 def test_chat_sse_creates_conversation_and_persists_messages(chat_fixture) -> None:
-    client, store, user_id = chat_fixture
+    client, store, _redis, user_id = chat_fixture
 
     with client.stream(
         "POST",
@@ -98,3 +98,17 @@ def test_chat_sse_creates_conversation_and_persists_messages(chat_fixture) -> No
     assert persisted[0]["content"] == "Hello sovereign mesh"
     assert persisted[1]["content"] == "Mocked assistant reply."
     assert persisted[1]["tokens"] == 4
+
+
+def test_chat_daily_rate_limit_returns_upgrade_message(chat_fixture) -> None:
+    client, _store, redis, user_id = chat_fixture
+    redis.values[f"ratelimit:chat:{user_id}:daily"] = 200
+
+    response = client.post(
+        "/api/chat",
+        headers={"X-Beta-User-Id": user_id},
+        json={"message": "Will this exceed the daily limit?", "mode": "auto"},
+    )
+
+    assert response.status_code == 429
+    assert response.json()["detail"] == "You've reached your daily limit. Upgrade to keep chatting."

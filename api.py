@@ -1,17 +1,131 @@
+import asyncio
+import json
+import logging
 import os
+import subprocess
+import sys
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone
+from functools import lru_cache
+from typing import Any
 
 import stripe
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from supabase import create_client
 
 
-app = FastAPI(title="Distributed AI Inference API")
+PRODUCTION_ENV = "production"
+DEFAULT_ALLOWED_ORIGINS = "https://beta.meshnet.co"
+REQUIRED_PRODUCTION_ENV = (
+    "DATABASE_URL",
+    "SUPABASE_URL",
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "SUPABASE_ANON_KEY",
+    "REDIS_URL",
+    "QDRANT_URL",
+    "STRIPE_SECRET_KEY",
+    "STRIPE_WEBHOOK_SECRET",
+    "STRIPE_PRICE_ID_USER_BETA",
+    "GROQ_API_KEY",
+    "GROQ_MODEL",
+    "AUTH_ENABLED",
+    "OTEL_ENABLED",
+    "LOKI_ENABLED",
+    "ALLOWED_ORIGINS",
+    "INTERNAL_API_KEY",
+    "RESEND_API_KEY",
+    "EMAIL_FROM",
+    "BETA_INVITE_REQUIRED",
+)
+
+
+class JsonFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        payload = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "level": record.levelname.lower(),
+            "logger": record.name,
+            "message": record.getMessage(),
+        }
+        if record.exc_info:
+            payload["exception"] = self.formatException(record.exc_info)
+        return json.dumps(payload, default=str)
+
+
+def configure_logging() -> None:
+    root = logging.getLogger()
+    root.setLevel(logging.INFO)
+    if root.handlers:
+        for handler in root.handlers:
+            handler.setFormatter(JsonFormatter())
+        return
+
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(JsonFormatter())
+    root.addHandler(handler)
+
+
+logger = logging.getLogger(__name__)
+configure_logging()
+
+
+def parse_allowed_origins() -> list[str]:
+    raw_origins = os.getenv("ALLOWED_ORIGINS", DEFAULT_ALLOWED_ORIGINS)
+    return [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
+
+
+def validate_production_env() -> None:
+    if os.getenv("NM_ENV") != PRODUCTION_ENV:
+        return
+
+    missing = [name for name in REQUIRED_PRODUCTION_ENV if not os.getenv(name)]
+    if missing:
+        formatted = ", ".join(missing)
+        raise RuntimeError(
+            "NeuralMesh beta production startup blocked. Missing required env vars: "
+            f"{formatted}. Populate Render/Vercel/Supabase values from config/beta.env.example."
+        )
+
+
+def init_sentry() -> None:
+    dsn = os.getenv("SENTRY_DSN")
+    if not dsn:
+        return
+
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.fastapi import FastApiIntegration
+        from sentry_sdk.integrations.logging import LoggingIntegration
+    except Exception as error:  # pragma: no cover - dependency is installed in production
+        logger.warning("sentry_unavailable: %s", error)
+        return
+
+    sentry_sdk.init(
+        dsn=dsn,
+        environment=os.getenv("NM_ENV", "local"),
+        integrations=[
+            FastApiIntegration(),
+            LoggingIntegration(level=logging.INFO, event_level=logging.ERROR),
+        ],
+        traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1")),
+    )
+
+
+@asynccontextmanager
+async def lifespan(app_instance: FastAPI):
+    validate_production_env()
+    init_sentry()
+    logger.info("api_startup")
+    yield
+
+
+app = FastAPI(title="Distributed AI Inference API", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=parse_allowed_origins(),
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -34,8 +148,32 @@ def get_required_env(name):
 
 def get_supabase_client():
     supabase_url = get_required_env("SUPABASE_URL")
-    supabase_key = get_required_env("SUPABASE_KEY")
+    supabase_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or get_required_env("SUPABASE_KEY")
     return create_client(supabase_url, supabase_key)
+
+
+@lru_cache
+def get_version() -> str:
+    for name in ("RENDER_GIT_COMMIT", "GIT_SHA", "COMMIT_SHA"):
+        value = os.getenv(name)
+        if value:
+            return value[:12]
+
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--short=12", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+    except Exception:
+        return "unknown"
+    return result.stdout.strip() or "unknown"
+
+
+def current_env() -> str:
+    return os.getenv("NM_ENV", "local")
 
 
 def get_billing_record(supabase, api_key):
@@ -100,9 +238,66 @@ def increment_requests_today(supabase, billing):
         raise HTTPException(status_code=500, detail="Could not update usage counter")
 
 
+def check_supabase() -> None:
+    supabase = get_supabase_client()
+    supabase.table("billing").select("user_id").limit(1).execute()
+
+
+async def check_redis() -> None:
+    from redis.asyncio import from_url
+
+    redis_url = get_required_env("REDIS_URL")
+    client = from_url(redis_url, decode_responses=True)
+    try:
+        await client.ping()
+    finally:
+        await client.aclose()
+
+
+async def check_qdrant() -> None:
+    from qdrant_client import AsyncQdrantClient
+
+    qdrant_url = get_required_env("QDRANT_URL")
+    client = AsyncQdrantClient(url=qdrant_url)
+    try:
+        await client.get_collections()
+    finally:
+        await client.close()
+
+
+async def run_ready_check(name: str, check: Any) -> tuple[str, dict[str, str]]:
+    try:
+        result = check()
+        if hasattr(result, "__await__"):
+            await result
+        return name, {"status": "ok"}
+    except Exception as error:
+        logger.warning("ready_check_failed name=%s error=%s", name, error)
+        return name, {"status": "error", "detail": str(error)}
+
+
 @app.get("/")
-def health_check():
+def root_health_check():
     return {"status": "ok"}
+
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok", "version": get_version(), "env": current_env()}
+
+
+@app.get("/readyz")
+async def readiness_check(response: Response):
+    check_results = await asyncio.gather(
+        run_ready_check("supabase", lambda: asyncio.to_thread(check_supabase)),
+        run_ready_check("redis", check_redis),
+        run_ready_check("qdrant", check_qdrant),
+    )
+    checks = dict(check_results)
+    ready = all(check["status"] == "ok" for check in checks.values())
+    if not ready:
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    return {"status": "ok" if ready else "degraded", "version": get_version(), "env": current_env(), "checks": checks}
 
 
 @app.post("/submit")

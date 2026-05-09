@@ -5,6 +5,7 @@ from typing import Any
 
 from fastapi import HTTPException
 
+from app.config import BETA_REQUESTS_PER_DAY, BETA_REQUESTS_PER_MINUTE
 from app.lib.logger import get_logger
 from app.models.schemas import RateLimitResult
 
@@ -12,12 +13,12 @@ logger = get_logger(__name__)
 
 TIER_LIMITS = {
     "free": 10,
-    "beta": 10,   # 10 req/min during beta (100 req/day enforced separately)
+    "beta": BETA_REQUESTS_PER_MINUTE,
     "pro": 60,
     "admin": 9999,
 }
 
-BETA_DAILY_LIMIT = 100  # max requests per day for beta tier
+BETA_DAILY_LIMIT = BETA_REQUESTS_PER_DAY
 DAY_SECONDS = 86400
 WINDOW_SECONDS = 60
 

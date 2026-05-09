@@ -6,11 +6,11 @@ class TestBetaTier:
     def test_beta_tier_exists_in_limits(self):
         assert "beta" in TIER_LIMITS
 
-    def test_beta_per_minute_limit_is_10(self):
-        assert TIER_LIMITS["beta"] == 10
+    def test_beta_per_minute_limit_is_30(self):
+        assert TIER_LIMITS["beta"] == 30
 
-    def test_beta_daily_limit_is_100(self):
-        assert BETA_DAILY_LIMIT == 100
+    def test_beta_daily_limit_is_200(self):
+        assert BETA_DAILY_LIMIT == 200
 
     def test_day_seconds_is_86400(self):
         assert DAY_SECONDS == 86400

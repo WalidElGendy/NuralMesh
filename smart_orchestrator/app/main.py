@@ -4,9 +4,11 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, HTTPException, Response
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
+from app.config import ALLOWED_ORIGINS
 from app.lib.billing import log_stripe_mode_banner, record_usage
 from app.lib.auth import ApiKeyDep
 from app.lib.logger import get_logger
@@ -46,6 +48,13 @@ async def lifespan(app_instance: FastAPI) -> AsyncIterator[None]:
 
 log_stripe_mode_banner()
 app = FastAPI(title="NeuralMesh Smart Orchestrator", lifespan=lifespan)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 FastAPIInstrumentor().instrument_app(app)
 app.include_router(admin_router, prefix="/admin")
 app.include_router(webhook_router, prefix="/webhook")

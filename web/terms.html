@@ -8,7 +8,8 @@
   <style>
     body { margin: 0; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #05050a; color: #f8fafc; }
     main, nav { width: min(880px, calc(100% - 40px)); margin: 0 auto; }
-    nav { padding: 24px 0; }
+    nav { display: flex; justify-content: space-between; gap: 18px; padding: 24px 0; }
+    .links { display: flex; gap: 18px; }
     a { color: #c4b5fd; text-decoration: none; }
     h1 { margin-top: 56px; font-size: clamp(38px, 7vw, 72px); letter-spacing: -.07em; }
     p, li { color: #c4c4cc; line-height: 1.8; }
@@ -16,7 +17,15 @@
   </style>
 </head>
 <body>
-  <nav><a href="/">NeuralMesh Beta</a></nav>
+  <nav>
+    <a href="/">NeuralMesh Beta</a>
+    <div class="links">
+      <a href="/pricing.html">Pricing</a>
+      <a href="/login.html">Login</a>
+      <a href="/terms.html">Terms</a>
+      <a href="/privacy.html">Privacy</a>
+    </div>
+  </nav>
   <main>
     <h1>Beta terms placeholder</h1>
     <p>These beta terms are placeholders for launch operations. Legal review should replace this copy before public availability.</p>

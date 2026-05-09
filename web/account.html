@@ -8,7 +8,10 @@
 </head>
 <body class="min-h-screen bg-zinc-950 text-white">
   <main class="mx-auto max-w-4xl px-6 py-12">
-    <nav class="mb-8 flex justify-between text-sm"><a href="/chat">Chat</a><a href="/login.html">Log in</a></nav>
+    <nav class="mb-8 flex justify-between text-sm">
+      <a href="/chat">Chat</a>
+      <button id="logout" class="text-zinc-300" type="button">Log out</button>
+    </nav>
     <h1 class="text-4xl font-bold">Account</h1>
     <section class="mt-8 grid gap-6 md:grid-cols-2">
       <article class="rounded-3xl border border-white/10 bg-white/[0.04] p-6">
@@ -63,6 +66,10 @@
     document.getElementById("portal").addEventListener("click", async () => {
       const data = await postJson("/api/billing/portal");
       window.location.href = data.url;
+    });
+    document.getElementById("logout").addEventListener("click", async () => {
+      await fetch("/api/auth/logout", {method: "POST"});
+      window.location.href = "/login.html";
     });
     loadAccount().catch((error) => {
       document.getElementById("message").textContent = error.message;

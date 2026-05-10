@@ -132,7 +132,7 @@ async def dispatch_to_mesh(
         available_nodes=active_node_ids(),
     )
     if route.route == "groq":
-        if os.environ.get("ROUTE_MODEL_PREFIX", "live") == "mock" and not os.getenv("GROQ_API_KEY"):
+        if os.environ.get("ROUTE_MODEL_PREFIX", "live") == "mock" or not os.getenv("GROQ_API_KEY"):
             content = _mock_answer("groq", prompt)
             return ModelCallResult(
                 provider_id="groq",

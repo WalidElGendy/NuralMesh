@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MeshNet Host Setup</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ["Space Grotesk", "sans-serif"] },
+                    colors: { mesh: { bg: "#07070F", card: "#10101B", muted: "#A1A1AA", primary: "#7C3AED" } },
+                },
+            },
+        };
+    </script>
+</head>
+<body class="min-h-screen bg-mesh-bg font-sans text-white antialiased">
+    <div class="pointer-events-none fixed inset-0">
+        <div class="absolute left-1/2 top-[-180px] h-[420px] w-[680px] -translate-x-1/2 rounded-full bg-mesh-primary/20 blur-[140px]"></div>
+    </div>
+    <main class="relative mx-auto max-w-6xl px-5 py-10 lg:px-8">
+        <nav class="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4">
+            <a href="/host" class="font-semibold">MeshNet Host</a>
+            <a href="/host/dashboard" class="text-sm text-purple-200">Dashboard</a>
+        </nav>
+
+        <section class="mt-10 rounded-[2rem] border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-black/30 sm:p-8">
+            <p class="text-sm font-semibold uppercase tracking-[0.28em] text-purple-300">Installer setup</p>
+            <h1 class="mt-4 text-4xl font-bold tracking-[-0.06em] sm:text-6xl">Run your installer.</h1>
+            <p class="mt-4 max-w-3xl text-lg leading-8 text-zinc-300">Accept the beta participation agreement, then use your single-use claim token. The installer exchanges it for permanent node credentials stored in <code>~/.meshnet/credentials</code>.</p>
+
+            <article class="mt-8 rounded-3xl border border-purple-400/20 bg-purple-400/10 p-5">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <p class="text-sm font-semibold text-purple-100">Provider beta agreement</p>
+                        <p class="mt-2 text-sm leading-6 text-zinc-300">Providers do not subscribe. Accept the beta participation terms before claiming your first node.</p>
+                    </div>
+                    <div class="flex flex-wrap gap-3">
+                        <a class="rounded-xl border border-white/15 px-5 py-3 text-sm font-bold text-purple-100 transition hover:bg-white/10" href="/host/terms.html">Review terms</a>
+                        <button id="accept-terms" class="rounded-xl bg-mesh-primary px-5 py-3 text-sm font-bold transition hover:bg-violet-500" type="button">Accept terms</button>
+                    </div>
+                </div>
+                <p id="terms-message" class="mt-3 min-h-5 text-sm text-zinc-400"></p>
+            </article>
+
+            <div class="mt-8 grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
+                <article class="rounded-3xl border border-white/10 bg-black/30 p-5">
+                    <p class="text-sm text-mesh-muted">Claim token</p>
+                    <code id="claim-token" class="mt-3 block break-all rounded-2xl border border-white/10 bg-black/50 p-4 text-sm text-purple-100">Loading...</code>
+                    <p class="mt-3 text-xs text-zinc-500">Expires in 24 hours. Reusing a token returns a 400.</p>
+                </article>
+                <article class="rounded-3xl border border-white/10 bg-black/30 p-5">
+                    <p class="text-sm text-mesh-muted">Install command</p>
+                    <code id="install-command" class="mt-3 block break-all rounded-2xl border border-white/10 bg-black/50 p-4 text-sm text-emerald-100">Loading...</code>
+                    <button id="copy-command" class="mt-4 rounded-xl bg-mesh-primary px-5 py-3 text-sm font-bold transition hover:bg-violet-500">Copy command</button>
+                </article>
+            </div>
+        </section>
+
+        <section class="mt-8 grid gap-4 md:grid-cols-3">
+            <article class="rounded-3xl border border-white/10 bg-mesh-card p-6">
+                <div class="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4 font-mono text-xs text-emerald-200">$ nvidia-smi<br>Detected 24564 MiB VRAM</div>
+                <h2 class="mt-5 text-xl font-semibold">1. GPU verified</h2>
+                <p class="mt-2 text-sm leading-6 text-mesh-muted">The installer confirms at least 22GB usable VRAM.</p>
+            </article>
+            <article class="rounded-3xl border border-white/10 bg-mesh-card p-6">
+                <div class="rounded-2xl border border-purple-400/20 bg-purple-400/10 p-4 font-mono text-xs text-purple-100">ollama pull llama3.3:70b-instruct-q4_K_M<br>pulling manifest...</div>
+                <h2 class="mt-5 text-xl font-semibold">2. Model downloaded</h2>
+                <p class="mt-2 text-sm leading-6 text-mesh-muted">First install can take 15-60 minutes.</p>
+            </article>
+            <article class="rounded-3xl border border-white/10 bg-mesh-card p-6">
+                <div class="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4 font-mono text-xs text-emerald-200">Heartbeat accepted<br>Your node is online.</div>
+                <h2 class="mt-5 text-xl font-semibold">3. Node online</h2>
+                <p class="mt-2 text-sm leading-6 text-mesh-muted">Open the dashboard to watch earnings and jobs.</p>
+            </article>
+        </section>
+    </main>
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get("claim_token") || sessionStorage.getItem("meshnet_claim_token") || "TOKEN_NOT_FOUND";
+        const command = `curl -sSL https://install.beta.meshnet.co | bash -s -- --claim-token ${token}`;
+        function csrfToken() {
+            return document.cookie.split("; ").find((row) => row.startsWith("nm_csrf="))?.split("=")[1] || "";
+        }
+        document.getElementById("claim-token").textContent = token;
+        document.getElementById("install-command").textContent = command;
+        document.getElementById("copy-command").addEventListener("click", async () => {
+            await navigator.clipboard.writeText(command);
+            document.getElementById("copy-command").textContent = "Copied";
+        });
+        document.getElementById("accept-terms").addEventListener("click", async () => {
+            const message = document.getElementById("terms-message");
+            message.textContent = "Accepting terms...";
+            const response = await fetch("/api/provider/accept-terms", {
+                method: "POST",
+                headers: {"X-CSRF-Token": csrfToken()},
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                message.className = "mt-3 min-h-5 text-sm text-red-300";
+                message.textContent = data.detail || "Could not accept terms. Log in as a provider and try again.";
+                return;
+            }
+            message.className = "mt-3 min-h-5 text-sm text-emerald-300";
+            message.textContent = "Terms accepted. You can run the installer with this claim token.";
+        });
+    </script>
+</body>
+</html>

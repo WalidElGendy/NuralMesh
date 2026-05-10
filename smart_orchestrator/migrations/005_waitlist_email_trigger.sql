@@ -1,0 +1,56 @@
+
+-- Migration 005: Waitlist email trigger
+-- Strategy: Supabase database webhook (pg_net) vs database trigger
+-- We use a Supabase Database Webhook (not a PL/pgSQL trigger) because:
+--   + No need to deploy/manage a pg_net extension or custom functions
+--   + The webhook is configured in the Supabase dashboard and calls our
+--     FastAPI /internal/notify-waitlist endpoint directly
+--   + Easier to debug (webhook logs visible in Supabase dashboard)
+--   - Requires Supabase Pro plan for database webhooks (or use pg_net)
+-- If on free tier: create a pg_net trigger (shown below as commented SQL)
+
+-- Option A (recommended): Configure in Supabase Dashboard
+--   Table: waitlist_users, Event: INSERT
+--   URL: https://<your-backend>/internal/notify-waitlist
+--   Method: POST, Headers: {"X-Internal-Key": "<INTERNAL_API_KEY>"}
+--   Payload: {"email": "{{ record.email }}", "kind": "user"}
+--   Same for waitlist_providers with kind=provider
+
+-- Option B (pg_net fallback for free tier):
+-- CREATE EXTENSION IF NOT EXISTS pg_net;
+--
+-- CREATE OR REPLACE FUNCTION notify_waitlist_user() RETURNS trigger AS $$
+-- BEGIN
+--   PERFORM net.http_post(
+--     url := current_setting('app.backend_url') || '/internal/notify-waitlist',
+--     headers := jsonb_build_object(
+--       'Content-Type', 'application/json',
+--       'X-Internal-Key', current_setting('app.internal_api_key')
+--     ),
+--     body := jsonb_build_object('email', NEW.email, 'kind', 'user')
+--   );
+--   RETURN NEW;
+-- END;
+-- $$ LANGUAGE plpgsql SECURITY DEFINER;
+--
+-- CREATE TRIGGER waitlist_user_email_trigger
+--   AFTER INSERT ON waitlist_users
+--   FOR EACH ROW EXECUTE FUNCTION notify_waitlist_user();
+--
+-- CREATE OR REPLACE FUNCTION notify_waitlist_provider() RETURNS trigger AS $$
+-- BEGIN
+--   PERFORM net.http_post(
+--     url := current_setting('app.backend_url') || '/internal/notify-waitlist',
+--     headers := jsonb_build_object(
+--       'Content-Type', 'application/json',
+--       'X-Internal-Key', current_setting('app.internal_api_key')
+--     ),
+--     body := jsonb_build_object('email', NEW.email, 'kind', 'provider')
+--   );
+--   RETURN NEW;
+-- END;
+-- $$ LANGUAGE plpgsql SECURITY DEFINER;
+--
+-- CREATE TRIGGER waitlist_provider_email_trigger
+--   AFTER INSERT ON waitlist_providers
+--   FOR EACH ROW EXECUTE FUNCTION notify_waitlist_provider();

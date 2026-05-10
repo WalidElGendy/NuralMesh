@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuralMesh Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ["Space Grotesk", "sans-serif"],
+                    },
+                    colors: {
+                        mesh: {
+                            bg: "#07070F",
+                            card: "#0E0E18",
+                            elevated: "#141421",
+                            border: "#242436",
+                            muted: "#8E8EA0",
+                            primary: "#7C3AED",
+                        },
+                    },
+                    boxShadow: {
+                        glow: "0 0 80px rgba(124, 58, 237, 0.18)",
+                    },
+                },
+            },
+        };
+    </script>
+</head>
+<body class="min-h-screen bg-mesh-bg font-sans text-white antialiased">
+    <div class="pointer-events-none fixed inset-0">
+        <div class="absolute left-1/2 top-[-180px] h-[420px] w-[620px] -translate-x-1/2 rounded-full bg-mesh-primary/20 blur-3xl"></div>
+        <div class="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_32rem)]"></div>
+    </div>
+
+    <div class="relative mx-auto min-h-screen max-w-7xl px-6 py-6 lg:px-8">
+        <nav class="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4 shadow-glow backdrop-blur-xl">
+            <a href="index.html" class="flex items-center gap-3">
+                <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-mesh-primary text-sm font-bold shadow-lg shadow-purple-950/50">NM</div>
+                <span class="text-lg font-semibold tracking-tight">NeuralMesh</span>
+            </a>
+            <div class="flex items-center gap-1 rounded-full border border-white/10 bg-black/20 p-1 text-sm">
+                <a href="index.html" class="rounded-full bg-mesh-primary px-4 py-2 font-medium text-white shadow-lg shadow-purple-950/40">Dashboard</a>
+                <a href="nodes.html" class="rounded-full px-4 py-2 font-medium text-mesh-muted transition hover:text-white">Nodes</a>
+                <a href="billing.html" class="rounded-full px-4 py-2 font-medium text-mesh-muted transition hover:text-white">Billing</a>
+            </div>
+        </nav>
+
+        <header class="mt-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div>
+                <p class="text-sm font-medium uppercase tracking-[0.24em] text-purple-300">Production overview</p>
+                <h1 class="mt-3 text-4xl font-semibold tracking-[-0.04em] text-white md:text-5xl">Inference dashboard</h1>
+            </div>
+            <p class="max-w-xl text-sm leading-6 text-mesh-muted">Monitor API usage, latency, and recent model calls across your distributed NeuralMesh nodes.</p>
+        </header>
+
+        <main class="mt-8 space-y-6">
+            <section class="grid gap-4 lg:grid-cols-[1.35fr_1fr_1fr_1fr]">
+                <article class="rounded-3xl border border-white/10 bg-mesh-card p-6 shadow-2xl shadow-black/30">
+                    <div class="flex items-center justify-between">
+                        <p class="text-sm font-medium text-mesh-muted">API Key</p>
+                        <span class="rounded-full border border-purple-400/20 bg-purple-400/10 px-3 py-1 text-xs font-medium text-purple-200">Live</span>
+                    </div>
+                    <div class="mt-5 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/30 px-4 py-3">
+                        <code id="api-key" class="truncate text-sm text-slate-200">Loading key...</code>
+                        <button id="copy-key" class="rounded-full border border-mesh-primary px-4 py-2 text-sm font-semibold text-purple-200 transition hover:bg-mesh-primary hover:text-white">Copy</button>
+                    </div>
+                </article>
+
+                <article class="rounded-3xl border border-white/10 bg-mesh-card p-6">
+                    <p class="text-sm font-medium text-mesh-muted">Usage Today</p>
+                    <p class="mt-5 text-3xl font-semibold tracking-[-0.04em]"><span id="usage-today">Loading</span> <span class="text-lg text-slate-400">requests</span></p>
+                    <p id="usage-limit" class="mt-3 text-sm font-medium text-emerald-400">Checking plan limit...</p>
+                </article>
+
+                <article class="rounded-3xl border border-white/10 bg-mesh-card p-6">
+                    <p class="text-sm font-medium text-mesh-muted">Avg Response Time</p>
+                    <p class="mt-5 text-3xl font-semibold tracking-[-0.04em]">312ms</p>
+                    <p class="mt-3 text-sm text-slate-500">p95 across all models</p>
+                </article>
+
+                <article class="rounded-3xl border border-white/10 bg-mesh-card p-6">
+                    <p class="text-sm font-medium text-mesh-muted">Active Nodes</p>
+                    <p class="mt-5 text-3xl font-semibold tracking-[-0.04em]">3 nodes</p>
+                    <p class="mt-3 text-sm text-slate-500">GPU workers online</p>
+                </article>
+            </section>
+
+            <section class="overflow-hidden rounded-3xl border border-white/10 bg-mesh-card shadow-2xl shadow-black/30">
+                <div class="flex items-center justify-between border-b border-white/10 px-6 py-5">
+                    <div>
+                        <h2 class="text-xl font-semibold tracking-[-0.03em]">Recent API Calls</h2>
+                        <p class="mt-1 text-sm text-mesh-muted">Latest requests routed through NeuralMesh.</p>
+                    </div>
+                    <span id="recent-updated" class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-slate-400">Updated just now</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[720px] text-left text-sm">
+                        <thead class="border-b border-white/10 text-xs uppercase tracking-[0.18em] text-slate-500">
+                            <tr>
+                                <th class="px-6 py-4 font-medium">Model</th>
+                                <th class="px-6 py-4 font-medium">Tokens</th>
+                                <th class="px-6 py-4 font-medium">Timestamp</th>
+                                <th class="px-6 py-4 font-medium">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent-calls" class="divide-y divide-white/10">
+                            <tr class="transition hover:bg-white/[0.025]">
+                                <td class="px-6 py-5 font-medium text-white">llama3</td>
+                                <td class="px-6 py-5 text-slate-300">1,842</td>
+                                <td class="px-6 py-5 text-slate-400">Apr 27, 21:45 UTC</td>
+                                <td class="px-6 py-5"><span class="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-300">success</span></td>
+                            </tr>
+                            <tr class="transition hover:bg-white/[0.025]">
+                                <td class="px-6 py-5 font-medium text-white">mistral-7b</td>
+                                <td class="px-6 py-5 text-slate-300">932</td>
+                                <td class="px-6 py-5 text-slate-400">Apr 27, 21:42 UTC</td>
+                                <td class="px-6 py-5"><span class="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-300">success</span></td>
+                            </tr>
+                            <tr class="transition hover:bg-white/[0.025]">
+                                <td class="px-6 py-5 font-medium text-white">llama3</td>
+                                <td class="px-6 py-5 text-slate-300">2,417</td>
+                                <td class="px-6 py-5 text-slate-400">Apr 27, 21:38 UTC</td>
+                                <td class="px-6 py-5"><span class="rounded-full border border-red-400/20 bg-red-400/10 px-3 py-1 text-xs font-medium text-red-300">error</span></td>
+                            </tr>
+                            <tr class="transition hover:bg-white/[0.025]">
+                                <td class="px-6 py-5 font-medium text-white">mistral-7b</td>
+                                <td class="px-6 py-5 text-slate-300">684</td>
+                                <td class="px-6 py-5 text-slate-400">Apr 27, 21:34 UTC</td>
+                                <td class="px-6 py-5"><span class="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-300">success</span></td>
+                            </tr>
+                            <tr class="transition hover:bg-white/[0.025]">
+                                <td class="px-6 py-5 font-medium text-white">llama3</td>
+                                <td class="px-6 py-5 text-slate-300">1,206</td>
+                                <td class="px-6 py-5 text-slate-400">Apr 27, 21:29 UTC</td>
+                                <td class="px-6 py-5"><span class="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-300">success</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="rounded-3xl border border-white/10 bg-mesh-card p-6 shadow-2xl shadow-black/30">
+                <div class="flex flex-col gap-3 border-b border-white/10 pb-6 md:flex-row md:items-start md:justify-between">
+                    <div>
+                        <p class="text-sm font-medium uppercase tracking-[0.24em] text-purple-300">Live playground</p>
+                        <h2 class="mt-3 text-2xl font-semibold tracking-[-0.03em]">Try the API</h2>
+                        <p class="mt-2 max-w-2xl text-sm leading-6 text-mesh-muted">Submit a prompt to FastAPI, watch the job move through Supabase, and read the Ollama output when your worker completes it.</p>
+                    </div>
+                    <span id="backend-status" class="w-fit rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs font-medium text-slate-400">Connecting</span>
+                </div>
+
+                <div class="mt-6 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+                    <form id="try-api-form" class="space-y-4">
+                        <label for="api-prompt" class="block text-sm font-medium text-slate-300">Prompt</label>
+                        <textarea id="api-prompt" name="prompt" rows="7" required class="w-full resize-none rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm leading-6 text-white outline-none transition placeholder:text-slate-600 focus:border-mesh-primary focus:ring-4 focus:ring-mesh-primary/10" placeholder="Ask the AI something..."></textarea>
+                        <button id="run-inference" type="submit" class="flex w-full items-center justify-center gap-3 rounded-2xl bg-mesh-primary px-5 py-3 text-sm font-semibold text-white shadow-xl shadow-purple-950/30 transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-60">
+                            <span id="run-spinner" class="hidden h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"></span>
+                            <span id="run-label">Run Inference</span>
+                        </button>
+                    </form>
+
+                    <article class="rounded-2xl border border-white/10 bg-black/30 p-5">
+                        <div class="flex items-start justify-between gap-4">
+                            <div>
+                                <p class="text-xs uppercase tracking-[0.18em] text-slate-500">Result</p>
+                                <p id="result-job-id" class="mt-2 truncate font-mono text-xs text-slate-500">No job submitted yet</p>
+                            </div>
+                            <span id="result-status" class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs font-medium text-slate-400">Idle</span>
+                        </div>
+                        <pre id="result-output" class="mt-5 min-h-44 whitespace-pre-wrap rounded-2xl border border-white/10 bg-mesh-bg/80 p-4 text-sm leading-6 text-slate-300">Run an inference job to see the model output here.</pre>
+                    </article>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script>
+        const API_BASE_URL = "http://localhost:8000";
+        const API_KEY = "nm_live_sk_3f9a8b2c1d4e5f6a7b8c9d0e1f2a3b4c";
+        const POLL_INTERVAL_MS = 2000;
+        let activePoll = null;
+
+        const tryApiForm = document.getElementById("try-api-form");
+        const promptInput = document.getElementById("api-prompt");
+        const runButton = document.getElementById("run-inference");
+        const runSpinner = document.getElementById("run-spinner");
+        const runLabel = document.getElementById("run-label");
+        const backendStatus = document.getElementById("backend-status");
+        const resultJobId = document.getElementById("result-job-id");
+        const resultStatus = document.getElementById("result-status");
+        const resultOutput = document.getElementById("result-output");
+        const recentCalls = document.getElementById("recent-calls");
+        const recentUpdated = document.getElementById("recent-updated");
+        const copyKeyButton = document.getElementById("copy-key");
+        const apiKeyEl = document.getElementById("api-key");
+        const usageToday = document.getElementById("usage-today");
+        const usageLimit = document.getElementById("usage-limit");
+
+        function authHeaders(extraHeaders = {}) {
+            return {
+                ...extraHeaders,
+                "X-API-Key": API_KEY,
+            };
+        }
+
+        function maskApiKey(apiKey) {
+            return `${apiKey.slice(0, 8)}${"•".repeat(12)}${apiKey.slice(-4)}`;
+        }
+
+        function setBackendStatus(text, tone = "neutral") {
+            const tones = {
+                neutral: "border-white/10 bg-white/[0.03] text-slate-400",
+                online: "border-emerald-400/20 bg-emerald-400/10 text-emerald-300",
+                error: "border-red-400/20 bg-red-400/10 text-red-300",
+            };
+            backendStatus.className = `w-fit rounded-full border px-3 py-1 text-xs font-medium ${tones[tone]}`;
+            backendStatus.textContent = text;
+        }
+
+        function setLoading(isLoading) {
+            runButton.disabled = isLoading;
+            runSpinner.classList.toggle("hidden", !isLoading);
+            runLabel.textContent = isLoading ? "Processing..." : "Run Inference";
+        }
+
+        function setResultStatus(status) {
+            const tones = {
+                idle: "border-white/10 bg-white/[0.03] text-slate-400",
+                pending: "border-slate-400/20 bg-slate-400/10 text-slate-300",
+                processing: "border-purple-400/20 bg-purple-400/10 text-purple-200",
+                complete: "border-emerald-400/20 bg-emerald-400/10 text-emerald-300",
+                error: "border-red-400/20 bg-red-400/10 text-red-300",
+            };
+            resultStatus.className = `rounded-full border px-3 py-1 text-xs font-medium ${tones[status] || tones.idle}`;
+            resultStatus.textContent = status === "idle" ? "Idle" : status;
+        }
+
+        function setResultOutput(text, isError = false) {
+            resultOutput.textContent = text;
+            resultOutput.className = `mt-5 min-h-44 whitespace-pre-wrap rounded-2xl border bg-mesh-bg/80 p-4 text-sm leading-6 ${
+                isError ? "border-red-400/20 text-red-300" : "border-white/10 text-slate-300"
+            }`;
+        }
+
+        function addRecentCall({ model = "llama3", tokens = "pending", status = "pending" }) {
+            const statusClasses = {
+                success: "border-emerald-400/20 bg-emerald-400/10 text-emerald-300",
+                complete: "border-emerald-400/20 bg-emerald-400/10 text-emerald-300",
+                error: "border-red-400/20 bg-red-400/10 text-red-300",
+                pending: "border-slate-400/20 bg-slate-400/10 text-slate-300",
+                processing: "border-purple-400/20 bg-purple-400/10 text-purple-200",
+            };
+            const row = document.createElement("tr");
+            row.className = "transition hover:bg-white/[0.025]";
+            row.innerHTML = `
+                <td class="px-6 py-5 font-medium text-white">${model}</td>
+                <td class="px-6 py-5 text-slate-300">${tokens}</td>
+                <td class="px-6 py-5 text-slate-400">${new Date().toLocaleString()}</td>
+                <td class="px-6 py-5"><span class="rounded-full border px-3 py-1 text-xs font-medium ${statusClasses[status] || statusClasses.pending}">${status === "complete" ? "success" : status}</span></td>
+            `;
+            recentCalls.prepend(row);
+            while (recentCalls.children.length > 5) {
+                recentCalls.removeChild(recentCalls.lastElementChild);
+            }
+            recentUpdated.textContent = "Updated just now";
+        }
+
+        async function checkBackendHealth() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/`);
+                if (!response.ok) {
+                    throw new Error("Health check failed");
+                }
+                setBackendStatus("Backend online", "online");
+            } catch (error) {
+                setBackendStatus("Backend offline", "error");
+            }
+        }
+
+        async function fetchJob(jobId) {
+            const response = await fetch(`${API_BASE_URL}/job/${jobId}`, {
+                headers: authHeaders(),
+            });
+            if (!response.ok) {
+                throw new Error("Could not fetch job status");
+            }
+            return response.json();
+        }
+
+        async function pollJob(jobId) {
+            try {
+                const job = await fetchJob(jobId);
+                const status = job.status || "pending";
+                setResultStatus(status);
+
+                if (status === "complete") {
+                    clearInterval(activePoll);
+                    activePoll = null;
+                    setLoading(false);
+                    loadBillingSummary();
+                    setResultOutput(job.output || "Inference completed without output.");
+                    addRecentCall({
+                        model: "llama3",
+                        tokens: job.output ? job.output.length.toLocaleString() : "0",
+                        status: "complete",
+                    });
+                    return;
+                }
+
+                if (status === "error") {
+                    clearInterval(activePoll);
+                    activePoll = null;
+                    setLoading(false);
+                    loadBillingSummary();
+                    setResultOutput(job.output || "Inference failed.", true);
+                    addRecentCall({ model: "llama3", tokens: "0", status: "error" });
+                    return;
+                }
+
+                setResultOutput("Processing... waiting for a node to complete this job.");
+            } catch (error) {
+                clearInterval(activePoll);
+                activePoll = null;
+                setLoading(false);
+                setResultStatus("error");
+                setResultOutput(error.message, true);
+            }
+        }
+
+        tryApiForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const prompt = promptInput.value.trim();
+            if (!prompt) {
+                return;
+            }
+
+            if (activePoll) {
+                clearInterval(activePoll);
+                activePoll = null;
+            }
+
+            setLoading(true);
+            setResultStatus("processing");
+            resultJobId.textContent = "Submitting job...";
+            setResultOutput("Processing...");
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/submit`, {
+                    method: "POST",
+                    headers: authHeaders({
+                        "Content-Type": "application/json",
+                    }),
+                    body: JSON.stringify({ prompt }),
+                });
+
+                if (!response.ok) {
+                    const error = await response.json().catch(() => ({}));
+                    throw new Error(error.detail || "Could not submit job");
+                }
+
+                const data = await response.json();
+                resultJobId.textContent = `Job ID: ${data.id}`;
+                setResultStatus("pending");
+                setResultOutput("Processing... job submitted and waiting for a worker node.");
+                addRecentCall({ model: "llama3", status: "pending" });
+
+                await pollJob(data.id);
+                if (activePoll === null && runButton.disabled) {
+                    activePoll = setInterval(() => pollJob(data.id), POLL_INTERVAL_MS);
+                }
+            } catch (error) {
+                setLoading(false);
+                setResultStatus("error");
+                resultJobId.textContent = "Submission failed";
+                setResultOutput(error.message, true);
+            }
+        });
+
+        copyKeyButton.addEventListener("click", async () => {
+            try {
+                await navigator.clipboard.writeText(API_KEY);
+                copyKeyButton.textContent = "Copied!";
+            } catch (error) {
+                copyKeyButton.textContent = "Copy failed";
+            }
+            setTimeout(() => {
+                copyKeyButton.textContent = "Copy";
+            }, 1400);
+        });
+
+        async function loadBillingSummary() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/billing/me`, {
+                    headers: authHeaders(),
+                });
+                if (!response.ok) {
+                    throw new Error("Could not load billing data");
+                }
+                const billing = await response.json();
+                apiKeyEl.textContent = maskApiKey(billing.api_key);
+                usageToday.textContent = billing.requests_today.toLocaleString();
+                usageLimit.textContent = `${billing.request_limit.toLocaleString()} request plan limit`;
+            } catch (error) {
+                apiKeyEl.textContent = maskApiKey(API_KEY);
+                usageToday.textContent = "Unavailable";
+                usageLimit.textContent = error.message;
+            }
+        }
+
+        setResultStatus("idle");
+        checkBackendHealth();
+        loadBillingSummary();
+    </script>
+</body>
+</html>

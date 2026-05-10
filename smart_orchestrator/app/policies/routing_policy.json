@@ -1,0 +1,11 @@
+{
+  "version": "1.0.0",
+  "updated_at": "2026-05-02T00:00:00Z",
+  "escalation_threshold": 0.75,
+  "cache_ttl_seconds": 3600,
+  "cache_eviction_score_threshold": 0.30,
+  "audit_fraction": 0.01,
+  "max_retries": 2,
+  "circuit_breaker_failure_threshold": 3,
+  "circuit_breaker_timeout_seconds": 30
+}

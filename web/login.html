@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login | NeuralMesh Beta</title>
+  <script>window.NM_CONFIG = { apiBase: "__NM_API_BASE__", supabaseUrl: "__NM_SUPABASE_URL__", supabaseAnonKey: "__NM_SUPABASE_ANON_KEY__" };</script>
+  <style>
+    body { margin: 0; min-height: 100vh; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: radial-gradient(circle at top, rgba(139,92,246,.28), transparent 28rem), #05050a; color: #f8fafc; }
+    nav, main { width: min(680px, calc(100% - 40px)); margin: 0 auto; }
+    nav { display: flex; justify-content: space-between; gap: 18px; padding: 24px 0; }
+    .links { display: flex; gap: 18px; }
+    main { margin-top: 6vh; border: 1px solid #292940; background: rgba(16,16,27,.82); border-radius: 32px; padding: 34px; }
+    a { color: #c4b5fd; text-decoration: none; }
+    h1 { margin: 0 0 12px; font-size: clamp(36px, 7vw, 64px); letter-spacing: -.07em; line-height: .96; }
+    p { color: #a1a1aa; line-height: 1.7; font-size: 18px; }
+    label { display: block; margin-top: 18px; color: #e4e4e7; font-size: 14px; font-weight: 700; }
+    input { width: 100%; margin-top: 8px; border: 1px solid #292940; border-radius: 16px; padding: 14px 15px; background: rgba(5,5,10,.72); color: #f8fafc; font: inherit; }
+    button { width: 100%; margin-top: 18px; border: 0; border-radius: 999px; padding: 14px 18px; background: #8b5cf6; color: #fff; font-weight: 800; cursor: pointer; }
+    button.secondary { background: transparent; border: 1px solid #292940; color: #c4b5fd; }
+    #message { min-height: 24px; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="/">NeuralMesh Beta</a>
+    <div class="links">
+      <a href="/pricing.html">Pricing</a>
+      <a href="/login.html">Login</a>
+      <a href="/terms.html">Terms</a>
+      <a href="/privacy.html">Privacy</a>
+    </div>
+  </nav>
+  <main>
+    <form id="login-form">
+      <h1>Log in</h1>
+      <p>Use password login or request a Supabase magic link.</p>
+      <label>Email<input name="email" type="email" required></label>
+      <label>Password<input name="password" type="password"></label>
+      <button type="submit">Log in with password</button>
+      <button id="magic-link" class="secondary" type="button">Email me a magic link</button>
+      <p id="message"></p>
+      <p><a href="/signup.html">Need an account? Sign up with an invite.</a></p>
+    </form>
+  </main>
+  <script>
+    const form = document.getElementById("login-form");
+    const message = document.getElementById("message");
+    async function submitLogin(magicLink) {
+      const payload = Object.fromEntries(new FormData(form).entries());
+      payload.magic_link = magicLink;
+      if (magicLink) delete payload.password;
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        message.style.color = "#fca5a5";
+        message.textContent = data.detail || "Login failed";
+        return;
+      }
+      if (magicLink) {
+        message.style.color = "#86efac";
+        message.textContent = data.message;
+        return;
+      }
+      window.location.href = "/chat";
+    }
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      submitLogin(false);
+    });
+    document.getElementById("magic-link").addEventListener("click", () => submitLogin(true));
+  </script>
+</body>
+</html>

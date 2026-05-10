@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Account - NeuralMesh Beta</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .account-card {
+      background: #18181b;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 1.5rem;
+      box-shadow: 0 18px 45px rgba(0, 0, 0, 0.32);
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-zinc-950 text-white">
+  <main class="mx-auto max-w-4xl px-6 py-12">
+    <nav class="mb-8 flex justify-between text-sm">
+      <a href="/chat">Chat</a>
+      <button id="logout" class="text-zinc-300" type="button">Log out</button>
+    </nav>
+    <h1 class="text-4xl font-bold">Account</h1>
+    <section class="mt-8 grid gap-6 md:grid-cols-2">
+      <article class="account-card p-6">
+        <p class="text-sm text-zinc-400">Current plan</p>
+        <h2 id="plan" class="mt-3 text-2xl font-bold">Loading...</h2>
+        <p id="renewal" class="mt-2 text-sm text-zinc-400"></p>
+        <button id="checkout" class="mt-5 rounded-xl bg-violet-600 px-4 py-3 font-semibold">Subscribe</button>
+        <button id="portal" class="mt-5 rounded-xl border border-white/15 px-4 py-3 font-semibold">Manage billing / cancel</button>
+      </article>
+      <article class="account-card min-h-full p-6">
+        <p class="text-sm text-zinc-400">Invite codes</p>
+        <ul id="invites" class="mt-4 space-y-2 text-sm"></ul>
+      </article>
+    </section>
+    <section class="account-card mt-6 p-6">
+      <h2 class="text-xl font-bold">Invoice history</h2>
+      <ul id="invoices" class="mt-4 space-y-2 text-sm text-zinc-300"></ul>
+    </section>
+    <p id="message" class="mt-4 text-sm text-zinc-400"></p>
+  </main>
+  <script>
+    function csrfToken() {
+      return document.cookie.split("; ").find((row) => row.startsWith("nm_csrf="))?.split("=")[1] || "";
+    }
+    async function postJson(url) {
+      const response = await fetch(url, {method: "POST", headers: {"X-CSRF-Token": csrfToken()}});
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.detail || "Request failed");
+      return data;
+    }
+    async function loadAccount() {
+      const me = await fetch("/api/me").then((r) => r.json());
+      document.getElementById("plan").textContent = me.subscription_status === "active"
+        ? "NeuralMesh Beta - $19/month"
+        : `Trial: ${me.trial.request_count}/${me.trial.limit} requests used`;
+      document.getElementById("renewal").textContent = me.subscription_current_period_end
+        ? `Next renewal: ${new Date(me.subscription_current_period_end).toLocaleDateString()}`
+        : "No paid renewal scheduled";
+      document.getElementById("checkout").style.display = me.subscription_status === "active" ? "none" : "inline-block";
+      document.getElementById("invites").innerHTML = (me.invites || []).map((invite) =>
+        `<li class="rounded-xl bg-black/30 p-3"><code>${invite.code}</code> - ${invite.status || "unclaimed"}</li>`
+      ).join("") || "<li>No invite codes yet.</li>";
+      const invoices = await fetch("/api/billing/invoices").then((r) => r.json());
+      document.getElementById("invoices").innerHTML = (invoices.invoices || []).map((invoice) =>
+        `<li><a class="text-violet-300" href="${invoice.hosted_invoice_url}">${invoice.id}</a> - ${invoice.status}</li>`
+      ).join("") || "<li>Invoices appear here after Stripe bills the subscription.</li>";
+    }
+    document.getElementById("checkout").addEventListener("click", async () => {
+      const data = await postJson("/api/billing/create-checkout-session");
+      window.location.href = data.url;
+    });
+    document.getElementById("portal").addEventListener("click", async () => {
+      const data = await postJson("/api/billing/portal");
+      window.location.href = data.url;
+    });
+    document.getElementById("logout").addEventListener("click", async () => {
+      await fetch("/api/auth/logout", {method: "POST"});
+      window.location.href = "/login.html";
+    });
+    loadAccount().catch((error) => {
+      document.getElementById("message").textContent = error.message;
+    });
+  </script>
+</body>
+</html>

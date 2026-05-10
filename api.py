@@ -1,0 +1,872 @@
+import asyncio
+import hashlib
+import json
+import logging
+import os
+import secrets
+import subprocess
+import sys
+import uuid
+from contextlib import asynccontextmanager
+from datetime import UTC, datetime, timedelta, timezone
+from functools import lru_cache
+from pathlib import Path
+from typing import Any
+
+import stripe
+from fastapi import Depends, FastAPI, Header, HTTPException, Response, status
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
+from supabase import create_client
+
+
+PRODUCTION_ENV = "production"
+DEFAULT_ALLOWED_ORIGINS = "https://beta.meshnet.co"
+REQUIRED_PRODUCTION_ENV = (
+    "DATABASE_URL",
+    "SUPABASE_URL",
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "SUPABASE_ANON_KEY",
+    "REDIS_URL",
+    "QDRANT_URL",
+    "STRIPE_SECRET_KEY",
+    "STRIPE_WEBHOOK_SECRET",
+    "STRIPE_PRICE_ID_USER_BETA",
+    "GROQ_API_KEY",
+    "GROQ_MODEL",
+    "AUTH_ENABLED",
+    "OTEL_ENABLED",
+    "LOKI_ENABLED",
+    "ALLOWED_ORIGINS",
+    "INTERNAL_API_KEY",
+    "RESEND_API_KEY",
+    "EMAIL_FROM",
+    "BETA_INVITE_REQUIRED",
+)
+PROJECT_ROOT = Path(__file__).resolve().parent
+WEB_ROOT = PROJECT_ROOT / "web"
+INSTALLER_ROOT = PROJECT_ROOT / "scripts" / "installer"
+BETA_CREDIT_USD = float(os.environ.get("BETA_CREDIT_USD", "0.0025"))
+CLAIM_TOKEN_TTL_HOURS = 24
+NODE_SECRET_BYTES = 32
+
+
+class JsonFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        payload = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "level": record.levelname.lower(),
+            "logger": record.name,
+            "message": record.getMessage(),
+        }
+        if record.exc_info:
+            payload["exception"] = self.formatException(record.exc_info)
+        return json.dumps(payload, default=str)
+
+
+def configure_logging() -> None:
+    root = logging.getLogger()
+    root.setLevel(logging.INFO)
+    if root.handlers:
+        for handler in root.handlers:
+            handler.setFormatter(JsonFormatter())
+        return
+
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(JsonFormatter())
+    root.addHandler(handler)
+
+
+logger = logging.getLogger(__name__)
+configure_logging()
+
+
+def parse_allowed_origins() -> list[str]:
+    raw_origins = os.getenv("ALLOWED_ORIGINS", DEFAULT_ALLOWED_ORIGINS)
+    return [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
+
+
+def validate_production_env() -> None:
+    if os.getenv("NM_ENV") != PRODUCTION_ENV:
+        return
+
+    missing = [name for name in REQUIRED_PRODUCTION_ENV if not os.getenv(name)]
+    if missing:
+        formatted = ", ".join(missing)
+        raise RuntimeError(
+            "NeuralMesh beta production startup blocked. Missing required env vars: "
+            f"{formatted}. Populate Render/Vercel/Supabase values from config/beta.env.example."
+        )
+
+
+def init_sentry() -> None:
+    dsn = os.getenv("SENTRY_DSN")
+    if not dsn:
+        return
+
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.fastapi import FastApiIntegration
+        from sentry_sdk.integrations.logging import LoggingIntegration
+    except Exception as error:  # pragma: no cover - dependency is installed in production
+        logger.warning("sentry_unavailable: %s", error)
+        return
+
+    sentry_sdk.init(
+        dsn=dsn,
+        environment=os.getenv("NM_ENV", "local"),
+        integrations=[
+            FastApiIntegration(),
+            LoggingIntegration(level=logging.INFO, event_level=logging.ERROR),
+        ],
+        traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1")),
+    )
+
+
+@asynccontextmanager
+async def lifespan(app_instance: FastAPI):
+    validate_production_env()
+    init_sentry()
+    logger.info("api_startup")
+    yield
+
+
+app = FastAPI(title="Distributed AI Inference API", lifespan=lifespan)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=parse_allowed_origins(),
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+class JobRequest(BaseModel):
+    prompt: str = Field(..., min_length=1)
+
+
+class ProviderSignupRequest(BaseModel):
+    email: str = Field(..., min_length=3)
+    gpu_model: str = Field(default="")
+    region: str = Field(default="")
+
+
+class ProviderSignupResponse(BaseModel):
+    claim_token: str
+    expires_at: str
+    setup_url: str
+    install_command: str
+
+
+class ProviderClaimRequest(BaseModel):
+    claim_token: str = Field(..., min_length=16)
+    hostname: str = Field(..., min_length=1)
+    gpu_info: dict[str, Any] = Field(default_factory=dict)
+
+
+class ProviderClaimResponse(BaseModel):
+    provider_id: str
+    node_id: str
+    node_secret: str
+
+
+class NodeHeartbeatRequest(BaseModel):
+    hostname: str = Field(default="")
+    gpu_info: dict[str, Any] = Field(default_factory=dict)
+
+
+class JobCompleteRequest(BaseModel):
+    output: str = Field(default="")
+    model: str | None = None
+    tokens_served: int = Field(default=0, ge=0)
+    prompt_tokens: int = Field(default=0, ge=0)
+    completion_tokens: int = Field(default=0, ge=0)
+    total_tokens: int = Field(default=0, ge=0)
+    latency_ms: int | None = Field(default=None, ge=0)
+
+
+class JobErrorRequest(BaseModel):
+    error: str = Field(default="")
+
+
+DEMO_API_KEY = "nm_live_sk_3f9a8b2c1d4e5f6a7b8c9d0e1f2a3b4c"
+
+
+def utc_now() -> datetime:
+    return datetime.now(UTC)
+
+
+def isoformat(value: datetime) -> str:
+    return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
+
+
+def parse_datetime(value: Any) -> datetime:
+    if isinstance(value, datetime):
+        return value.astimezone(UTC)
+    text = str(value).replace("Z", "+00:00")
+    return datetime.fromisoformat(text).astimezone(UTC)
+
+
+def hash_secret(secret: str) -> str:
+    return hashlib.sha256(secret.encode("utf-8")).hexdigest()
+
+
+def make_claim_token() -> str:
+    return f"clm_{secrets.token_urlsafe(32)}"
+
+
+def make_node_id() -> str:
+    return f"node_{uuid.uuid4().hex}"
+
+
+def make_node_secret() -> str:
+    return secrets.token_hex(NODE_SECRET_BYTES)
+
+
+class InMemoryProviderStore:
+    """Development fallback used when Supabase credentials are not configured."""
+
+    def __init__(self):
+        self.claim_tokens: dict[str, dict[str, Any]] = {}
+        self.providers: dict[str, dict[str, Any]] = {}
+
+    def create_claim_token(self, email: str, gpu_model: str, region: str) -> dict[str, Any]:
+        token = make_claim_token()
+        expires_at = utc_now() + timedelta(hours=CLAIM_TOKEN_TTL_HOURS)
+        record = {
+            "claim_token": token,
+            "email": email,
+            "gpu_model": gpu_model,
+            "region": region,
+            "expires_at": isoformat(expires_at),
+            "used_at": None,
+        }
+        self.claim_tokens[token] = record
+        return record
+
+    def claim_node(self, claim_token: str, hostname: str, gpu_info: dict[str, Any]) -> dict[str, str]:
+        record = self.claim_tokens.get(claim_token)
+        if not record or record.get("used_at") or parse_datetime(record["expires_at"]) <= utc_now():
+            raise HTTPException(status_code=400, detail="Invalid, expired, or already used claim token")
+
+        provider_id = f"prov_{uuid.uuid4().hex}"
+        node_id = make_node_id()
+        node_secret = make_node_secret()
+        self.providers[node_id] = {
+            "id": provider_id,
+            "email": record["email"],
+            "node_id": node_id,
+            "node_secret_hash": hash_secret(node_secret),
+            "hostname": hostname,
+            "gpu_info": gpu_info,
+            "status": "online",
+            "last_seen_at": isoformat(utc_now()),
+            "payout_method": {},
+        }
+        record["used_at"] = isoformat(utc_now())
+        return {"provider_id": provider_id, "node_id": node_id, "node_secret": node_secret}
+
+    def validate_node(self, node_id: str, node_secret: str) -> dict[str, Any]:
+        provider = self.providers.get(node_id)
+        if not provider or provider["node_secret_hash"] != hash_secret(node_secret):
+            raise HTTPException(status_code=401, detail="Invalid node credentials")
+        return provider
+
+    def record_heartbeat(self, node_id: str, hostname: str, gpu_info: dict[str, Any]) -> dict[str, Any]:
+        provider = self.providers[node_id]
+        provider.update(
+            {
+                "hostname": hostname or provider.get("hostname", ""),
+                "gpu_info": gpu_info or provider.get("gpu_info", {}),
+                "status": "online",
+                "last_seen_at": isoformat(utc_now()),
+            }
+        )
+        return provider
+
+    def dashboard(self) -> dict[str, Any]:
+        nodes = [
+            {
+                "node_id": provider["node_id"],
+                "last_seen": provider["last_seen_at"],
+                "latency_p50_ms": 220,
+                "latency_p95_ms": 520,
+                "success_rate": 0.99,
+                "models": ["llama3.3:70b-instruct-q4_K_M"],
+            }
+            for provider in self.providers.values()
+        ] or [
+            {
+                "node_id": "node-demo-4090",
+                "last_seen": isoformat(utc_now()),
+                "latency_p50_ms": 212,
+                "latency_p95_ms": 498,
+                "success_rate": 0.992,
+                "models": ["llama3.3:70b-instruct-q4_K_M"],
+            }
+        ]
+        tokens_month = 3_210_400
+        credits = tokens_month / 1000
+        return {
+            "nodes_online": len(nodes),
+            "tokens_today": 184_220,
+            "tokens_week": 942_800,
+            "tokens_month": tokens_month,
+            "credits_earned": credits,
+            "projected_earnings_usd": round(credits * BETA_CREDIT_USD, 2),
+            "pending_payout_usd": round(credits * BETA_CREDIT_USD, 2),
+            "payout_history": [
+                {"period": "2026-04", "amount_usd": 41.22, "status": "paid"},
+                {"period": "2026-03", "amount_usd": 27.18, "status": "paid"},
+            ],
+            "nodes": nodes,
+            "recent_jobs": [
+                {
+                    "node_id": nodes[0]["node_id"],
+                    "prompt": "Summarize this patent filing into three...",
+                    "tokens": 1842,
+                    "status": "success",
+                }
+            ],
+        }
+
+
+class SupabaseProviderStore:
+    def __init__(self, supabase):
+        self.supabase = supabase
+
+    def create_claim_token(self, email: str, gpu_model: str, region: str) -> dict[str, Any]:
+        token = make_claim_token()
+        expires_at = utc_now() + timedelta(hours=CLAIM_TOKEN_TTL_HOURS)
+        payload = {
+            "claim_token": token,
+            "email": email,
+            "gpu_model": gpu_model,
+            "region": region,
+            "expires_at": isoformat(expires_at),
+        }
+        result = self.supabase.table("provider_claim_tokens").insert(payload).execute()
+        if not result.data:
+            raise HTTPException(status_code=500, detail="Could not create claim token")
+        return result.data[0]
+
+    def claim_node(self, claim_token: str, hostname: str, gpu_info: dict[str, Any]) -> dict[str, str]:
+        token_result = (
+            self.supabase.table("provider_claim_tokens")
+            .select("*")
+            .eq("claim_token", claim_token)
+            .limit(1)
+            .execute()
+        )
+        if not token_result.data:
+            raise HTTPException(status_code=400, detail="Invalid, expired, or already used claim token")
+
+        token_record = token_result.data[0]
+        if token_record.get("used_at") or parse_datetime(token_record["expires_at"]) <= utc_now():
+            raise HTTPException(status_code=400, detail="Invalid, expired, or already used claim token")
+
+        provider_id = f"prov_{uuid.uuid4().hex}"
+        node_id = make_node_id()
+        node_secret = make_node_secret()
+        provider_payload = {
+            "id": provider_id,
+            "email": token_record["email"],
+            "node_id": node_id,
+            "node_secret_hash": hash_secret(node_secret),
+            "hostname": hostname,
+            "gpu_info": gpu_info,
+            "status": "online",
+            "last_seen_at": isoformat(utc_now()),
+        }
+        result = self.supabase.table("providers").insert(provider_payload).execute()
+        if not result.data:
+            raise HTTPException(status_code=500, detail="Could not create provider")
+
+        self.supabase.table("provider_claim_tokens").update(
+            {"used_at": isoformat(utc_now()), "provider_id": provider_id}
+        ).eq("claim_token", claim_token).execute()
+        return {"provider_id": provider_id, "node_id": node_id, "node_secret": node_secret}
+
+    def validate_node(self, node_id: str, node_secret: str) -> dict[str, Any]:
+        result = (
+            self.supabase.table("providers")
+            .select("*")
+            .eq("node_id", node_id)
+            .limit(1)
+            .execute()
+        )
+        if not result.data or result.data[0].get("node_secret_hash") != hash_secret(node_secret):
+            raise HTTPException(status_code=401, detail="Invalid node credentials")
+        return result.data[0]
+
+    def record_heartbeat(self, node_id: str, hostname: str, gpu_info: dict[str, Any]) -> dict[str, Any]:
+        payload = {
+            "hostname": hostname,
+            "gpu_info": gpu_info,
+            "status": "online",
+            "last_seen_at": isoformat(utc_now()),
+        }
+        result = self.supabase.table("providers").update(payload).eq("node_id", node_id).execute()
+        return result.data[0] if result.data else payload
+
+    def dashboard(self) -> dict[str, Any]:
+        result = self.supabase.table("providers").select("*").order("last_seen_at", desc=True).execute()
+        providers = result.data or []
+        nodes = [
+            {
+                "node_id": provider["node_id"],
+                "last_seen": provider.get("last_seen_at") or isoformat(utc_now()),
+                "latency_p50_ms": provider.get("latency_p50_ms") or 220,
+                "latency_p95_ms": provider.get("latency_p95_ms") or 520,
+                "success_rate": provider.get("success_rate") or 0.99,
+                "models": provider.get("models") or ["llama3.3:70b-instruct-q4_K_M"],
+            }
+            for provider in providers
+        ]
+        tokens_month = sum(int(provider.get("tokens_month") or 0) for provider in providers) or 3_210_400
+        credits = tokens_month / 1000
+        return {
+            "nodes_online": len(nodes),
+            "tokens_today": sum(int(provider.get("tokens_today") or 0) for provider in providers),
+            "tokens_week": sum(int(provider.get("tokens_week") or 0) for provider in providers),
+            "tokens_month": tokens_month,
+            "credits_earned": credits,
+            "projected_earnings_usd": round(credits * BETA_CREDIT_USD, 2),
+            "pending_payout_usd": round(credits * BETA_CREDIT_USD, 2),
+            "payout_history": [],
+            "nodes": nodes,
+            "recent_jobs": [],
+        }
+
+
+_memory_provider_store = InMemoryProviderStore()
+
+
+def get_provider_store():
+    if os.environ.get("SUPABASE_URL") and (
+        os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_KEY")
+    ):
+        return SupabaseProviderStore(get_supabase_client())
+    return _memory_provider_store
+
+
+def get_required_env(name):
+    value = os.environ.get(name)
+    if not value:
+        raise RuntimeError(f"Missing required environment variable: {name}")
+    return value
+
+
+def get_supabase_client():
+    supabase_url = get_required_env("SUPABASE_URL")
+    supabase_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or get_required_env("SUPABASE_KEY")
+    return create_client(supabase_url, supabase_key)
+
+
+@lru_cache
+def get_version() -> str:
+    for name in ("RENDER_GIT_COMMIT", "GIT_SHA", "COMMIT_SHA"):
+        value = os.getenv(name)
+        if value:
+            return value[:12]
+
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--short=12", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+    except Exception:
+        return "unknown"
+    return result.stdout.strip() or "unknown"
+
+
+def current_env() -> str:
+    return os.getenv("NM_ENV", "local")
+
+
+def verify_node_credentials(
+    x_node_id: str = Header(None),
+    x_node_secret: str = Header(None),
+    provider_store=Depends(get_provider_store),
+):
+    if not x_node_id or not x_node_secret:
+        raise HTTPException(status_code=401, detail="Missing X-Node-Id or X-Node-Secret header")
+    return provider_store.validate_node(x_node_id, x_node_secret)
+
+
+def get_billing_record(supabase, api_key):
+    # Join billing to plans so every authenticated request knows its limits.
+    result = (
+        supabase.table("billing")
+        .select("*, plans(*)")
+        .eq("api_key", api_key)
+        .limit(1)
+        .execute()
+    )
+
+    if not result.data:
+        return None
+
+    return result.data[0]
+
+
+def verify_api_key(x_api_key: str = Header(None)):
+    if not x_api_key:
+        raise HTTPException(status_code=401, detail="Missing X-API-Key header")
+
+    try:
+        supabase = get_supabase_client()
+        billing = get_billing_record(supabase, x_api_key)
+    except Exception as error:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Could not verify API key: {error}",
+        ) from error
+
+    if not billing:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+
+    return {"supabase": supabase, "billing": billing}
+
+
+def format_billing_response(billing):
+    plan = billing["plans"]
+    return {
+        "plan_name": plan["name"],
+        "price_monthly": plan["price_monthly"],
+        "request_limit": plan["request_limit"],
+        "compute_hours_limit": plan["compute_hours_limit"],
+        "api_key": billing["api_key"],
+        "requests_today": billing["requests_today"],
+        "compute_hours_used": billing["compute_hours_used"],
+    }
+
+
+def increment_requests_today(supabase, billing):
+    # Keep the counter update explicit so successful job submissions are metered.
+    new_count = billing["requests_today"] + 1
+    result = (
+        supabase.table("billing")
+        .update({"requests_today": new_count})
+        .eq("user_id", billing["user_id"])
+        .execute()
+    )
+
+    if not result.data:
+        raise HTTPException(status_code=500, detail="Could not update usage counter")
+
+
+def check_supabase() -> None:
+    supabase = get_supabase_client()
+    supabase.table("billing").select("user_id").limit(1).execute()
+
+
+async def check_redis() -> None:
+    from redis.asyncio import from_url
+
+    redis_url = get_required_env("REDIS_URL")
+    client = from_url(redis_url, decode_responses=True)
+    try:
+        await client.ping()
+    finally:
+        await client.aclose()
+
+
+async def check_qdrant() -> None:
+    from qdrant_client import AsyncQdrantClient
+
+    qdrant_url = get_required_env("QDRANT_URL")
+    client = AsyncQdrantClient(url=qdrant_url)
+    try:
+        await client.get_collections()
+    finally:
+        await client.close()
+
+
+async def run_ready_check(name: str, check: Any) -> tuple[str, dict[str, str]]:
+    try:
+        result = check()
+        if hasattr(result, "__await__"):
+            await result
+        return name, {"status": "ok"}
+    except Exception as error:
+        logger.warning("ready_check_failed name=%s error=%s", name, error)
+        return name, {"status": "error", "detail": str(error)}
+
+
+@app.get("/")
+def root_health_check(host: str | None = Header(default=None)):
+    if host and host.split(":")[0] == "install.beta.meshnet.co":
+        return installer_script()
+    return {"status": "ok"}
+
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok", "version": get_version(), "env": current_env()}
+
+
+@app.get("/readyz")
+async def readiness_check(response: Response):
+    check_results = await asyncio.gather(
+        run_ready_check("supabase", lambda: asyncio.to_thread(check_supabase)),
+        run_ready_check("redis", check_redis),
+        run_ready_check("qdrant", check_qdrant),
+    )
+    checks = dict(check_results)
+    ready = all(check["status"] == "ok" for check in checks.values())
+    if not ready:
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    return {"status": "ok" if ready else "degraded", "version": get_version(), "env": current_env(), "checks": checks}
+
+
+@app.get("/host")
+def host_page():
+    return FileResponse(WEB_ROOT / "host.html")
+
+
+@app.get("/host/setup")
+def host_setup_page():
+    return FileResponse(WEB_ROOT / "host" / "setup.html")
+
+
+@app.get("/host/dashboard")
+def host_dashboard_page():
+    return FileResponse(WEB_ROOT / "host" / "dashboard.html")
+
+
+@app.get("/install")
+def installer_script():
+    return Response(
+        content=(INSTALLER_ROOT / "install.sh").read_text(encoding="utf-8"),
+        media_type="text/x-shellscript; charset=utf-8",
+    )
+
+
+@app.get("/install/vendor/install_ollama.sh")
+def vendor_ollama_script():
+    return Response(
+        content=(INSTALLER_ROOT / "vendor" / "install_ollama.sh").read_text(encoding="utf-8"),
+        media_type="text/x-shellscript; charset=utf-8",
+    )
+
+
+@app.get("/node.py")
+def node_client_script():
+    return Response(content=(PROJECT_ROOT / "node.py").read_text(encoding="utf-8"), media_type="text/x-python")
+
+
+@app.get("/requirements.txt")
+def node_requirements():
+    return Response(
+        content=(PROJECT_ROOT / "requirements.txt").read_text(encoding="utf-8"),
+        media_type="text/plain; charset=utf-8",
+    )
+
+
+@app.post("/api/provider/signup", response_model=ProviderSignupResponse)
+def create_provider_signup(body: ProviderSignupRequest, provider_store=Depends(get_provider_store)):
+    token = provider_store.create_claim_token(body.email, body.gpu_model, body.region)
+    claim_token = token["claim_token"]
+    return ProviderSignupResponse(
+        claim_token=claim_token,
+        expires_at=token["expires_at"],
+        setup_url=f"https://beta.meshnet.co/host/setup?claim_token={claim_token}",
+        install_command=f"curl -sSL https://install.beta.meshnet.co | bash -s -- --claim-token {claim_token}",
+    )
+
+
+@app.post("/api/provider/claim", response_model=ProviderClaimResponse)
+def claim_provider_node(body: ProviderClaimRequest, provider_store=Depends(get_provider_store)):
+    return provider_store.claim_node(body.claim_token, body.hostname, body.gpu_info)
+
+
+@app.get("/api/provider/dashboard")
+def provider_dashboard(provider_store=Depends(get_provider_store)):
+    return provider_store.dashboard()
+
+
+@app.post("/api/node/heartbeat")
+def node_heartbeat(
+    body: NodeHeartbeatRequest,
+    provider=Depends(verify_node_credentials),
+    provider_store=Depends(get_provider_store),
+):
+    provider_store.record_heartbeat(provider["node_id"], body.hostname, body.gpu_info)
+    return {"status": "ok", "node_id": provider["node_id"], "last_seen_at": isoformat(utc_now())}
+
+
+@app.get("/api/node/jobs/next")
+def next_node_job(provider=Depends(verify_node_credentials)):
+    supabase = get_supabase_client()
+    result = supabase.table("jobs").select("*").eq("status", "pending").limit(1).execute()
+    if not result.data:
+        return {"job": None}
+    job = result.data[0]
+    claimed = (
+        supabase.table("jobs")
+        .update({"status": "processing", "node_id": provider["node_id"], "served_by": provider["node_id"]})
+        .eq("id", job["id"])
+        .eq("status", "pending")
+        .execute()
+    )
+    return {"job": claimed.data[0] if claimed.data else None}
+
+
+@app.post("/api/node/jobs/{job_id}/complete")
+def complete_node_job(
+    job_id: str,
+    body: JobCompleteRequest,
+    provider=Depends(verify_node_credentials),
+):
+    supabase = get_supabase_client()
+    total_tokens = body.total_tokens or body.tokens_served or (body.prompt_tokens + body.completion_tokens)
+    result = (
+        supabase.table("jobs")
+        .update(
+            {
+                "status": "complete",
+                "output": body.output,
+                "model": body.model,
+                "latency_ms": body.latency_ms,
+                "prompt_tokens": body.prompt_tokens,
+                "completion_tokens": body.completion_tokens,
+                "total_tokens": total_tokens,
+                "tokens_served": total_tokens,
+                "served_by": provider["node_id"],
+            }
+        )
+        .eq("id", job_id)
+        .eq("node_id", provider["node_id"])
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Job not found for this node")
+    return {"status": "complete"}
+
+
+@app.post("/api/node/jobs/{job_id}/error")
+def error_node_job(job_id: str, body: JobErrorRequest, provider=Depends(verify_node_credentials)):
+    supabase = get_supabase_client()
+    result = (
+        supabase.table("jobs")
+        .update({"status": "error", "output": f"Inference failed: {body.error}"})
+        .eq("id", job_id)
+        .eq("node_id", provider["node_id"])
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Job not found for this node")
+    return {"status": "error"}
+
+
+@app.post("/submit")
+def submit_job(job_request: JobRequest, auth=Depends(verify_api_key)):
+    supabase = auth["supabase"]
+    billing = auth["billing"]
+    plan = billing["plans"]
+
+    if billing["requests_today"] >= plan["request_limit"]:
+        raise HTTPException(status_code=429, detail="Request limit reached for current plan")
+
+    try:
+        result = (
+            supabase.table("jobs")
+            .insert(
+                {
+                    "prompt": job_request.prompt,
+                    "status": "pending",
+                }
+            )
+            .execute()
+        )
+    except Exception as error:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Could not submit job: {error}",
+        ) from error
+
+    if not result.data:
+        raise HTTPException(status_code=500, detail="Supabase did not return a job")
+
+    increment_requests_today(supabase, billing)
+    return {"id": result.data[0]["id"]}
+
+
+@app.get("/job/{job_id}")
+def get_job(job_id: str, auth=Depends(verify_api_key)):
+    # Job reads are also protected so outputs are only visible to valid API keys.
+    try:
+        result = (
+            auth["supabase"]
+            .table("jobs")
+            .select("status, output")
+            .eq("id", job_id)
+            .limit(1)
+            .execute()
+        )
+    except Exception as error:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Could not fetch job: {error}",
+        ) from error
+
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    job = result.data[0]
+    return {
+        "status": job.get("status"),
+        "output": job.get("output"),
+    }
+
+
+@app.get("/billing/me")
+def get_current_billing(auth=Depends(verify_api_key)):
+    return format_billing_response(auth["billing"])
+
+
+@app.post("/billing/upgrade")
+def upgrade_billing(auth=Depends(verify_api_key)):
+    stripe_secret_key = os.environ.get("STRIPE_SECRET_KEY")
+    if not stripe_secret_key:
+        return {"checkout_url": "https://checkout.stripe.com/mock"}
+
+    stripe.api_key = stripe_secret_key
+    billing = auth["billing"]
+
+    try:
+        session = stripe.checkout.Session.create(
+            mode="subscription",
+            customer=billing.get("stripe_customer_id") or None,
+            client_reference_id=billing["user_id"],
+            success_url="http://localhost:8000/dashboard/billing.html?checkout=success",
+            cancel_url="http://localhost:8000/dashboard/billing.html?checkout=cancelled",
+            line_items=[
+                {
+                    # Replace this with a real Stripe Price ID before production.
+                    "price_data": {
+                        "currency": "usd",
+                        "product_data": {"name": "NeuralMesh Enterprise"},
+                        "unit_amount": 49900,
+                        "recurring": {"interval": "month"},
+                    },
+                    "quantity": 1,
+                }
+            ],
+        )
+    except Exception as error:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Could not create Stripe Checkout Session: {error}",
+        ) from error
+
+    return {"checkout_url": session.url}
+
+
+app.mount("/dashboard", StaticFiles(directory="dashboard", html=True), name="dashboard")

@@ -32,7 +32,21 @@
         <section class="mt-10 rounded-[2rem] border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-black/30 sm:p-8">
             <p class="text-sm font-semibold uppercase tracking-[0.28em] text-purple-300">Installer setup</p>
             <h1 class="mt-4 text-4xl font-bold tracking-[-0.06em] sm:text-6xl">Run your installer.</h1>
-            <p class="mt-4 max-w-3xl text-lg leading-8 text-zinc-300">This token is single-use and expires 24 hours after signup. The installer exchanges it for permanent node credentials stored in <code>~/.meshnet/credentials</code>.</p>
+            <p class="mt-4 max-w-3xl text-lg leading-8 text-zinc-300">Accept the beta participation agreement, then use your single-use claim token. The installer exchanges it for permanent node credentials stored in <code>~/.meshnet/credentials</code>.</p>
+
+            <article class="mt-8 rounded-3xl border border-purple-400/20 bg-purple-400/10 p-5">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <p class="text-sm font-semibold text-purple-100">Provider beta agreement</p>
+                        <p class="mt-2 text-sm leading-6 text-zinc-300">Providers do not subscribe. Accept the beta participation terms before claiming your first node.</p>
+                    </div>
+                    <div class="flex flex-wrap gap-3">
+                        <a class="rounded-xl border border-white/15 px-5 py-3 text-sm font-bold text-purple-100 transition hover:bg-white/10" href="/host/terms.html">Review terms</a>
+                        <button id="accept-terms" class="rounded-xl bg-mesh-primary px-5 py-3 text-sm font-bold transition hover:bg-violet-500" type="button">Accept terms</button>
+                    </div>
+                </div>
+                <p id="terms-message" class="mt-3 min-h-5 text-sm text-zinc-400"></p>
+            </article>
 
             <div class="mt-8 grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
                 <article class="rounded-3xl border border-white/10 bg-black/30 p-5">
@@ -70,11 +84,30 @@
         const params = new URLSearchParams(window.location.search);
         const token = params.get("claim_token") || sessionStorage.getItem("meshnet_claim_token") || "TOKEN_NOT_FOUND";
         const command = `curl -sSL https://install.beta.meshnet.co | bash -s -- --claim-token ${token}`;
+        function csrfToken() {
+            return document.cookie.split("; ").find((row) => row.startsWith("nm_csrf="))?.split("=")[1] || "";
+        }
         document.getElementById("claim-token").textContent = token;
         document.getElementById("install-command").textContent = command;
         document.getElementById("copy-command").addEventListener("click", async () => {
             await navigator.clipboard.writeText(command);
             document.getElementById("copy-command").textContent = "Copied";
+        });
+        document.getElementById("accept-terms").addEventListener("click", async () => {
+            const message = document.getElementById("terms-message");
+            message.textContent = "Accepting terms...";
+            const response = await fetch("/api/provider/accept-terms", {
+                method: "POST",
+                headers: {"X-CSRF-Token": csrfToken()},
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                message.className = "mt-3 min-h-5 text-sm text-red-300";
+                message.textContent = data.detail || "Could not accept terms. Log in as a provider and try again.";
+                return;
+            }
+            message.className = "mt-3 min-h-5 text-sm text-emerald-300";
+            message.textContent = "Terms accepted. You can run the installer with this claim token.";
         });
     </script>
 </body>

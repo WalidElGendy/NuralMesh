@@ -3,11 +3,12 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Header, HTTPException
-from pydantic import BaseModel as _PBM
+from pydantic import BaseModel
 
 from app.config import ADMIN_SECRET
 from app.lib.billing import get_usage
 from app.lib.auth import generate_key, hash_key
+from app.lib.analytics import track_event
 from app.lib.metrics import get_metrics
 from app.models.schemas import UsageRecord, CreateKeyRequest, CreateKeyResponse, KeyListItem
 from app.stages.cache import get_redis_client
@@ -111,11 +112,10 @@ async def list_usage(x_admin_secret: str | None = Header(None)):
 # ---------------------------------------------------------------------------
 # Node heartbeat and listing (Step 7  first external GPU node)
 # ---------------------------------------------------------------------------
-
 _NODES_STORE: dict[str, dict] = {}  # in-memory store; replace with DB in production
 
 
-class NodeHeartbeatRequest(_PBM):
+class NodeHeartbeatRequest(BaseModel):
     node_id: str
     name: str
     location: str = "unknown"
@@ -156,6 +156,7 @@ async def node_heartbeat(
         "model_versions": payload.model_versions,
         "last_seen_at": now,
     }
+    await track_event("node-online", payload.node_id, {"source": "admin.nodes.heartbeat"})
     return {"ok": True, "node_id": payload.node_id, "last_seen_at": now}
 
 @router.get("/nodes")

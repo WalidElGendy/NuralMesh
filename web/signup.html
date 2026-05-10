@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign up - NeuralMesh Beta</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-zinc-950 text-white">
+  <main class="mx-auto flex min-h-screen max-w-xl items-center px-6">
+    <form id="signup-form" class="w-full rounded-3xl border border-white/10 bg-white/[0.04] p-8">
+      <h1 class="text-3xl font-bold">Join the beta</h1>
+      <p class="mt-2 text-sm text-zinc-400">Use your invite code. Supabase will email a confirmation link.</p>
+      <label class="mt-6 block text-sm">Email<input name="email" type="email" required class="mt-2 w-full rounded-xl bg-black/40 px-4 py-3"></label>
+      <label class="mt-4 block text-sm">Password<input name="password" type="password" minlength="8" required class="mt-2 w-full rounded-xl bg-black/40 px-4 py-3"></label>
+      <label class="mt-4 block text-sm">Invite code<input name="invite_code" required class="mt-2 w-full rounded-xl bg-black/40 px-4 py-3"></label>
+      <fieldset class="mt-5 grid gap-3 text-sm">
+        <legend class="mb-2 text-zinc-300">I am here to</legend>
+        <label class="rounded-xl border border-white/10 p-3"><input type="radio" name="intent" value="user" checked> Use AI inference</label>
+        <label class="rounded-xl border border-white/10 p-3"><input type="radio" name="intent" value="provider"> Host a GPU node</label>
+      </fieldset>
+      <button class="mt-6 w-full rounded-xl bg-violet-600 px-4 py-3 font-semibold" type="submit">Create account</button>
+      <p id="message" class="mt-4 min-h-6 text-sm text-zinc-400"></p>
+      <p class="mt-4 text-sm text-zinc-500">Already confirmed? <a class="text-violet-300" href="/login.html">Log in</a></p>
+    </form>
+  </main>
+  <script>
+    const form = document.getElementById("signup-form");
+    const message = document.getElementById("message");
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      message.textContent = "Creating account...";
+      const payload = Object.fromEntries(new FormData(form).entries());
+      const response = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        message.className = "mt-4 min-h-6 text-sm text-red-300";
+        message.textContent = data.detail || "Signup failed";
+        return;
+      }
+      message.className = "mt-4 min-h-6 text-sm text-emerald-300";
+      message.textContent = "Check your email to confirm your account.";
+    });
+  </script>
+</body>
+</html>

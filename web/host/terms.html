@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Provider beta terms - NeuralMesh</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-zinc-950 text-white">
+  <main class="mx-auto max-w-3xl px-6 py-12">
+    <h1 class="text-4xl font-bold">NeuralMesh Provider Beta Participation Agreement</h1>
+    <p class="mt-4 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4 text-amber-100">
+      Placeholder legal language: replace this page with counsel-approved provider beta terms before launch.
+    </p>
+    <section class="mt-8 space-y-4 text-zinc-300">
+      <p>By participating in the beta, the provider agrees to operate nodes honestly, submit accurate proof-of-compute, and comply with NeuralMesh operational policies.</p>
+      <p>Provider payouts are beta-only, subject to verification, fraud review, and minimum payout thresholds.</p>
+      <p>NeuralMesh may pause or remove nodes that fail trust, abuse, availability, or legal checks.</p>
+    </section>
+    <button id="accept" class="mt-8 rounded-xl bg-violet-600 px-5 py-3 font-semibold">Accept beta terms</button>
+    <p id="message" class="mt-4 text-sm text-zinc-400"></p>
+  </main>
+  <script>
+    function csrfToken() {
+      return document.cookie.split("; ").find((row) => row.startsWith("nm_csrf="))?.split("=")[1] || "";
+    }
+    document.getElementById("accept").addEventListener("click", async () => {
+      const response = await fetch("/api/provider/accept-terms", {
+        method: "POST",
+        headers: {"X-CSRF-Token": csrfToken()},
+      });
+      const data = await response.json().catch(() => ({}));
+      document.getElementById("message").textContent = response.ok
+        ? "Terms accepted. Continue with node setup."
+        : data.detail || "Could not accept terms";
+    });
+  </script>
+</body>
+</html>

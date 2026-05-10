@@ -67,6 +67,21 @@ ALLOWED_ORIGINS = [
 ]
 BETA_REQUESTS_PER_DAY = int(os.getenv("BETA_REQUESTS_PER_DAY", "200"))
 BETA_REQUESTS_PER_MINUTE = int(os.getenv("BETA_REQUESTS_PER_MINUTE", "30"))
+BETA_INVITE_REQUIRED = os.getenv("BETA_INVITE_REQUIRED", "true").lower() == "true"
+BETA_INVITES_TABLE = os.getenv("BETA_INVITES_TABLE", "invites")
+BETA_PROVIDER_TERMS_VERSION = os.getenv("BETA_PROVIDER_TERMS_VERSION", "beta-provider-v1")
+APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:8000")
+COOKIE_SECURE = os.getenv("COOKIE_SECURE", "false").lower() == "true"
+SESSION_COOKIE_NAME = os.getenv("SESSION_COOKIE_NAME", "nm_session")
+REFRESH_COOKIE_NAME = os.getenv("REFRESH_COOKIE_NAME", "nm_refresh")
+CSRF_COOKIE_NAME = os.getenv("CSRF_COOKIE_NAME", "nm_csrf")
+SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
+SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", os.getenv("SUPABASE_KEY", ""))
+EMAIL_FROM = os.getenv("EMAIL_FROM", "NeuralMesh <noreply@neuralmesh.ai>")
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
+POSTHOG_API_KEY = os.getenv("POSTHOG_API_KEY", "")
+POSTHOG_HOST = os.getenv("POSTHOG_HOST", "https://app.posthog.com")
 
 
 @lru_cache
@@ -87,6 +102,9 @@ def get_settings() -> Settings:
 
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+STRIPE_MODE = os.getenv("STRIPE_MODE", "mock").lower()
+STRIPE_BETA_PRODUCT_ID = os.getenv("STRIPE_BETA_PRODUCT_ID", "")
+STRIPE_BETA_PRICE_ID = os.getenv("STRIPE_BETA_PRICE_ID", "price_beta_live_replace_me")
 STRIPE_FREE_PRICE_ID = os.getenv("STRIPE_FREE_PRICE_ID", "price_free")
 STRIPE_PRO_PRICE_ID = os.getenv("STRIPE_PRO_PRICE_ID", "price_pro")
 STRIPE_ADMIN_PRICE_ID = os.getenv("STRIPE_ADMIN_PRICE_ID", "price_admin")

@@ -1,6 +1,7 @@
 from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Request
 from app.lib.billing import verify_stripe_signature, handle_subscription_event
+from app.lib.beta_store import get_beta_store
 from app.lib.logger import get_logger
 from app.stages.cache import get_redis_client
 from app.models.schemas import StripeWebhookResponse
@@ -9,6 +10,7 @@ logger = get_logger(__name__)
 router = APIRouter()
 
 SUBSCRIPTION_EVENTS = {
+    "checkout.session.completed",
     "customer.subscription.created",
     "customer.subscription.updated",
     "customer.subscription.deleted",
@@ -31,6 +33,6 @@ async def stripe_webhook(request: Request):
         return StripeWebhookResponse(received=True, action="ignored")
     
     redis = await get_redis_client()
-    action = await handle_subscription_event(event, redis)
+    action = await handle_subscription_event(event, redis, get_beta_store())
     logger.info("stripe_webhook_processed", event_type=event_type, action=action)
     return StripeWebhookResponse(received=True, action=action)

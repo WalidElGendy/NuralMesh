@@ -56,6 +56,13 @@ LOKI_ENABLED = os.getenv("LOKI_ENABLED", "false").lower() == "true"
 LOKI_URL = os.getenv("LOKI_URL", "http://localhost:3100/loki/api/v1/push")
 ADMIN_SECRET = os.getenv("ADMIN_SECRET", "change-me-in-prod")
 AUTH_ENABLED = os.getenv("AUTH_ENABLED", "true").lower() == "true"
+ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("ALLOWED_ORIGINS", "https://beta.meshnet.co").split(",")
+    if origin.strip()
+]
+BETA_REQUESTS_PER_DAY = int(os.getenv("BETA_REQUESTS_PER_DAY", "200"))
+BETA_REQUESTS_PER_MINUTE = int(os.getenv("BETA_REQUESTS_PER_MINUTE", "30"))
 
 
 @lru_cache

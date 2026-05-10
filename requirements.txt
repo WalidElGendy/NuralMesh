@@ -3,3 +3,6 @@ supabase
 fastapi
 uvicorn
 stripe
+redis
+qdrant-client
+sentry-sdk

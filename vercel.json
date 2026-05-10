@@ -1,0 +1,15 @@
+{
+  "buildCommand": "node scripts/inject-env.js",
+  "outputDirectory": "web",
+  "env": {
+    "NM_API_BASE": "https://api.beta.meshnet.co",
+    "NM_SUPABASE_URL": "",
+    "NM_SUPABASE_ANON_KEY": ""
+  },
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/index.html"
+    }
+  ]
+}

@@ -22,12 +22,13 @@
     }
     document.getElementById("chat-form").addEventListener("submit", async (event) => {
       event.preventDefault();
+      const prompt = document.getElementById("prompt");
       const output = document.getElementById("output");
       output.textContent = "Sending...";
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: {"Content-Type": "application/json", "X-CSRF-Token": csrfToken()},
-        body: JSON.stringify({stream: false, messages: [{role: "user", content: document.getElementById("prompt").value}]}),
+        body: JSON.stringify({stream: false, messages: [{role: "user", content: prompt.value}]}),
       });
       const data = await response.json().catch(() => ({}));
       if (response.status === 402) {
@@ -40,6 +41,7 @@
         return;
       }
       output.textContent = data.answer || JSON.stringify(data, null, 2);
+      prompt.value = "";
     });
   </script>
 </body>

@@ -11,7 +11,7 @@ async def enqueue_job(redis_client, job: dict) -> str:
     job_id = await redis_client.xadd(STREAM_KEY, fields)
     if isinstance(job_id, bytes):
         job_id = job_id.decode()
-    return job_id
+    return str(job.get("job_id") or job_id)
 
 
 async def store_result(redis_client, job_id: str, result: dict, ttl: int = 300):
@@ -26,7 +26,7 @@ async def get_result(redis_client, job_id: str, timeout: int = 30) -> dict | Non
     """Poll for job result. Returns dict if found, None on timeout."""
     key = RESULT_PREFIX + job_id
     elapsed = 0.0
-    while elapsed < timeout:
+    while elapsed <= timeout:
         data = await redis_client.hgetall(key)
         if data:
             decoded = {}
@@ -40,6 +40,8 @@ async def get_result(redis_client, job_id: str, timeout: int = 30) -> dict | Non
                 except Exception:
                     decoded[k] = v
             return decoded
+        if timeout == 0:
+            break
         await asyncio.sleep(0.5)
         elapsed += 0.5
     return None

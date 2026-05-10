@@ -4,6 +4,11 @@ from app.models.schemas import ChatMessage, ModelResponse, PipelineContext, Prom
 from app.stages import route
 
 
+@pytest.fixture(autouse=True)
+def legacy_route(monkeypatch):
+    monkeypatch.setenv("NM_BETA_ROUTER_ENABLED", "false")
+
+
 def make_context(domain: str = "code", sensitive: bool = False) -> PipelineContext:
     ctx = PipelineContext(
         subscriber_id="sub_demo_pro",

@@ -53,6 +53,7 @@ class InMemoryLedger:
                 cache_source=context.cache_result.source if context.cache_result else "miss",
                 route_model=context.route_result.model_used if context.route_result else None,
                 route_tokens=context.route_tokens,
+                served_by=context.selected_response.served_by if context.selected_response else None,
                 escalation_count=context.route_result.escalation_count if context.route_result else 0,
                 prune_tokens_saved=context.prune_result.tokens_saved if context.prune_result else 0,
             )
@@ -64,6 +65,7 @@ class InMemoryLedger:
                     provider_id=response.provider_id,
                     model=response.model,
                     latency_ms=response.latency_ms,
+                    tokens=response.prompt_tokens + response.completion_tokens,
                     proof_of_compute=response.proof_of_compute,
                     confidence=response.confidence,
                 )

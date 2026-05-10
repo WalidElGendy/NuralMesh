@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Header, HTTPException
+from pydantic import BaseModel as _PBM
 
 from app.config import ADMIN_SECRET
 from app.lib.billing import get_usage
@@ -110,15 +111,35 @@ async def list_usage(x_admin_secret: str | None = Header(None)):
 # ---------------------------------------------------------------------------
 # Node heartbeat and listing (Step 7  first external GPU node)
 # ---------------------------------------------------------------------------
-from datetime import datetime, timezone
 
 _NODES_STORE: dict[str, dict] = {}  # in-memory store; replace with DB in production
 
-from pydantic import BaseModel as _PBM
+
 class NodeHeartbeatRequest(_PBM):
     node_id: str
     name: str
     location: str = "unknown"
+    model_versions: list[str] = []
+
+
+def active_node_ids(cutoff_secs: int = 300) -> list[str]:
+    """Return node IDs seen within the active heartbeat window."""
+
+    now = datetime.now(timezone.utc)
+    active = []
+    for node in _NODES_STORE.values():
+        try:
+            last_seen = datetime.fromisoformat(node["last_seen_at"])
+            age = (
+                now - last_seen.replace(tzinfo=timezone.utc)
+                if last_seen.tzinfo is None
+                else now - last_seen
+            ).total_seconds()
+            if age <= cutoff_secs:
+                active.append(node["node_id"])
+        except Exception:
+            pass
+    return active
 
 @router.post("/nodes/heartbeat")
 async def node_heartbeat(
@@ -132,6 +153,7 @@ async def node_heartbeat(
         "node_id": payload.node_id,
         "name": payload.name,
         "location": payload.location,
+        "model_versions": payload.model_versions,
         "last_seen_at": now,
     }
     return {"ok": True, "node_id": payload.node_id, "last_seen_at": now}

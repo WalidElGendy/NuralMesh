@@ -1,10 +1,8 @@
 import asyncio
-import json
 import os
-import litellm
-from app.lib.queue import enqueue_job, store_result, get_result
+from app.lib.queue import store_result
 from app.lib.billing import record_usage
-from app.lib.escalation import call_with_escalation
+from app.lib.mesh_dispatch import dispatch_to_mesh
 from app.stages.cache import get_redis_client
 from app.stages.classify import classify_prompt_simple
 
@@ -12,24 +10,36 @@ STREAM_KEY = "orchestrator:jobs"
 CONSUMER_GROUP = "orchestrator-workers"
 CONSUMER_NAME = "worker-1"
 
-DEFAULT_MODEL = os.getenv("LLAMA_MODEL", "ollama/llama3.1:8b")
+DEFAULT_MODEL = os.getenv("NM_NODE_MODEL", "llama3.3:70b-instruct-q4_K_M")
 
 
 async def process_job(redis_client, job_id: str, fields: dict):
     prompt = fields.get("prompt", "")
     model_hint = fields.get("model_hint") or None
+    mode = fields.get("mode") or "auto"
+    key_hash = fields.get("key_hash", "")
     try:
-        category = await classify_prompt_simple(prompt)
-        response, model_used, tokens = await call_with_escalation(
-            prompt, category, "free", redis_client, job_id,
-            hint=model_hint, stream=False
+        await classify_prompt_simple(prompt)
+        response = await dispatch_to_mesh(
+            model_hint or DEFAULT_MODEL,
+            prompt,
+            user_id=key_hash,
+            request_id=job_id,
+            mode=mode,
         )
-        result_text = response.choices[0].message.content
+        result_text = response.content or ""
+        tokens = response.prompt_tokens + response.completion_tokens
+        if key_hash:
+            await record_usage(redis_client, key_hash, tokens)
         await store_result(redis_client, job_id, {
             "status": "done",
             "result": result_text,
-            "model": model_used,
+            "model": response.model,
             "tokens": str(tokens),
+            "prompt_tokens": str(response.prompt_tokens),
+            "completion_tokens": str(response.completion_tokens),
+            "latency_ms": str(response.latency_ms),
+            "served_by": response.served_by or fields.get("served_by", ""),
         })
     except Exception as exc:
         await store_result(redis_client, job_id, {

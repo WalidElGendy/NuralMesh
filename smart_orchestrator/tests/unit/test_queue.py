@@ -1,9 +1,9 @@
 import pytest
-import asyncio
 import fakeredis.aioredis as fakeredis
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
-from app.lib.queue import enqueue_job, store_result, get_result, STREAM_KEY, RESULT_PREFIX
+from app.models.schemas import MeshResponse
+from app.lib.queue import enqueue_job, store_result, get_result
 
 
 @pytest.fixture
@@ -39,12 +39,20 @@ async def test_get_result_timeout(redis):
 async def test_worker_processes_job(redis):
     from app.worker import process_job
 
-    mock_response = MagicMock()
-    mock_response.choices = [MagicMock()]
-    mock_response.choices[0].message.content = "test answer"
+    mock_response = MeshResponse(
+        provider_id="node-001",
+        model="llama3.3:70b-instruct-q4_K_M",
+        content="test answer",
+        confidence=0.9,
+        self_critique="ok",
+        latency_ms=25,
+        proof_of_compute="proof",
+        prompt_tokens=4,
+        completion_tokens=6,
+        served_by="node:node-001",
+    )
     with patch("app.worker.classify_prompt_simple", new_callable=AsyncMock, return_value="chat"), \
-            patch("app.worker.call_with_escalation", new_callable=AsyncMock,
-                  return_value=(mock_response, "llama-3.1-8b", 10)), \
+            patch("app.worker.dispatch_to_mesh", new_callable=AsyncMock, return_value=mock_response), \
             patch("app.worker.record_usage", new_callable=AsyncMock):
 
         await process_job(redis, "job-1", {"prompt": "hi", "key_hash": "abc123"})

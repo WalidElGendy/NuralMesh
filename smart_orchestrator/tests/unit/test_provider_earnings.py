@@ -6,9 +6,7 @@ from app.lib.provider_earnings import (
     accrue_earnings,
     get_provider_earnings,
     request_payout,
-    list_pending_payouts,
-    approve_payout,
-    PAYOUT_MIN_USD,
+    _compute_earnings_credits,
     _compute_earnings_usd,
 )
 
@@ -19,17 +17,17 @@ def redis():
 
 
 def test_compute_earnings_local_model():
-    """Local models should earn at the local rate per 1k tokens."""
+    """Beta providers earn 1 credit per 1k sovereign tokens."""
     usd = _compute_earnings_usd(1000, "llama-3.1-8b")
-    assert usd > 0.0
-    assert usd < 0.001   # local rate is very small
+    assert usd == 1.0
+    assert _compute_earnings_credits(2500) == 2.5
 
 
-def test_compute_earnings_cloud_higher_than_local():
-    """Cloud model earnings should exceed local model earnings for same tokens."""
+def test_compute_earnings_model_independent_for_beta():
+    """Beta credits are token-based and model-independent."""
     local = _compute_earnings_usd(1000, "llama-3.1-8b")
     cloud = _compute_earnings_usd(1000, "claude-sonnet")
-    assert cloud > local
+    assert cloud == local
 
 
 @pytest.mark.asyncio
@@ -37,8 +35,8 @@ async def test_accrue_earnings_updates_balance(redis):
     """Accruing earnings should increase total_usd and pending_usd."""
     await accrue_earnings(redis, "node-001", 5000, "llama-3.1-8b")
     earnings = await get_provider_earnings(redis, "node-001")
-    assert earnings["total_usd"] > 0.0
-    assert earnings["pending_usd"] > 0.0
+    assert earnings["total_credits"] == 5.0
+    assert earnings["pending_credits"] == 5.0
     assert earnings["total_tokens"] == 5000
 
 

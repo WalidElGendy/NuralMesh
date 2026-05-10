@@ -4,6 +4,8 @@ import logging
 from app.models.ledger import ledger
 from app.models.schemas import PipelineContext
 from app.stages.cache import write_cache
+from app.stages.cache import get_redis_client
+from app.lib.provider_earnings import accrue_earnings
 from loops.shared.artifact_store import get_provider_reputation, reputation_to_multiplier
 
 logger = logging.getLogger(__name__)
@@ -46,6 +48,22 @@ async def settle(ctx: PipelineContext) -> PipelineContext:
                 adjusted_payout,
             )
         ctx.providers_paid = adjusted_total
+
+    redis_client = None
+    try:
+        redis_client = get_redis_client()
+        for response in ctx.providers_touched:
+            if response.external or not response.served_by or not response.served_by.startswith("node:"):
+                continue
+            tokens = response.prompt_tokens + response.completion_tokens
+            await accrue_earnings(redis_client, response.provider_id, tokens, response.model)
+    except Exception as exc:
+        logger.warning("provider earnings accrual skipped: %s", exc)
+    finally:
+        if redis_client is not None:
+            close = getattr(redis_client, "aclose", None)
+            if close is not None:
+                await close()
 
     await ledger.write_settlement(ctx)
 

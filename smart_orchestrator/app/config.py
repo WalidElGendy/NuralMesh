@@ -34,6 +34,10 @@ class Settings(BaseSettings):
 
 
 CLASSIFY_MODEL = os.getenv("CLASSIFY_MODEL", "llama-3.1-8b")
+NM_NODE_MODEL = os.getenv("NM_NODE_MODEL", "llama3.3:70b-instruct-q4_K_M")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+NM_AUTO_ROUTE_GROQ_PERCENT = int(os.getenv("NM_AUTO_ROUTE_GROQ_PERCENT", "20"))
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
 QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
 MODEL_MAP = {

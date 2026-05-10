@@ -6,7 +6,7 @@ Payments are made in USD via bank transfer (Stripe Connect / ACH / wire).
 No crypto, no tokens  real money for real work.
 
 Earnings model:
-  - Per 1000 tokens processed: configurable USD rate per model tier
+  - Per 1000 sovereign-node tokens processed: 1 beta credit
   - Accrued in Redis; queued for payout on provider request
   - Admin approves payout -> Stripe Transfer API called
 
@@ -23,22 +23,7 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-# Earnings rates: USD per 1000 tokens, by model tier
-EARNINGS_RATE_USD_PER_1K = {
-    "local":    0.000_10,   # ollama local models (llama, qwen, mistral)
-    "cloud":    0.000_50,   # deepseek, claude, gemini
-    "default":  0.000_20,   # fallback
-}
-
-# Model -> tier mapping
-MODEL_TIER = {
-    "llama-3.1-8b":   "local",
-    "mistral-7b":     "local",
-    "qwen-coder-7b":  "local",
-    "deepseek-v3":    "cloud",
-    "claude-sonnet":  "cloud",
-    "gemini-2.5-pro": "cloud",
-}
+CREDITS_PER_1K_TOKENS = 1.0
 
 PAYOUT_MIN_USD = 1.00     # Minimum payout threshold
 PAYOUT_REQUEST_KEY = "provider:payout_requests"
@@ -48,33 +33,47 @@ PAYOUT_RECORD_TTL = 90 * 24 * 3600  # 90 days
 
 
 def _compute_earnings_usd(tokens: int, model: str) -> float:
-    """Calculate USD earnings for a compute job."""
-    tier = MODEL_TIER.get(model, "default")
-    rate = EARNINGS_RATE_USD_PER_1K.get(tier, EARNINGS_RATE_USD_PER_1K["default"])
-    return round((tokens / 1000.0) * rate, 8)
+    """Legacy compatibility shim; beta earnings are credits, not USD."""
+
+    return _compute_earnings_credits(tokens)
+
+
+def _compute_earnings_credits(tokens: int) -> float:
+    """Calculate beta provider credits for sovereign-node tokens."""
+
+    return round((tokens / 1000.0) * CREDITS_PER_1K_TOKENS, 8)
 
 
 async def accrue_earnings(redis_client, node_id: str, tokens: int, model: str) -> float:
     """
-    Accrue earnings for a node after completing an inference job.
-    Returns the USD amount accrued this call.
+    Accrue beta credits for a node after completing an inference job.
+    Returns the credits accrued this call.
     """
     if tokens <= 0:
         return 0.0
 
-    earned_usd = _compute_earnings_usd(tokens, model)
+    earned_credits = _compute_earnings_credits(tokens)
     key = PROVIDER_EARNINGS_KEY.format(node_id=node_id)
 
     # Pipeline: increment all counters atomically
     pipe = redis_client.pipeline()
-    pipe.hincrbyfloat(key, "total_usd", earned_usd)
-    pipe.hincrbyfloat(key, "pending_usd", earned_usd)
-    pipe.hincrbyfloat(key, "lifetime_usd", earned_usd)
+    pipe.hincrbyfloat(key, "total_credits", earned_credits)
+    pipe.hincrbyfloat(key, "pending_credits", earned_credits)
+    pipe.hincrbyfloat(key, "lifetime_credits", earned_credits)
+    pipe.hincrbyfloat(key, "total_usd", earned_credits)
+    pipe.hincrbyfloat(key, "pending_usd", earned_credits)
+    pipe.hincrbyfloat(key, "lifetime_usd", earned_credits)
     pipe.hincrby(key, "total_tokens", tokens)
     await pipe.execute()
 
-    logger.debug("Earnings: node %s accrued $%.8f for %d tokens (%s)", node_id, earned_usd, tokens, model)
-    return earned_usd
+    logger.debug(
+        "Earnings: node %s accrued %.8f credits for %d tokens (%s)",
+        node_id,
+        earned_credits,
+        tokens,
+        model,
+    )
+    return earned_credits
 
 
 async def get_provider_earnings(redis_client, node_id: str) -> dict:
@@ -82,7 +81,16 @@ async def get_provider_earnings(redis_client, node_id: str) -> dict:
     key = PROVIDER_EARNINGS_KEY.format(node_id=node_id)
     raw = await redis_client.hgetall(key)
     if not raw:
-        return {"node_id": node_id, "total_usd": 0.0, "pending_usd": 0.0, "lifetime_usd": 0.0, "total_tokens": 0}
+        return {
+            "node_id": node_id,
+            "total_credits": 0.0,
+            "pending_credits": 0.0,
+            "lifetime_credits": 0.0,
+            "total_usd": 0.0,
+            "pending_usd": 0.0,
+            "lifetime_usd": 0.0,
+            "total_tokens": 0,
+        }
 
     def _f(k, default=0.0):
         v = raw.get(k.encode(), raw.get(k, None))
@@ -98,6 +106,9 @@ async def get_provider_earnings(redis_client, node_id: str) -> dict:
 
     return {
         "node_id": node_id,
+        "total_credits": _f("total_credits", _f("total_usd")),
+        "pending_credits": _f("pending_credits", _f("pending_usd")),
+        "lifetime_credits": _f("lifetime_credits", _f("lifetime_usd")),
         "total_usd": _f("total_usd"),
         "pending_usd": _f("pending_usd"),
         "lifetime_usd": _f("lifetime_usd"),

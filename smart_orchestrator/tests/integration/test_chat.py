@@ -3,8 +3,9 @@ from fastapi.testclient import TestClient
 from app.main import app
 
 
-def test_chat_stream_returns_done_event():
+def test_chat_stream_returns_done_event(monkeypatch):
     """Ensure /chat streams a final done event for a valid mock subscriber."""
+    monkeypatch.setenv("AUTH_ENABLED", "false")
     client = TestClient(app)
     with client.stream(
         "POST",

@@ -1,11 +1,13 @@
 import os
 import random
+import socket
 import subprocess
 import time
 import logging
+from pathlib import Path
 
 import ollama
-from supabase import create_client
+import requests
 
 
 DEFAULT_NODE_MODEL = "llama3.3:70b-instruct-q4_K_M"
@@ -17,8 +19,9 @@ NODE_MODELS = [
 ]
 POLL_INTERVAL_SECONDS = 3
 POLL_JITTER_SECONDS = 1
-PENDING_JOB_LIMIT = 10
 MIN_FREE_VRAM_MB = 22 * 1024
+DEFAULT_API_BASE_URL = "https://api.beta.meshnet.co"
+CREDENTIALS_FILE = Path(os.environ.get("MESHNET_CREDENTIALS_FILE", "~/.meshnet/credentials")).expanduser()
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [NODE] %(message)s")
 logger = logging.getLogger(__name__)
@@ -106,6 +109,20 @@ def run_inference(prompt):
     }
 
 
+def read_credentials(path=CREDENTIALS_FILE):
+    credentials = {}
+    if path.exists():
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if not line or line.strip().startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            credentials[key.strip()] = value.strip().strip('"')
+    for key in ("NODE_ID", "NODE_SECRET"):
+        if os.environ.get(key):
+            credentials[key] = os.environ[key]
+    return credentials
+
+
 def get_required_env(name):
     value = os.environ.get(name)
     if not value:
@@ -113,95 +130,96 @@ def get_required_env(name):
     return value
 
 
-def claim_pending_job(supabase, node_id):
-    pending_jobs = (
-        supabase.table("jobs")
-        .select("*")
-        .eq("status", "pending")
-        .limit(PENDING_JOB_LIMIT)
-        .execute()
+def build_session(node_id, node_secret):
+    session = requests.Session()
+    session.headers.update(
+        {
+            "X-Node-Id": node_id,
+            "X-Node-Secret": node_secret,
+            "User-Agent": "meshnet-node/0.1",
+        }
     )
-
-    if not pending_jobs.data:
-        return None
-
-    for job in pending_jobs.data:
-        # This conditional update is the distributed lock: only one node can
-        # change a pending row to processing, even if many nodes saw it.
-        claimed_job = (
-            supabase.table("jobs")
-            .update({"status": "processing", "node_id": node_id})
-            .eq("id", job["id"])
-            .eq("status", "pending")
-            .execute()
-        )
-
-        if claimed_job.data:
-            return claimed_job.data[0]
-
-    return None
+    return session
 
 
-def complete_job(supabase, job_id, node_id, inference):
-    result = supabase.table("jobs").update(
-        {
-            "status": "complete",
-            "output": inference["content"],
-            "model": inference["model"],
-            "latency_ms": inference["latency_ms"],
-            "prompt_tokens": inference["prompt_tokens"],
-            "completion_tokens": inference["completion_tokens"],
-            "total_tokens": inference["total_tokens"],
-        }
-    ).eq("id", job_id).eq("node_id", node_id).eq("status", "processing").execute()
-
-    return bool(result.data)
+def heartbeat(session, api_base_url, gpu_info=None):
+    response = session.post(
+        f"{api_base_url}/api/node/heartbeat",
+        json={"hostname": socket.gethostname(), "gpu_info": gpu_info or {}},
+        timeout=15,
+    )
+    response.raise_for_status()
+    return response.json()
 
 
-def mark_job_error(supabase, job_id, node_id, error):
-    result = supabase.table("jobs").update(
-        {
-            "status": "error",
-            "output": f"Inference failed: {error}",
-        }
-    ).eq("id", job_id).eq("node_id", node_id).eq("status", "processing").execute()
-
-    return bool(result.data)
+def claim_pending_job(session, api_base_url):
+    response = session.get(f"{api_base_url}/api/node/jobs/next", timeout=30)
+    response.raise_for_status()
+    return response.json().get("job")
 
 
-def process_job(supabase, job, node_id):
+def complete_job(session, api_base_url, job_id, inference):
+    payload = {
+        "status": "complete",
+        "output": inference["content"],
+        "model": inference["model"],
+        "latency_ms": inference["latency_ms"],
+        "prompt_tokens": inference["prompt_tokens"],
+        "completion_tokens": inference["completion_tokens"],
+        "total_tokens": inference["total_tokens"],
+        "tokens_served": inference["total_tokens"],
+    }
+    response = session.post(
+        f"{api_base_url}/api/node/jobs/{job_id}/complete",
+        json=payload,
+        timeout=30,
+    )
+    response.raise_for_status()
+
+
+def mark_job_error(session, api_base_url, job_id, error):
+    response = session.post(
+        f"{api_base_url}/api/node/jobs/{job_id}/error",
+        json={"error": str(error)},
+        timeout=30,
+    )
+    response.raise_for_status()
+
+
+def process_job(session, api_base_url, job):
     try:
         inference = run_inference(job["prompt"])
     except Exception as error:
-        if mark_job_error(supabase, job["id"], node_id, error):
-            print(f"Job {job['id']} failed: {error}")
-        else:
-            print(f"Job {job['id']} failed, but this node no longer owns it")
+        mark_job_error(session, api_base_url, job["id"], error)
+        print(f"Job {job['id']} failed: {error}")
         return
 
-    if complete_job(supabase, job["id"], node_id, inference):
-        print(
-            f"Job {job['id']} complete "
-            f"latency_ms={inference['latency_ms']} total_tokens={inference['total_tokens']}"
-        )
-    else:
-        print(f"Job {job['id']} finished, but this node no longer owns it")
+    complete_job(session, api_base_url, job["id"], inference)
+    print(
+        f"Job {job['id']} complete "
+        f"latency_ms={inference['latency_ms']} total_tokens={inference['total_tokens']}"
+    )
 
 
 def poll_for_jobs():
-    supabase_url = get_required_env("SUPABASE_URL")
-    supabase_key = get_required_env("SUPABASE_KEY")
-    node_id = get_required_env("NODE_ID")
-    supabase = create_client(supabase_url, supabase_key)
+    credentials = read_credentials()
+    node_id = credentials.get("NODE_ID")
+    node_secret = credentials.get("NODE_SECRET")
+    if not node_id or not node_secret:
+        raise RuntimeError(f"Missing NODE_ID or NODE_SECRET in {CREDENTIALS_FILE}")
+    api_base_url = os.environ.get("MESHNET_API_BASE_URL", DEFAULT_API_BASE_URL).rstrip("/")
+    session = build_session(node_id, node_secret)
+    heartbeat(session, api_base_url)
 
-    print(f"Node {node_id} is polling for jobs...")
+    print(f"Node {node_id} is online and polling {api_base_url}...")
 
     while True:
         try:
-            job = claim_pending_job(supabase, node_id)
+            heartbeat(session, api_base_url)
+            job = claim_pending_job(session, api_base_url)
             if job:
                 print(f"Claimed job {job['id']}")
-                process_job(supabase, job, node_id)
+                process_job(session, api_base_url, job)
         except Exception as error:
             print(f"Polling error: {error}")
 

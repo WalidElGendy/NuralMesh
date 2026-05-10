@@ -6,3 +6,4 @@ stripe
 redis
 qdrant-client
 sentry-sdk
+requests

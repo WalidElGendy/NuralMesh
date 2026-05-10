@@ -108,7 +108,7 @@ def choose_route(
     if requested_mode == "fast":
         return RouteChoice(route="groq", served_by="groq")
 
-    if requested_mode == "auto":
+    if requested_mode == "auto" and os.getenv("GROQ_API_KEY"):
         bucket = deterministic_groq_bucket(user_id, request_id)
         if bucket < auto_route_groq_percent():
             return RouteChoice(route="groq", served_by="groq")

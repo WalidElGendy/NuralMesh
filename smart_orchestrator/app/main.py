@@ -5,10 +5,12 @@ from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from functools import lru_cache
 from inspect import isawaitable
+from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
 from app.config import ALLOWED_ORIGINS, VERSION
@@ -21,6 +23,7 @@ from app.lib.telemetry import init_telemetry
 from app.models.schemas import ApiKeyRecord, ChatRequest
 from app.pipeline import run_pipeline
 from app.routers.admin import router as admin_router
+from app.routers.chat import router as chat_router
 from app.routers.webhook import router as webhook_router
 from app.routers.ws import router as ws_router
 from app.routers.jobs import router as jobs_router
@@ -89,7 +92,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 FastAPIInstrumentor().instrument_app(app)
+WEB_DIR = Path(__file__).resolve().parents[1] / "web"
+app.mount("/web", StaticFiles(directory=str(WEB_DIR), html=True), name="web")
 app.include_router(admin_router, prefix="/admin")
+app.include_router(chat_router)
 app.include_router(webhook_router, prefix="/webhook")
 app.include_router(ws_router)
 app.include_router(jobs_router, prefix="/jobs")

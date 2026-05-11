@@ -102,7 +102,8 @@ def get_qdrant_client() -> AsyncQdrantClient:
     Cost/quality target:
         Semantic cache lookup target is ~10-30ms when Qdrant is reachable.
     """
-    return AsyncQdrantClient(url=QDRANT_URL)
+    QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
+    return AsyncQdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY or None)
 
 
 async def _lookup_redis(context: PipelineContext, client: Any | None = None) -> CacheResult | None:

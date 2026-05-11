@@ -1,15 +1,19 @@
 {
-  "buildCommand": "node scripts/inject-env.js",
-  "outputDirectory": "web",
-  "env": {
-    "NM_API_BASE": "https://api.beta.meshnet.co",
-    "NM_SUPABASE_URL": "",
-    "NM_SUPABASE_ANON_KEY": ""
-  },
-  "rewrites": [
-    {
-      "source": "/",
-      "destination": "/index.html"
-    }
-  ]
+    "buildCommand": "node scripts/inject-env.js",
+    "outputDirectory": "web",
+    "env": {
+          "NM_API_BASE": "https://api.beta.meshnet.co",
+          "NM_SUPABASE_URL": "https://czphnagkzvkemgtkliew.supabase.co",
+          "NM_SUPABASE_ANON_KEY": ""
+    },
+    "rewrites": [
+          {
+                  "source": "/api/:path*",
+                  "destination": "https://api.beta.meshnet.co/api/:path*"
+          },
+          {
+                  "source": "/",
+                  "destination": "/index.html"
+          }
+    ]
 }

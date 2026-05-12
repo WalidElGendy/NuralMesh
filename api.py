@@ -34,8 +34,8 @@ REQUIRED_PRODUCTION_ENV = (
     "STRIPE_SECRET_KEY",
     "STRIPE_WEBHOOK_SECRET",
     "STRIPE_PRICE_ID_USER_BETA",
-    "GROQ_API_KEY",
-    "GROQ_MODEL",
+    "SILICONFLOW_API_KEY",
+    "SILICONFLOW_MODEL",
     "AUTH_ENABLED",
     "OTEL_ENABLED",
     "LOKI_ENABLED",
@@ -1125,31 +1125,31 @@ class ChatResponse(BaseModel):
 
 @app.post("/api/chat", response_model=ChatResponse)
 def chat(body: ChatRequest):
-    groq_key = os.environ.get("GROQ_API_KEY")
-    groq_model = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
-    if not groq_key:
+    sf_key = os.environ.get("SILICONFLOW_API_KEY")
+    SILICONFLOW_MODEL = os.environ.get("SILICONFLOW_MODEL", "deepseek-ai/DeepSeek-V3.1")
+    if not sf_key:
         raise HTTPException(status_code=503, detail="chat_not_configured")
     if not body.messages:
         raise HTTPException(status_code=400, detail="messages_required")
     payload = json.dumps({
-        "model": groq_model,
+        "model": SILICONFLOW_MODEL,
         "messages": [{"role": m.role, "content": m.content} for m in body.messages],
         "stream": False,
     }).encode("utf-8")
     req = _urlreq.Request(
-        "https://api.groq.com/openai/v1/chat/completions",
+        "https://api.siliconflow.com/v1/chat/completions",
         data=payload,
-        headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+        headers={"Authorization": f"Bearer {sf_key}", "Content-Type": "application/json"},
         method="POST",
     )
     try:
         with _urlreq.urlopen(req, timeout=60) as resp:
             data = json.loads(resp.read().decode("utf-8"))
     except _urlerr.HTTPError as e:
-        logging.exception("groq_http_error")
+        logging.exception("sf_http_error")
         raise HTTPException(status_code=502, detail="inference_failed")
     except Exception:
-        logging.exception("groq_call_failed")
+        logging.exception("sf_call_failed")
         raise HTTPException(status_code=502, detail="inference_failed")
     try:
         answer = data["choices"][0]["message"]["content"]

@@ -229,10 +229,7 @@ def claim_invite(supabase, code: str, claimed_by_user_id: str, intent: str) -> d
     if not code:
         raise HTTPException(status_code=400, detail="invite_code_required")
     update_payload = {"claimed_at": isoformat(utc_now())}
-    if intent == "provider":
-        update_payload["claimed_by_user_id"] = claimed_by_user_id
-    else:
-        update_payload["claimed_by_user_id"] = claimed_by_user_id
+    update_payload["claimed_by_user_id"] = claimed_by_user_id
     result = (
         supabase.table("invites")
         .update(update_payload)

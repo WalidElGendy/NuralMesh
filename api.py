@@ -1077,7 +1077,7 @@ class MagicLinkRequest(BaseModel):
 
 @app.post("/api/auth/login", response_model=AuthLoginResponse)
 def auth_login(body: AuthLoginRequest):
-    if not _EMAIL_RE.match(body.email):
+    if not EMAILRE.match(body.email):
         raise HTTPException(status_code=400, detail="invalid_email")
     supabase = get_supabase_client()
     try:
@@ -1099,7 +1099,7 @@ def auth_login(body: AuthLoginRequest):
 
 @app.post("/api/auth/magic-link")
 def auth_magic_link(body: MagicLinkRequest):
-    if not _EMAIL_RE.match(body.email):
+    if not EMAILRE.match(body.email):
         raise HTTPException(status_code=400, detail="invalid_email")
     supabase = get_supabase_client()
     try:

@@ -11,6 +11,15 @@
                   "source": "/api/:path*",
                   "destination": "https://api.beta.meshnet.co/api/:path*"
           },
+                { "source": "/admin", "destination": "/admin.html" },
+        { "source": "/chat", "destination": "/chat.html" },
+        { "source": "/login", "destination": "/login.html" },
+        { "source": "/signup", "destination": "/signup.html" },
+        { "source": "/account", "destination": "/account.html" },
+        { "source": "/pricing", "destination": "/pricing.html" },
+        { "source": "/terms", "destination": "/terms.html" },
+        { "source": "/privacy", "destination": "/privacy.html" },
+        { "source": "/host", "destination": "/host.html" },
           {
                   "source": "/",
                   "destination": "/index.html"

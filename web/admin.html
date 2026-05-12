@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin - NeuralMesh Beta</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-zinc-950 text-white">
+  <main class="mx-auto max-w-5xl px-6 py-10">
+    <header class="flex items-center justify-between">
+      <h1 class="text-3xl font-bold">NeuralMesh admin</h1>
+      <button id="logout" class="text-sm text-zinc-400 hover:text-white">Forget key</button>
+    </header>
+
+    <section id="gate" class="mt-10 rounded-3xl border border-white/10 bg-white/[0.04] p-8">
+      <h2 class="text-xl font-semibold">Admin key required</h2>
+      <p class="mt-2 text-sm text-zinc-400">Paste your <code class="text-violet-300">ADMIN_API_KEY</code>. It's stored only in this browser.</p>
+      <input id="key" type="password" autocomplete="off" class="mt-4 w-full rounded-xl bg-black/40 px-4 py-3" placeholder="ADMIN_API_KEY">
+      <button id="unlock" class="mt-4 rounded-xl bg-violet-600 px-4 py-2 font-semibold">Unlock</button>
+      <p id="gate-error" class="mt-3 min-h-5 text-sm text-red-300"></p>
+    </section>
+
+    <section id="panel" class="mt-10 hidden">
+      <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <div class="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
+          <div class="text-xs uppercase tracking-wide text-zinc-400">Users</div>
+          <div id="m-users" class="mt-2 text-3xl font-semibold">-</div>
+        </div>
+        <div class="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
+          <div class="text-xs uppercase tracking-wide text-zinc-400">Nodes online</div>
+          <div id="m-nodes-online" class="mt-2 text-3xl font-semibold">-</div>
+          <div id="m-nodes-total" class="text-xs text-zinc-500">of - total</div>
+        </div>
+        <div class="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
+          <div class="text-xs uppercase tracking-wide text-zinc-400">Invites claimed</div>
+          <div id="m-invites-claimed" class="mt-2 text-3xl font-semibold">-</div>
+          <div id="m-invites-total" class="text-xs text-zinc-500">of - issued</div>
+        </div>
+        <div class="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
+          <div class="text-xs uppercase tracking-wide text-zinc-400">Tokens served</div>
+          <div id="m-tokens" class="mt-2 text-3xl font-semibold">-</div>
+        </div>
+      </div>
+
+      <div class="mt-8 rounded-3xl border border-white/10 bg-white/[0.04] p-6">
+        <div class="flex flex-wrap items-end gap-3">
+          <div class="flex-1 min-w-[200px]">
+            <label class="block text-xs uppercase tracking-wide text-zinc-400">Generate codes</label>
+            <input id="gen-count" type="number" min="1" max="50" value="5" class="mt-2 w-full rounded-xl bg-black/40 px-4 py-2">
+          </div>
+          <div class="flex-1 min-w-[240px]">
+            <label class="block text-xs uppercase tracking-wide text-zinc-400">Notes (optional)</label>
+            <input id="gen-notes" type="text" placeholder="Friends batch" class="mt-2 w-full rounded-xl bg-black/40 px-4 py-2">
+          </div>
+          <button id="gen" class="rounded-xl bg-violet-600 px-4 py-2 font-semibold">Generate</button>
+        </div>
+        <pre id="gen-output" class="mt-4 hidden whitespace-pre-wrap rounded-xl bg-black/40 p-4 text-sm text-emerald-300"></pre>
+      </div>
+
+      <div class="mt-8 rounded-3xl border border-white/10 bg-white/[0.04] p-6">
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg font-semibold">Recent invites</h2>
+          <button id="refresh" class="text-sm text-zinc-400 hover:text-white">Refresh</button>
+        </div>
+        <div class="mt-4 overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="text-left text-zinc-400">
+              <tr>
+                <th class="py-2 pr-4">Code</th>
+                <th class="py-2 pr-4">Status</th>
+                <th class="py-2 pr-4">Claimed at</th>
+                <th class="py-2 pr-4">Notes</th>
+              </tr>
+            </thead>
+            <tbody id="invite-rows"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const STORAGE_KEY = "nm_admin_key";
+
+    function getKey() { return sessionStorage.getItem(STORAGE_KEY); }
+    function setKey(k) { sessionStorage.setItem(STORAGE_KEY, k); }
+    function clearKey() { sessionStorage.removeItem(STORAGE_KEY); }
+
+    async function api(path, opts = {}) {
+      const key = getKey();
+      const headers = Object.assign({ "X-Admin-Key": key, "Content-Type": "application/json" }, opts.headers || {});
+      const response = await fetch(path, Object.assign({}, opts, { headers }));
+      if (response.status === 401 || response.status === 503) {
+        clearKey();
+        showGate(response.status === 401 ? "Invalid admin key." : "Admin API not configured on server.");
+        throw new Error("auth");
+      }
+      return response.json();
+    }
+
+    function showGate(error) {
+      $("gate").classList.remove("hidden");
+      $("panel").classList.add("hidden");
+      $("gate-error").textContent = error || "";
+    }
+
+    function showPanel() {
+      $("gate").classList.add("hidden");
+      $("panel").classList.remove("hidden");
+      refreshAll();
+    }
+
+    async function loadStats() {
+      const data = await api("/api/admin/stats");
+      $("m-users").textContent = data.users_total ?? 0;
+      $("m-nodes-online").textContent = data.nodes_online ?? 0;
+      $("m-nodes-total").textContent = `of ${data.nodes_total ?? 0} total`;
+      $("m-invites-claimed").textContent = data.invites_claimed ?? 0;
+      $("m-invites-total").textContent = `of ${data.invites_total ?? 0} issued`;
+      $("m-tokens").textContent = (data.tokens_served_total ?? 0).toLocaleString();
+    }
+
+    async function loadInvites() {
+      const data = await api("/api/admin/invites");
+      const rows = (data.invites || []).map((row) => {
+        const status = row.revoked ? "revoked"
+          : row.claimed_by_user_id ? "claimed"
+          : "open";
+        const color = status === "claimed" ? "text-emerald-300"
+          : status === "revoked" ? "text-red-300"
+          : "text-zinc-300";
+        const claimedAt = row.claimed_at ? new Date(row.claimed_at).toLocaleString() : "-";
+        return `<tr class="border-t border-white/5">
+          <td class="py-2 pr-4 font-mono">${row.code}</td>
+          <td class="py-2 pr-4 ${color}">${status}</td>
+          <td class="py-2 pr-4 text-zinc-400">${claimedAt}</td>
+          <td class="py-2 pr-4 text-zinc-400">${row.notes || ""}</td>
+        </tr>`;
+      }).join("");
+      $("invite-rows").innerHTML = rows || `<tr><td colspan="4" class="py-4 text-zinc-500">No invites yet.</td></tr>`;
+    }
+
+    async function refreshAll() {
+      try { await Promise.all([loadStats(), loadInvites()]); } catch (_) {}
+    }
+
+    $("unlock").addEventListener("click", async () => {
+      const value = $("key").value.trim();
+      if (!value) { $("gate-error").textContent = "Paste a key first."; return; }
+      setKey(value);
+      try {
+        await loadStats();
+        showPanel();
+      } catch (_) { /* showGate already handled */ }
+    });
+
+    $("logout").addEventListener("click", () => { clearKey(); showGate(""); });
+    $("refresh").addEventListener("click", refreshAll);
+
+    $("gen").addEventListener("click", async () => {
+      const count = parseInt($("gen-count").value || "1", 10);
+      const notes = $("gen-notes").value.trim();
+      const response = await api("/api/admin/invites", {
+        method: "POST",
+        body: JSON.stringify({ count, notes }),
+      });
+      const codes = response.codes || [];
+      const block = $("gen-output");
+      block.classList.remove("hidden");
+      block.textContent = codes.join("\n");
+      await loadInvites();
+    });
+
+    if (getKey()) { showPanel(); } else { showGate(""); }
+  </script>
+</body>
+</html>

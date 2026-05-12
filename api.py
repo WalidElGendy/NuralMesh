@@ -1105,6 +1105,61 @@ def auth_magic_link(body: MagicLinkRequest):
         logging.exception("magic_link_failed")
     return {"sent": True, "message": "If that email is registered, a magic link has been sent."}
 
+import urllib.request as _urlreq
+import urllib.error as _urlerr
+
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class ChatRequest(BaseModel):
+    messages: list[ChatMessage]
+    stream: bool = False
+
+
+class ChatResponse(BaseModel):
+    answer: str
+
+
+@app.post("/api/chat", response_model=ChatResponse)
+def chat(body: ChatRequest):
+    groq_key = os.environ.get("GROQ_API_KEY")
+    groq_model = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
+    if not groq_key:
+        raise HTTPException(status_code=503, detail="chat_not_configured")
+    if not body.messages:
+        raise HTTPException(status_code=400, detail="messages_required")
+    payload = json.dumps({
+        "model": groq_model,
+        "messages": [{"role": m.role, "content": m.content} for m in body.messages],
+        "stream": False,
+    }).encode("utf-8")
+    req = _urlreq.Request(
+        "https://api.groq.com/openai/v1/chat/completions",
+        data=payload,
+        headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with _urlreq.urlopen(req, timeout=60) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except _urlerr.HTTPError as e:
+        logging.exception("groq_http_error")
+        raise HTTPException(status_code=502, detail="inference_failed")
+    except Exception:
+        logging.exception("groq_call_failed")
+        raise HTTPException(status_code=502, detail="inference_failed")
+    try:
+        answer = data["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, TypeError):
+        raise HTTPException(status_code=502, detail="empty_response")
+    if not answer:
+        raise HTTPException(status_code=502, detail="empty_response")
+    return ChatResponse(answer=answer)
+
+
 
 
 app.mount("/dashboard", StaticFiles(directory="dashboard", html=True), name="dashboard")

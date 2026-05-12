@@ -190,6 +190,75 @@ class JobCompleteRequest(BaseModel):
 class JobErrorRequest(BaseModel):
     error: str = Field(default="")
 
+import re as _re
+
+EMAILRE = _re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+class AuthSignupRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=255)
+    password: str = Field(min_length=8, max_length=128)
+    invite_code: str = Field(min_length=4, max_length=64)
+    intent: str = Field(default="user")  # "user" or "provider"
+
+
+class AuthSignupResponse(BaseModel):
+    user_id: str
+    email: str
+    intent: str
+    confirmation_email_sent: bool
+    message: str
+
+
+class AdminInviteRequest(BaseModel):
+    count: int = Field(default=1, ge=1, le=50)
+    notes: str = Field(default="")
+
+
+def verify_admin(x_admin_key: str = Header(None)):
+    expected = os.environ.get("ADMIN_API_KEY")
+    if not expected:
+        raise HTTPException(status_code=503, detail="Admin API not configured")
+    if not x_admin_key or not secrets.compare_digest(x_admin_key, expected):
+        raise HTTPException(status_code=401, detail="Invalid admin key")
+    return True
+
+
+def claim_invite(supabase, code: str, claimed_by_user_id: str, intent: str) -> dict:
+    code = code.strip().upper()
+    if not code:
+        raise HTTPException(status_code=400, detail="invite_code_required")
+    update_payload = {"claimed_at": isoformat(utc_now())}
+    if intent == "provider":
+        update_payload["claimed_by_provider_id"] = claimed_by_user_id
+    else:
+        update_payload["claimed_by_user_id"] = claimed_by_user_id
+    result = (
+        supabase.table("invites")
+        .update(update_payload)
+        .eq("code", code)
+        .is_("claimed_at", "null")
+        .eq("revoked", False)
+        .execute()
+    )
+    if not result.data:
+        existing = (
+            supabase.table("invites")
+            .select("code, claimed_at, revoked")
+            .eq("code", code)
+            .execute()
+        )
+        if not existing.data:
+            raise HTTPException(status_code=400, detail="invite_code_invalid")
+        row = existing.data[0]
+        if row.get("revoked"):
+            raise HTTPException(status_code=400, detail="invite_code_revoked")
+        if row.get("claimed_at"):
+            raise HTTPException(status_code=400, detail="invite_code_already_used")
+        raise HTTPException(status_code=400, detail="invite_code_invalid")
+    return result.data[0]
+
+
 
 DEMO_API_KEY = "nm_live_sk_3f9a8b2c1d4e5f6a7b8c9d0e1f2a3b4c"
 
@@ -867,6 +936,127 @@ def upgrade_billing(auth=Depends(verify_api_key)):
         ) from error
 
     return {"checkout_url": session.url}
+
+
+
+@app.post("/api/auth/signup", response_model=AuthSignupResponse)
+def auth_signup(body: AuthSignupRequest):
+    if not EMAILRE.match(body.email):
+        raise HTTPException(status_code=400, detail="invalid_email")
+    if os.getenv("BETA_INVITE_REQUIRED", "true").lower() != "false":
+        if not body.invite_code:
+            raise HTTPException(status_code=400, detail="invite_code_required")
+    supabase = get_supabase_client()
+    try:
+        signup_result = supabase.auth.admin.create_user({
+            "email": body.email,
+            "password": body.password,
+            "email_confirm": False,
+            "user_metadata": {"intent": body.intent},
+        })
+    except Exception as e:
+        msg = str(e).lower()
+        if "already" in msg or "duplicate" in msg or "exists" in msg:
+            raise HTTPException(status_code=409, detail="email_already_registered")
+        logging.exception("supabase_create_user_failed")
+        raise HTTPException(status_code=502, detail="auth_provider_error")
+    user_id = (
+        signup_result.user.id
+        if hasattr(signup_result, "user")
+        else signup_result["user"]["id"]
+    )
+    try:
+        claim_invite(supabase, body.invite_code, user_id, body.intent)
+    except HTTPException:
+        try:
+            supabase.auth.admin.delete_user(user_id)
+        except Exception:
+            logging.exception(
+                "rollback_delete_user_failed", extra={"user_id": user_id}
+            )
+        raise
+    return AuthSignupResponse(
+        user_id=user_id,
+        email=body.email,
+        intent=body.intent,
+        confirmation_email_sent=True,
+        message="Check your email to confirm your account.",
+    )
+
+
+@app.get("/admin")
+def admin_page():
+    return FileResponse(WEB_ROOT / "admin.html")
+
+
+@app.get("/api/admin/stats")
+def admin_stats(_: bool = Depends(verify_admin)):
+    supabase = get_supabase_client()
+    users_q = supabase.table("users").select("id", count="exact").execute()
+    providers_q = supabase.table("providers").select("node_id", count="exact").execute()
+    invites_total_q = supabase.table("invites").select("code", count="exact").execute()
+    invites_claimed_q = (
+        supabase.table("invites")
+        .select("code", count="exact")
+        .not_.is_("claimed_by_user_id", "null")
+        .execute()
+    )
+    five_min_ago = isoformat(utc_now() - timedelta(minutes=5))
+    nodes_online_q = (
+        supabase.table("providers")
+        .select("node_id", count="exact")
+        .gte("last_seen_at", five_min_ago)
+        .execute()
+    )
+    try:
+        tokens_q = (
+            supabase.table("jobs")
+            .select("total_tokens")
+            .eq("status", "complete")
+            .execute()
+        )
+        tokens_total = sum(
+            int(row.get("total_tokens") or 0) for row in (tokens_q.data or [])
+        )
+    except Exception:
+        tokens_total = 0  # jobs table may not exist yet
+    return {
+        "users_total": users_q.count or 0,
+        "nodes_total": providers_q.count or 0,
+        "nodes_online": nodes_online_q.count or 0,
+        "invites_total": invites_total_q.count or 0,
+        "invites_claimed": invites_claimed_q.count or 0,
+        "tokens_served_total": tokens_total,
+    }
+
+
+@app.get("/api/admin/invites")
+def admin_list_invites(_: bool = Depends(verify_admin)):
+    supabase = get_supabase_client()
+    result = (
+        supabase.table("invites")
+        .select("code, claimed_by_user_id, claimed_at, revoked, notes, created_at")
+        .order("created_at", desc=True)
+        .limit(200)
+        .execute()
+    )
+    return {"invites": result.data or []}
+
+
+@app.post("/api/admin/invites")
+def admin_create_invites(body: AdminInviteRequest, _: bool = Depends(verify_admin)):
+    supabase = get_supabase_client()
+    codes: list[str] = []
+    for _i in range(body.count):
+        code = f"NMESH-{secrets.token_hex(2).upper()}-{secrets.token_hex(2).upper()}"
+        result = (
+            supabase.table("invites")
+            .insert({"code": code, "notes": body.notes or "Admin-generated"})
+            .execute()
+        )
+        if result.data:
+            codes.append(code)
+    return {"codes": codes}
 
 
 app.mount("/dashboard", StaticFiles(directory="dashboard", html=True), name="dashboard")

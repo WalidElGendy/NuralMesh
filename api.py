@@ -1058,5 +1058,56 @@ def admin_create_invites(body: AdminInviteRequest, _: bool = Depends(verify_admi
             codes.append(code)
     return {"codes": codes}
 
+class AuthLoginRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=255)
+    password: str = Field(min_length=1, max_length=128)
+
+
+class AuthLoginResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    expires_at: int
+    user_id: str
+    email: str
+
+
+class MagicLinkRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=255)
+
+
+@app.post("/api/auth/login", response_model=AuthLoginResponse)
+def auth_login(body: AuthLoginRequest):
+    if not _EMAIL_RE.match(body.email):
+        raise HTTPException(status_code=400, detail="invalid_email")
+    supabase = get_supabase_client()
+    try:
+        result = supabase.auth.sign_in_with_password({"email": body.email, "password": body.password})
+    except Exception as e:
+        msg = str(e).lower()
+        if "not confirmed" in msg or "email_not_confirmed" in msg:
+            raise HTTPException(status_code=403, detail="email_not_confirmed")
+        if "invalid" in msg or "credentials" in msg or "not found" in msg or "wrong" in msg:
+            raise HTTPException(status_code=401, detail="invalid_credentials")
+        logging.exception("supabase_login_failed")
+        raise HTTPException(status_code=502, detail="auth_provider_error")
+    session = getattr(result, "session", None)
+    user = getattr(result, "user", None)
+    if not session or not user:
+        raise HTTPException(status_code=401, detail="invalid_credentials")
+    return AuthLoginResponse(access_token=session.access_token, refresh_token=session.refresh_token, expires_at=int(getattr(session, "expires_at", 0) or 0), user_id=user.id, email=user.email)
+
+
+@app.post("/api/auth/magic-link")
+def auth_magic_link(body: MagicLinkRequest):
+    if not _EMAIL_RE.match(body.email):
+        raise HTTPException(status_code=400, detail="invalid_email")
+    supabase = get_supabase_client()
+    try:
+        supabase.auth.sign_in_with_otp({"email": body.email, "options": {"should_create_user": False}})
+    except Exception:
+        logging.exception("magic_link_failed")
+    return {"sent": True, "message": "If that email is registered, a magic link has been sent."}
+
+
 
 app.mount("/dashboard", StaticFiles(directory="dashboard", html=True), name="dashboard")

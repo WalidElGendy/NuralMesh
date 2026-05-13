@@ -42,7 +42,7 @@
         message.textContent = ({invalid_email:"Please enter a valid email address.",invite_code_required:"Please enter an invite code.",invite_code_invalid:"That invite code is not recognized.",invite_code_already_used:"That invite code has already been used.",invite_code_revoked:"That invite code has been revoked.",email_already_registered:"This email is already registered. Try logging in instead.",auth_provider_error:"Sign-up service is temporarily unavailable. Please try again in a moment."})[data.detail] || data.detail || "Sign-up failed. Please try again.";
         return;
       }
-      message.className = "mt-4 min-h-6 text-sm text-emerald-300";
+      try { if (payload.intent) localStorage.setItem("nm_intent", payload.intent); if (payload.email) localStorage.setItem("nm_email", payload.email); } catch (_) {} message.className = "mt-4 min-h-6 text-sm text-emerald-300";
       message.textContent = "Check your email to confirm your account.";
     });
   </script>

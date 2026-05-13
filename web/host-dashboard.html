@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Host dashboard - NeuralMesh Beta</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-zinc-950 text-white">
+<main class="mx-auto max-w-2xl px-6 py-12">
+<header class="mb-10 flex items-center justify-between">
+<div>
+<h1 class="text-3xl font-bold">NeuralMesh host dashboard</h1>
+<p class="mt-2 text-sm text-zinc-400">Activate this computer as a node on the mesh.</p>
+</div>
+<a href="/login.html" id="logout" class="text-sm text-zinc-400 hover:text-white">Sign out</a>
+</header>
+<section id="start" class="rounded-3xl border border-white/10 bg-white/[0.04] p-8 text-center">
+<div class="mx-auto mb-6 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-violet-600/20 text-3xl">!</div>
+<h2 class="text-2xl font-bold">Activate this computer as a node</h2>
+<p class="mt-2 text-sm text-zinc-400">One click. We will generate your install command. You paste it in Terminal and you are on the mesh.</p>
+<button id="go" class="mt-8 rounded-2xl bg-violet-600 hover:bg-violet-500 px-8 py-4 text-lg font-semibold">Activate this Mac as a node</button>
+<p id="err" class="mt-4 min-h-5 text-sm text-red-300"></p>
+</section>
+<section id="cmd-box" class="hidden mt-6 rounded-3xl border border-white/10 bg-white/[0.04] p-8">
+<h2 class="text-xl font-bold mb-2">Step 1: open Terminal on your Mac</h2>
+<p class="text-sm text-zinc-400 mb-6">Press Command+Space, type Terminal, hit Return.</p>
+<h2 class="text-xl font-bold mb-2">Step 2: paste this command and press Return</h2>
+<div class="relative">
+<pre id="cmd" class="rounded-xl bg-black/60 p-4 text-sm text-emerald-300 overflow-x-auto whitespace-pre-wrap break-all"></pre>
+<button id="copy" class="absolute right-3 top-3 rounded-lg bg-violet-600 hover:bg-violet-500 px-3 py-1.5 text-xs font-semibold">Copy</button>
+</div>
+<p class="mt-6 text-sm text-zinc-400">After about 2 minutes Terminal will show <code class="text-violet-300">heartbeat ok</code> messages. That is your node live on the mesh.</p>
+<p class="mt-2 text-xs text-zinc-500">You may be asked for your Mac password during install. To stop the node later, press Ctrl+C in that Terminal window.</p>
+</section>
+</main>
+<script>
+const $=(i)=>document.getElementById(i);
+function getEmail(){let e=sessionStorage.getItem("nm_email")||localStorage.getItem("nm_email");if(!e){e=(prompt("Your account email (the one you signed up with):")||"").trim();if(e)sessionStorage.setItem("nm_email",e);}return e;}
+async function go(){$("err").textContent="";const email=getEmail();if(!email){$("err").textContent="Email required";return;}$("go").disabled=true;$("go").textContent="Generating...";try{const r=await fetch("/api/provider/signup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,gpu_model:"",region:""})});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.detail||r.status);$("cmd").textContent=d.install_command;$("start").classList.add("hidden");$("cmd-box").classList.remove("hidden");try{await navigator.clipboard.writeText(d.install_command);}catch(_){}}catch(e){$("err").textContent="Error: "+e.message;$("go").disabled=false;$("go").textContent="Activate this Mac as a node";}}
+$("go").addEventListener("click",go);
+$("copy").addEventListener("click",async()=>{try{await navigator.clipboard.writeText($("cmd").textContent);$("copy").textContent="Copied";setTimeout(()=>$("copy").textContent="Copy",1500);}catch(_){$("copy").textContent="Press CMD+C";}});
+$("logout").addEventListener("click",(ev)=>{ev.preventDefault();sessionStorage.clear();window.location.href="/login.html";});
+</script>
+</body>
+</html>

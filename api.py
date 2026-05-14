@@ -215,13 +215,34 @@ class AdminInviteRequest(BaseModel):
     notes: str = Field(default="")
 
 
-def verify_admin(x_admin_key: str = Header(None)):
+def verify_admin(
+    x_admin_key: str = Header(None),
+    authorization: str = Header(None),
+):
     expected = os.environ.get("ADMIN_API_KEY")
-    if not expected:
+    admin_emails = {
+        e.strip().lower()
+        for e in (os.environ.get("ADMIN_EMAILS", "walidn20@gmail.com")).split(",")
+        if e.strip()
+    }
+    # 1) X-Admin-Key path (machine-to-machine)
+    if expected and x_admin_key and secrets.compare_digest(x_admin_key, expected):
+        return True
+    # 2) Authorization: Bearer <supabase JWT> path (admin UI)
+    if authorization and authorization.lower().startswith("bearer "):
+        token = authorization.split(" ", 1)[1].strip()
+        try:
+            supabase = get_supabase_client()
+            user_resp = supabase.auth.get_user(token)
+            user = getattr(user_resp, "user", None)
+            user_email = (getattr(user, "email", None) or "").lower()
+            if user and user_email and user_email in admin_emails:
+                return True
+        except Exception:
+            logging.exception("verify_admin_bearer_failed")
+    if not expected and not admin_emails:
         raise HTTPException(status_code=503, detail="Admin API not configured")
-    if not x_admin_key or not secrets.compare_digest(x_admin_key, expected):
-        raise HTTPException(status_code=401, detail="Invalid admin key")
-    return True
+    raise HTTPException(status_code=401, detail="invalid_admin_credentials")
 
 
 def claim_invite(supabase, code: str, claimed_by_user_id: str, intent: str) -> dict:
@@ -948,7 +969,7 @@ def auth_signup(body: AuthSignupRequest):
         signup_result = supabase.auth.admin.create_user({
             "email": body.email,
             "password": body.password,
-            "email_confirm": False,
+            "email_confirm": True,
             "user_metadata": {"intent": body.intent},
         })
     except Exception as e:

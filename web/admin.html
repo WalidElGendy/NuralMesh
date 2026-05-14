@@ -3,64 +3,94 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Admin - NeuralMesh Beta</title>
+  <title>Admin - Meshnet</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background: radial-gradient(circle at 20% 0%, rgba(139,92,246,.22), transparent 32rem), radial-gradient(circle at 85% 12%, rgba(34,211,238,.13), transparent 28rem), #05050a; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; letter-spacing: -.005em; }
+    .brand .dot { color: #8b5cf6; }
+    .grad-btn { background: linear-gradient(135deg,#8b5cf6,#22d3ee); color: #020617; }
+    .grad-btn:hover { filter: brightness(1.1); }
+  </style>
 </head>
-<body class="min-h-screen bg-zinc-950 text-white">
+<body class="min-h-screen text-white">
   <main class="mx-auto max-w-5xl px-6 py-10">
     <header class="flex items-center justify-between">
-      <h1 class="text-3xl font-bold">NeuralMesh admin</h1>
-      <button id="logout" class="text-sm text-zinc-400 hover:text-white">Forget key</button>
+      <a class="brand text-2xl font-extrabold tracking-tight" href="/">N<span class="dot">.</span>eshnet <span class="ml-2 text-base font-semibold text-zinc-400">admin</span></a>
+      <button id="logout" class="text-sm text-zinc-400 hover:text-white">Sign out</button>
     </header>
 
-    <section id="gate" class="mt-10 rounded-3xl border border-white/10 bg-white/[0.04] p-8">
-      <h2 class="text-xl font-semibold">Admin key required</h2>
-      <p class="mt-2 text-sm text-zinc-400">Paste your <code class="text-violet-300">ADMIN_API_KEY</code>. It's stored only in this browser.</p>
-      <input id="key" type="password" autocomplete="off" class="mt-4 w-full rounded-xl bg-black/40 px-4 py-3" placeholder="ADMIN_API_KEY">
-      <button id="unlock" class="mt-4 rounded-xl bg-violet-600 px-4 py-2 font-semibold">Unlock</button>
+    <!-- GATE: email + password -->
+    <section id="gate" class="mt-10 rounded-3xl border border-white/10 bg-white/[0.04] p-8 max-w-md mx-auto">
+      <h2 class="text-2xl font-bold tracking-tight">Sign in</h2>
+      <p class="mt-2 text-sm text-zinc-400">Use your Meshnet admin account. Only allow-listed emails can access this panel.</p>
+
+      <label class="mt-6 block text-xs uppercase tracking-wide text-zinc-400">Email</label>
+      <input id="email" type="email" autocomplete="username" placeholder="you@example.com" class="mt-2 w-full rounded-xl bg-black/40 px-4 py-3 outline-none focus:ring-2 focus:ring-violet-500">
+
+      <label class="mt-4 block text-xs uppercase tracking-wide text-zinc-400">Password</label>
+      <input id="password" type="password" autocomplete="current-password" placeholder="••••••••" class="mt-2 w-full rounded-xl bg-black/40 px-4 py-3 outline-none focus:ring-2 focus:ring-violet-500">
+
+      <button id="unlock" class="grad-btn mt-6 w-full rounded-xl px-4 py-3 font-bold">Sign in</button>
       <p id="gate-error" class="mt-3 min-h-5 text-sm text-red-300"></p>
+
+      <details class="mt-6 text-xs text-zinc-500">
+        <summary class="cursor-pointer hover:text-zinc-300">Use admin API key instead</summary>
+        <input id="api-key" type="password" placeholder="ADMIN_API_KEY" class="mt-2 w-full rounded-xl bg-black/40 px-4 py-2 outline-none focus:ring-2 focus:ring-violet-500">
+        <button id="unlock-key" class="mt-2 w-full rounded-xl bg-zinc-800 hover:bg-zinc-700 px-4 py-2 text-sm">Use key</button>
+      </details>
     </section>
 
+    <!-- PANEL -->
     <section id="panel" class="mt-10 hidden">
       <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
         <div class="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
           <div class="text-xs uppercase tracking-wide text-zinc-400">Users</div>
-          <div id="m-users" class="mt-2 text-3xl font-semibold">-</div>
+          <div id="m-users" class="mt-2 text-3xl font-bold tracking-tight">-</div>
         </div>
         <div class="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
           <div class="text-xs uppercase tracking-wide text-zinc-400">Nodes online</div>
-          <div id="m-nodes-online" class="mt-2 text-3xl font-semibold">-</div>
+          <div id="m-nodes-online" class="mt-2 text-3xl font-bold tracking-tight text-emerald-300">-</div>
           <div id="m-nodes-total" class="text-xs text-zinc-500">of - total</div>
         </div>
         <div class="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
           <div class="text-xs uppercase tracking-wide text-zinc-400">Invites claimed</div>
-          <div id="m-invites-claimed" class="mt-2 text-3xl font-semibold">-</div>
+          <div id="m-invites-claimed" class="mt-2 text-3xl font-bold tracking-tight">-</div>
           <div id="m-invites-total" class="text-xs text-zinc-500">of - issued</div>
         </div>
         <div class="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
           <div class="text-xs uppercase tracking-wide text-zinc-400">Tokens served</div>
-          <div id="m-tokens" class="mt-2 text-3xl font-semibold">-</div>
+          <div id="m-tokens" class="mt-2 text-3xl font-bold tracking-tight">-</div>
         </div>
       </div>
 
+      <!-- Generate invites -->
       <div class="mt-8 rounded-3xl border border-white/10 bg-white/[0.04] p-6">
-        <div class="flex flex-wrap items-end gap-3">
-          <div class="flex-1 min-w-[200px]">
-            <label class="block text-xs uppercase tracking-wide text-zinc-400">Generate codes</label>
+        <h2 class="text-lg font-semibold tracking-tight">Generate invitation codes</h2>
+        <p class="mt-1 text-sm text-zinc-400">Each code can be claimed once by a new signup at <code class="text-violet-300">/signup.html</code>.</p>
+        <div class="mt-4 flex flex-wrap items-end gap-3">
+          <div class="flex-1 min-w-[160px]">
+            <label class="block text-xs uppercase tracking-wide text-zinc-400">How many</label>
             <input id="gen-count" type="number" min="1" max="50" value="5" class="mt-2 w-full rounded-xl bg-black/40 px-4 py-2">
           </div>
           <div class="flex-1 min-w-[240px]">
             <label class="block text-xs uppercase tracking-wide text-zinc-400">Notes (optional)</label>
             <input id="gen-notes" type="text" placeholder="Friends batch" class="mt-2 w-full rounded-xl bg-black/40 px-4 py-2">
           </div>
-          <button id="gen" class="rounded-xl bg-violet-600 px-4 py-2 font-semibold">Generate</button>
+          <button id="gen" class="grad-btn rounded-xl px-5 py-2 font-bold">Generate</button>
         </div>
-        <pre id="gen-output" class="mt-4 hidden whitespace-pre-wrap rounded-xl bg-black/40 p-4 text-sm text-emerald-300"></pre>
+        <div id="gen-result" class="mt-4 hidden">
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-zinc-400" id="gen-summary"></span>
+            <button id="gen-copy" class="text-xs text-violet-300 hover:text-violet-200">Copy all</button>
+          </div>
+          <pre id="gen-output" class="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-xl bg-black/50 p-4 text-sm text-emerald-300 font-mono"></pre>
+        </div>
       </div>
 
+      <!-- Recent invites -->
       <div class="mt-8 rounded-3xl border border-white/10 bg-white/[0.04] p-6">
         <div class="flex items-center justify-between">
-          <h2 class="text-lg font-semibold">Recent invites</h2>
+          <h2 class="text-lg font-semibold tracking-tight">Recent invites</h2>
           <button id="refresh" class="text-sm text-zinc-400 hover:text-white">Refresh</button>
         </div>
         <div class="mt-4 overflow-x-auto">
@@ -81,31 +111,43 @@
   </main>
 
   <script>
-    const $ = (id) => document.getElementById(id);
-    const STORAGE_KEY = "nm_admin_key";
+    const $ = id => document.getElementById(id);
+    const TOK_KEY = "nm_admin_token";
+    const TOK_KIND = "nm_admin_token_kind";
 
-    function getKey() { return sessionStorage.getItem(STORAGE_KEY); }
-    function setKey(k) { sessionStorage.setItem(STORAGE_KEY, k); }
-    function clearKey() { sessionStorage.removeItem(STORAGE_KEY); }
+    function getCreds() {
+      const tok = sessionStorage.getItem(TOK_KEY);
+      const kind = sessionStorage.getItem(TOK_KIND);
+      return tok ? { tok, kind } : null;
+    }
+    function setCreds(tok, kind) { sessionStorage.setItem(TOK_KEY, tok); sessionStorage.setItem(TOK_KIND, kind); }
+    function clearCreds() { sessionStorage.removeItem(TOK_KEY); sessionStorage.removeItem(TOK_KIND); }
 
     async function api(path, opts = {}) {
-      const key = getKey();
-      const headers = Object.assign({ "X-Admin-Key": key, "Content-Type": "application/json" }, opts.headers || {});
+      const creds = getCreds();
+      const headers = Object.assign({ "Content-Type": "application/json" }, opts.headers || {});
+      if (creds) {
+        if (creds.kind === "key") headers["X-Admin-Key"] = creds.tok;
+        else headers["Authorization"] = "Bearer " + creds.tok;
+      }
       const response = await fetch(path, Object.assign({}, opts, { headers }));
-      if (response.status === 401 || response.status === 503) {
-        clearKey();
-        showGate(response.status === 401 ? "Invalid admin key." : "Admin API not configured on server.");
+      if (response.status === 401 || response.status === 403) {
+        clearCreds();
+        showGate("Session expired. Sign in again.");
         throw new Error("auth");
+      }
+      if (response.status === 503) {
+        showGate("Admin API not configured on server.");
+        throw new Error("server");
       }
       return response.json();
     }
 
-    function showGate(error) {
+    function showGate(err) {
       $("gate").classList.remove("hidden");
       $("panel").classList.add("hidden");
-      $("gate-error").textContent = error || "";
+      $("gate-error").textContent = err || "";
     }
-
     function showPanel() {
       $("gate").classList.add("hidden");
       $("panel").classList.remove("hidden");
@@ -114,66 +156,94 @@
 
     async function loadStats() {
       const data = await api("/api/admin/stats");
-      $("m-users").textContent = data.users_total ?? 0;
-      $("m-nodes-online").textContent = data.nodes_online ?? 0;
-      $("m-nodes-total").textContent = `of ${data.nodes_total ?? 0} total`;
-      $("m-invites-claimed").textContent = data.invites_claimed ?? 0;
-      $("m-invites-total").textContent = `of ${data.invites_total ?? 0} issued`;
+      $("m-users").textContent = (data.users_total ?? 0).toLocaleString();
+      $("m-nodes-online").textContent = (data.nodes_online ?? 0).toLocaleString();
+      $("m-nodes-total").textContent = "of " + (data.nodes_total ?? 0) + " total";
+      $("m-invites-claimed").textContent = (data.invites_claimed ?? 0).toLocaleString();
+      $("m-invites-total").textContent = "of " + (data.invites_total ?? 0) + " issued";
       $("m-tokens").textContent = (data.tokens_served_total ?? 0).toLocaleString();
     }
 
     async function loadInvites() {
       const data = await api("/api/admin/invites");
-      const rows = (data.invites || []).map((row) => {
-        const status = row.revoked ? "revoked"
-          : row.claimed_by_user_id ? "claimed"
-          : "open";
-        const color = status === "claimed" ? "text-emerald-300"
-          : status === "revoked" ? "text-red-300"
-          : "text-zinc-300";
+      const rows = (data.invites || []).map(row => {
+        const status = row.revoked ? "revoked" : row.claimed_by_user_id ? "claimed" : "open";
+        const color = status === "claimed" ? "text-emerald-300" : status === "revoked" ? "text-red-300" : "text-zinc-300";
         const claimedAt = row.claimed_at ? new Date(row.claimed_at).toLocaleString() : "-";
-        return `<tr class="border-t border-white/5">
-          <td class="py-2 pr-4 font-mono">${row.code}</td>
-          <td class="py-2 pr-4 ${color}">${status}</td>
-          <td class="py-2 pr-4 text-zinc-400">${claimedAt}</td>
-          <td class="py-2 pr-4 text-zinc-400">${row.notes || ""}</td>
-        </tr>`;
+        return `<tr class="border-t border-white/5"><td class="py-2 pr-4 font-mono">${row.code}</td><td class="py-2 pr-4 ${color}">${status}</td><td class="py-2 pr-4 text-zinc-400">${claimedAt}</td><td class="py-2 pr-4 text-zinc-400">${row.notes || ""}</td></tr>`;
       }).join("");
       $("invite-rows").innerHTML = rows || `<tr><td colspan="4" class="py-4 text-zinc-500">No invites yet.</td></tr>`;
     }
 
-    async function refreshAll() {
-      try { await Promise.all([loadStats(), loadInvites()]); } catch (_) {}
+    async function refreshAll() { try { await Promise.all([loadStats(), loadInvites()]); } catch(_) {} }
+
+    async function doPasswordLogin() {
+      const email = $("email").value.trim();
+      const password = $("password").value;
+      if (!email || !password) { $("gate-error").textContent = "Email and password are required."; return; }
+      $("gate-error").textContent = "";
+      $("unlock").disabled = true; $("unlock").textContent = "Signing in…";
+      try {
+        const r = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password })
+        });
+        const d = await r.json().catch(()=> ({}));
+        if (!r.ok) {
+          const map = { invalid_credentials: "Wrong email or password.", email_not_confirmed: "Email not yet confirmed.", invalid_email: "That doesn't look like a valid email.", auth_provider_error: "Auth provider error — try again." };
+          $("gate-error").textContent = map[d.detail] || ("Login failed: " + (d.detail || ("HTTP " + r.status)));
+          return;
+        }
+        setCreds(d.access_token, "jwt");
+        try { await loadStats(); } catch (_) { return; }
+        showPanel();
+      } catch (e) {
+        $("gate-error").textContent = "Network error: " + e.message;
+      } finally {
+        $("unlock").disabled = false; $("unlock").textContent = "Sign in";
+      }
     }
 
-    $("unlock").addEventListener("click", async () => {
-      const value = $("key").value.trim();
-      if (!value) { $("gate-error").textContent = "Paste a key first."; return; }
-      setKey(value);
-      try {
-        await loadStats();
-        showPanel();
-      } catch (_) { /* showGate already handled */ }
-    });
+    async function doKeyLogin() {
+      const key = $("api-key").value.trim();
+      if (!key) { $("gate-error").textContent = "Paste a key first."; return; }
+      setCreds(key, "key");
+      try { await loadStats(); showPanel(); } catch (_) {}
+    }
 
-    $("logout").addEventListener("click", () => { clearKey(); showGate(""); });
-    $("refresh").addEventListener("click", refreshAll);
-
-    $("gen").addEventListener("click", async () => {
-      const count = parseInt($("gen-count").value || "1", 10);
+    async function doGenerate() {
+      const count = Math.max(1, Math.min(50, parseInt($("gen-count").value || "1", 10)));
       const notes = $("gen-notes").value.trim();
-      const response = await api("/api/admin/invites", {
-        method: "POST",
-        body: JSON.stringify({ count, notes }),
-      });
-      const codes = response.codes || [];
-      const block = $("gen-output");
-      block.classList.remove("hidden");
-      block.textContent = codes.join("\n");
-      await loadInvites();
+      $("gen").disabled = true; const original = $("gen").textContent; $("gen").textContent = "Generating…";
+      try {
+        const response = await api("/api/admin/invites", { method: "POST", body: JSON.stringify({ count, notes }) });
+        const codes = response.codes || [];
+        $("gen-result").classList.remove("hidden");
+        $("gen-summary").textContent = codes.length + " new code" + (codes.length === 1 ? "" : "s") + " — share with friends or paste into signup.";
+        $("gen-output").textContent = codes.join("\n");
+        await loadInvites();
+      } catch (e) {
+        if (e.message !== "auth") alert("Couldn't generate codes: " + e.message);
+      } finally {
+        $("gen").disabled = false; $("gen").textContent = original;
+      }
+    }
+
+    $("gen-copy").addEventListener("click", async () => {
+      const txt = $("gen-output").textContent;
+      try { await navigator.clipboard.writeText(txt); $("gen-copy").textContent = "Copied!"; setTimeout(()=>{$("gen-copy").textContent="Copy all";},1400); } catch(_){}
     });
 
-    if (getKey()) { showPanel(); } else { showGate(""); }
+    $("unlock").addEventListener("click", doPasswordLogin);
+    $("unlock-key").addEventListener("click", doKeyLogin);
+    $("password").addEventListener("keydown", e => { if (e.key === "Enter") doPasswordLogin(); });
+    $("email").addEventListener("keydown", e => { if (e.key === "Enter") $("password").focus(); });
+    $("logout").addEventListener("click", () => { clearCreds(); showGate(""); });
+    $("refresh").addEventListener("click", refreshAll);
+    $("gen").addEventListener("click", doGenerate);
+
+    if (getCreds()) { loadStats().then(showPanel).catch(()=>{}); } else { showGate(""); }
   </script>
 </body>
 </html>

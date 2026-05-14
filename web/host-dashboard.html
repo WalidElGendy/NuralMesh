@@ -1,46 +1,662 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Host dashboard - NeuralMesh Beta</title>
-<script src="https://cdn.tailwindcss.com"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Host dashboard - Meshnet</title>
+  <meta name="description" content="Activate this computer as a node on the Meshnet sovereign GPU mesh.">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #05050a;
+      --panel: #10101b;
+      --panel-2: rgba(16, 16, 27, .78);
+      --line: #292940;
+      --line-soft: rgba(255,255,255,.08);
+      --text: #f8fafc;
+      --muted: #a1a1aa;
+      --muted-2: #6b7280;
+      --violet: #8b5cf6;
+      --violet-glow: rgba(139, 92, 246, .28);
+      --cyan: #22d3ee;
+      --emerald: #10b981;
+      --emerald-soft: #6ee7b7;
+      --pink: #ec4899;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 20% 0%, var(--violet-glow), transparent 32rem),
+        radial-gradient(circle at 85% 12%, rgba(34, 211, 238, .15), transparent 28rem),
+        var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      letter-spacing: -.005em;
+    }
+    a { color: inherit; text-decoration: none; }
+    kbd { background: rgba(255,255,255,.08); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 6px; padding: 1px 6px; font-size: 12px; font-family: inherit; }
+    code { background: rgba(255,255,255,.06); padding: 1px 6px; border-radius: 6px; font-size: .9em; color: #c4b5fd; }
+    .container { width: min(1120px, calc(100% - 40px)); margin: 0 auto; }
+
+    /* nav */
+    nav { display: flex; align-items: center; justify-content: space-between; padding: 24px 0; }
+    .brand { font-weight: 800; letter-spacing: -.05em; font-size: 22px; display: inline-flex; align-items: center; gap: 0; }
+    .brand .dot { color: var(--violet); margin: 0 -.05em; }
+    .signout { color: var(--muted); font-size: 14px; transition: color .15s; }
+    .signout:hover { color: var(--text); }
+
+    /* headings */
+    h1 { font-size: clamp(36px, 6vw, 56px); line-height: .98; letter-spacing: -.055em; margin: 32px 0 10px; }
+    h2 { font-size: clamp(24px, 3vw, 32px); line-height: 1.05; letter-spacing: -.035em; margin: 0; }
+    .sub { color: var(--muted); font-size: 17px; line-height: 1.55; max-width: 580px; margin: 0 0 36px; }
+
+    /* primary card */
+    .card {
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      backdrop-filter: blur(10px);
+      border-radius: 28px;
+      padding: 32px;
+    }
+
+    /* OS picker */
+    .os-tabs { display: flex; gap: 8px; margin-bottom: 28px; }
+    .os-tab {
+      padding: 10px 18px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.04);
+      color: var(--muted);
+      font-family: inherit;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all .15s;
+    }
+    .os-tab:hover { color: var(--text); border-color: var(--line-soft); }
+    .os-tab.active {
+      color: var(--text);
+      border-color: rgba(139, 92, 246, .55);
+      background: rgba(139, 92, 246, .14);
+      box-shadow: 0 0 0 4px rgba(139, 92, 246, .08);
+    }
+    .os-tab svg { width: 16px; height: 16px; }
+
+    /* install step */
+    .step { display: flex; gap: 16px; margin-bottom: 22px; }
+    .step:last-child { margin-bottom: 0; }
+    .step-num {
+      flex-shrink: 0;
+      width: 32px; height: 32px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      display: inline-flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 14px;
+      color: var(--muted);
+      background: rgba(255,255,255,.02);
+    }
+    .step-body { flex: 1; min-width: 0; }
+    .step-body h3 { margin: 4px 0 6px; font-size: 17px; font-weight: 700; letter-spacing: -.02em; }
+    .step-body p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.65; }
+
+    /* command box */
+    .cmd-box { position: relative; margin: 12px 0 0; }
+    pre.cmd {
+      background: rgba(0,0,0,.55);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 18px 84px 18px 18px;
+      color: var(--emerald-soft);
+      font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 13px;
+      line-height: 1.65;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      margin: 0;
+    }
+    .copy-btn {
+      position: absolute;
+      right: 10px; top: 10px;
+      border: 0;
+      border-radius: 10px;
+      padding: 8px 14px;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--violet), var(--cyan));
+      color: #020617;
+      cursor: pointer;
+      transition: transform .1s;
+    }
+    .copy-btn:hover { transform: translateY(-1px); }
+    .copy-btn:active { transform: translateY(0); }
+
+    /* polling status */
+    .status-row {
+      margin-top: 26px;
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 18px;
+      border: 1px solid rgba(139, 92, 246, .32);
+      background: rgba(139, 92, 246, .08);
+      border-radius: 14px;
+      font-size: 14px;
+      color: #ddd6fe;
+    }
+    .pulse-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--violet);
+      box-shadow: 0 0 0 0 rgba(139, 92, 246, .7);
+      animation: pulse-dot 1.6s cubic-bezier(.4,0,.6,1) infinite;
+    }
+    @keyframes pulse-dot {
+      0% { box-shadow: 0 0 0 0 rgba(139, 92, 246, .7); }
+      70% { box-shadow: 0 0 0 14px rgba(139, 92, 246, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0); }
+    }
+
+    /* helper note */
+    .note {
+      margin-top: 24px;
+      padding: 16px 18px;
+      border: 1px solid var(--line);
+      background: rgba(0,0,0,.35);
+      border-radius: 16px;
+    }
+    .note h3 { margin: 0 0 6px; font-size: 14px; font-weight: 700; letter-spacing: -.01em; }
+    .note p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
+
+    /* LIVE panel */
+    #live-panel { display: none; }
+    .live-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 32px; }
+    .live-head h2 { letter-spacing: -.04em; }
+    .pill {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 5px 12px; border-radius: 999px;
+      font-size: 12px; font-weight: 700; letter-spacing: .03em;
+    }
+    .pill-live {
+      background: rgba(16, 185, 129, .14);
+      color: var(--emerald-soft);
+      border: 1px solid rgba(16, 185, 129, .35);
+    }
+    .pill-live .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--emerald-soft);
+      animation: blink 1.5s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
+
+    .node-id-line {
+      color: var(--muted); font-size: 14px; margin: 8px 0 28px;
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+    }
+
+    /* live grid */
+    .live-grid {
+      display: grid;
+      grid-template-columns: 1.25fr 1fr 1fr;
+      gap: 18px;
+    }
+    @media (max-width: 860px) { .live-grid { grid-template-columns: 1fr; } }
+
+    .stat-card {
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      border-radius: 24px;
+      padding: 26px;
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-label {
+      color: var(--muted);
+      font-size: 11px; font-weight: 700;
+      letter-spacing: .12em; text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+    .stat-value {
+      font-size: 38px; font-weight: 800;
+      letter-spacing: -.04em; line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+    .stat-unit { font-size: 18px; font-weight: 600; color: var(--muted); margin-left: 4px; }
+    .stat-sub { color: var(--muted); font-size: 13px; margin-top: 12px; line-height: 1.55; }
+
+    /* heartbeat card */
+    .heart-card {
+      display: flex; flex-direction: column;
+      min-height: 280px;
+    }
+    .heart-wrap {
+      flex: 1;
+      display: flex; align-items: center; justify-content: center;
+      position: relative;
+      padding: 18px 0 12px;
+    }
+    .heart-icon {
+      width: 88px; height: 88px;
+      filter: drop-shadow(0 0 24px rgba(236, 72, 153, .55));
+      animation: heartbeat 1.05s cubic-bezier(.6,0,.4,1) infinite;
+      transform-origin: center;
+      z-index: 2;
+    }
+    @keyframes heartbeat {
+      0%   { transform: scale(1); }
+      14%  { transform: scale(1.18); }
+      28%  { transform: scale(1.02); }
+      42%  { transform: scale(1.10); }
+      70%  { transform: scale(1.00); }
+      100% { transform: scale(1); }
+    }
+    .heart-ring {
+      position: absolute;
+      width: 88px; height: 88px;
+      border: 2px solid rgba(236, 72, 153, .42);
+      border-radius: 50%;
+      animation: ring 2.1s ease-out infinite;
+      pointer-events: none;
+    }
+    .heart-ring.r2 { animation-delay: .7s; }
+    .heart-ring.r3 { animation-delay: 1.4s; }
+    @keyframes ring {
+      0%   { transform: scale(1);   opacity: .55; }
+      80%  { opacity: 0; }
+      100% { transform: scale(2.4); opacity: 0; }
+    }
+
+    .ecg-wrap { padding: 0 4px; }
+    .ecg-svg { width: 100%; height: 56px; }
+    .ecg-line {
+      fill: none;
+      stroke: var(--pink);
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      filter: drop-shadow(0 0 4px rgba(236, 72, 153, .65));
+    }
+    .hb-sub { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .hb-sub .bpm { color: var(--pink); font-weight: 700; }
+
+    /* earnings + uptime accents */
+    .accent-violet { color: var(--violet); }
+    .accent-cyan { color: var(--cyan); }
+    .accent-emerald { color: var(--emerald-soft); }
+    .bg-accent::before {
+      content: '';
+      position: absolute;
+      inset: -50% -10% auto auto;
+      width: 200px; height: 200px;
+      background: radial-gradient(circle, var(--violet-glow), transparent 70%);
+      opacity: .7;
+      pointer-events: none;
+    }
+    .bg-accent.cyan::before { background: radial-gradient(circle, rgba(34, 211, 238, .22), transparent 70%); }
+
+    /* stop section */
+    .stop-section {
+      margin-top: 22px;
+      padding: 18px 22px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(0,0,0,.35);
+    }
+    .stop-section h3 { margin: 0 0 6px; font-size: 15px; letter-spacing: -.01em; }
+    .stop-section p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
+
+    footer {
+      color: var(--muted-2); font-size: 13px;
+      padding: 32px 0 40px;
+      border-top: 1px solid var(--line);
+      margin-top: 60px;
+    }
+    footer .container { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+    footer a:hover { color: var(--text); }
+
+    .err { color: #fca5a5; font-size: 13px; min-height: 18px; margin-top: 10px; }
+
+    /* Tooltip-ish for OS step */
+    .hidden { display: none !important; }
+  </style>
 </head>
-<body class="min-h-screen bg-zinc-950 text-white">
-<main class="mx-auto max-w-2xl px-6 py-12">
-<header class="mb-10 flex items-center justify-between">
-<div>
-<h1 class="text-3xl font-bold">NeuralMesh host dashboard</h1>
-<p class="mt-2 text-sm text-zinc-400">Activate this computer as a node on the mesh.</p>
-</div>
-<a href="/login.html" id="logout" class="text-sm text-zinc-400 hover:text-white">Sign out</a>
-</header>
-<section id="start" class="rounded-3xl border border-white/10 bg-white/[0.04] p-8 text-center">
-<div class="mx-auto mb-6 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-violet-600/20 text-3xl">!</div>
-<h2 class="text-2xl font-bold">Activate this computer as a node</h2>
-<p class="mt-2 text-sm text-zinc-400">One click. We will generate your install command. You paste it in Terminal and you are on the mesh.</p>
-<button id="go" class="mt-8 rounded-2xl bg-violet-600 hover:bg-violet-500 px-8 py-4 text-lg font-semibold">Activate this Mac as a node</button>
-<p id="err" class="mt-4 min-h-5 text-sm text-red-300"></p>
-</section>
-<section id="cmd-box" class="hidden mt-6 rounded-3xl border border-white/10 bg-white/[0.04] p-8">
-<h2 class="text-xl font-bold mb-2">Step 1: open Terminal on your Mac</h2>
-<p class="text-sm text-zinc-400 mb-6">Press Command+Space, type Terminal, hit Return.</p>
-<h2 class="text-xl font-bold mb-2">Step 2: paste this command and press Return</h2>
-<div class="relative">
-<pre id="cmd" class="rounded-xl bg-black/60 p-4 text-sm text-emerald-300 overflow-x-auto whitespace-pre-wrap break-all"></pre>
-<button id="copy" class="absolute right-3 top-3 rounded-lg bg-violet-600 hover:bg-violet-500 px-3 py-1.5 text-xs font-semibold">Copy</button>
-</div>
-<p class="mt-6 text-sm text-zinc-400">After about 2 minutes Terminal will show <code class="text-violet-300">heartbeat ok</code> messages. That is your node live on the mesh.</p>
-<p class="mt-2 text-xs text-zinc-500">You may be asked for your Mac password during install. To stop the node later, press Ctrl+C in that Terminal window.</p>
-</section>
-</main>
-<script>
-const $=(i)=>document.getElementById(i);
-function getEmail(){let e=sessionStorage.getItem("nm_email")||localStorage.getItem("nm_email");if(!e){e=(prompt("Your account email (the one you signed up with):")||"").trim();if(e)sessionStorage.setItem("nm_email",e);}return e;}
-async function go(){$("err").textContent="";const email=getEmail();if(!email){$("err").textContent="Email required";return;}$("go").disabled=true;$("go").textContent="Generating...";try{const r=await fetch("/api/provider/signup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,gpu_model:"",region:""})});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.detail||r.status);$("cmd").textContent=d.install_command;$("start").classList.add("hidden");$("cmd-box").classList.remove("hidden");try{await navigator.clipboard.writeText(d.install_command);}catch(_){}}catch(e){$("err").textContent="Error: "+e.message;$("go").disabled=false;$("go").textContent="Activate this Mac as a node";}}
-$("go").addEventListener("click",go);
-$("copy").addEventListener("click",async()=>{try{await navigator.clipboard.writeText($("cmd").textContent);$("copy").textContent="Copied";setTimeout(()=>$("copy").textContent="Copy",1500);}catch(_){$("copy").textContent="Press CMD+C";}});
-$("logout").addEventListener("click",(ev)=>{ev.preventDefault();sessionStorage.clear();window.location.href="/login.html";});
-</script>
+<body>
+  <div class="container">
+    <nav>
+      <a class="brand" href="/" aria-label="Meshnet">N<span class="dot">.</span>eshnet</a>
+      <a class="signout" href="/login.html" id="logout">Sign out</a>
+    </nav>
+
+    <h1>Host dashboard</h1>
+    <p class="sub" id="welcome">
+      Turn this computer into a paid node on the Meshnet mesh — the sovereign GPU network for AI inference.
+      Pick your OS, paste one command, and you're live in about two minutes.
+    </p>
+
+    <!-- INSTALL PANEL -->
+    <section id="install-panel" class="card">
+      <div class="os-tabs" role="tablist" aria-label="Operating system">
+        <button class="os-tab active" data-os="mac" role="tab" aria-selected="true">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M16.365 1.43c0 1.14-.493 2.27-1.177 3.08-.744.9-1.99 1.57-2.987 1.57-.12-1.103.42-2.244 1.114-3.075.785-.94 2.122-1.633 3.05-1.575zm4.565 16.51c-.388.9-.95 1.79-1.66 2.685-.97 1.18-2.32 2.66-3.99 2.69-1.49.03-1.87-.96-3.89-.96-2.03 0-2.44.94-3.84.99-1.6.07-2.83-1.27-3.81-2.45-2.05-2.45-3.6-6.92-1.52-9.93 1.04-1.5 2.92-2.44 4.85-2.47 1.45-.03 2.83.97 3.72.97.88 0 2.55-1.2 4.29-1.02.73.03 2.79.3 4.11 2.26-3.55 1.97-2.97 6.6.74 7.24z"/>
+          </svg>
+          macOS
+        </button>
+        <button class="os-tab" data-os="win" role="tab" aria-selected="false">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M0 3.449 9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/>
+          </svg>
+          Windows
+        </button>
+      </div>
+
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h3 id="step1-title">Open Terminal on your Mac</h3>
+          <p id="step1-body">Press <kbd>⌘ Space</kbd>, type <code>Terminal</code>, hit Return.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h3 id="step2-title">Paste this command and press Return</h3>
+          <div class="cmd-box">
+            <pre class="cmd" id="install-cmd">Generating your install command…</pre>
+            <button class="copy-btn" id="copy-btn" type="button">Copy</button>
+          </div>
+          <p class="err" id="install-error"></p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h3>Wait ~2 minutes</h3>
+          <p>The installer pulls a model and registers your node. Once your terminal prints <code>heartbeat ok</code>, this page switches to the live dashboard automatically.</p>
+        </div>
+      </div>
+
+      <div class="status-row">
+        <div class="pulse-dot"></div>
+        <span id="status-text">Waiting for your node to check in…</span>
+      </div>
+
+      <div class="note">
+        <h3>If you hit a snag</h3>
+        <p>
+          <strong>"command not found"</strong> — try with <code>sudo</code> in front.<br>
+          <strong>Mac password prompt</strong> — that's macOS confirming the install, type your login password.<br>
+          <strong>Windows SmartScreen</strong> — click "More info → Run anyway".
+        </p>
+      </div>
+    </section>
+
+    <!-- LIVE PANEL -->
+    <section id="live-panel">
+      <div class="live-head">
+        <h2>Your node is on the mesh</h2>
+        <span class="pill pill-live"><span class="dot"></span> LIVE</span>
+      </div>
+      <p class="node-id-line">Node ID: <span id="node-id">…</span></p>
+
+      <div class="live-grid">
+        <!-- Heartbeat -->
+        <div class="stat-card heart-card">
+          <div class="stat-label">Heartbeat</div>
+          <div class="heart-wrap">
+            <span class="heart-ring"></span>
+            <span class="heart-ring r2"></span>
+            <span class="heart-ring r3"></span>
+            <svg class="heart-icon" viewBox="0 0 24 24" fill="#ec4899" aria-hidden="true">
+              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+            </svg>
+          </div>
+          <div class="ecg-wrap">
+            <svg class="ecg-svg" viewBox="0 0 600 60" preserveAspectRatio="none">
+              <polyline id="ecg-line" class="ecg-line" points=""/>
+            </svg>
+          </div>
+          <div class="stat-sub hb-sub">
+            <span>Last beat: <span id="hb-last">just now</span></span>
+            <span class="bpm" id="hb-bpm">60 BPM</span>
+          </div>
+        </div>
+
+        <!-- Earnings -->
+        <div class="stat-card bg-accent">
+          <div class="stat-label">Earnings</div>
+          <div><span class="stat-value accent-violet" id="earnings-val">$0.0000</span></div>
+          <div class="stat-sub">
+            <span id="rate-sub">Rate: $0.045 / hour · paid weekly to your wallet</span>
+          </div>
+        </div>
+
+        <!-- Uptime -->
+        <div class="stat-card bg-accent cyan">
+          <div class="stat-label">Uptime</div>
+          <div><span class="stat-value accent-cyan" id="uptime-val">0s</span></div>
+          <div class="stat-sub">
+            <span id="jobs-sub">Jobs served: 0 · Tokens out: 0</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="stop-section">
+        <h3>To stop your node</h3>
+        <p>Press <kbd>Ctrl+C</kbd> in the terminal where the install is running. Earnings keep accruing while heartbeats arrive — once they stop for 5 minutes we mark you offline.</p>
+      </div>
+    </section>
+
+    <footer>
+      <div class="container">
+        <span>API: <span id="api-base">https://api.beta.meshnet.co</span></span>
+        <span><a href="/terms.html">Terms</a> · <a href="/privacy.html">Privacy</a></span>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    const $ = id => document.getElementById(id);
+
+    /* ----- session email ----- */
+    function getEmail() {
+      let e = sessionStorage.getItem('nm_email') || localStorage.getItem('nm_email');
+      if (!e) {
+        e = (prompt('Your account email (the one you signed up with):') || '').trim();
+        if (e) sessionStorage.setItem('nm_email', e);
+      }
+      return e;
+    }
+
+    /* ----- OS picker ----- */
+    let currentOS = 'mac';
+    document.querySelectorAll('.os-tab').forEach(t => {
+      t.addEventListener('click', () => {
+        document.querySelectorAll('.os-tab').forEach(x => { x.classList.remove('active'); x.setAttribute('aria-selected','false'); });
+        t.classList.add('active'); t.setAttribute('aria-selected','true');
+        currentOS = t.dataset.os;
+        renderInstallCmd();
+      });
+    });
+
+    /* ----- install command rendering ----- */
+    let claimToken = null;
+    function macCmd(t) { return 'curl -sSL https://install.beta.meshnet.co | bash -s -- --claim-token ' + t; }
+    function winCmd(t) {
+      return 'iwr https://install.beta.meshnet.co/win.ps1 -UseBasicParsing | iex; Install-Meshnet -ClaimToken ' + t;
+    }
+    function renderInstallCmd() {
+      const t = claimToken || 'YOUR_CLAIM_TOKEN';
+      $('install-cmd').textContent = currentOS === 'mac' ? macCmd(t) : winCmd(t);
+      $('step1-title').textContent = currentOS === 'mac' ? 'Open Terminal on your Mac' : 'Open PowerShell on Windows';
+      $('step1-body').innerHTML = currentOS === 'mac'
+        ? 'Press <kbd>⌘ Space</kbd>, type <code>Terminal</code>, hit Return.'
+        : 'Press <kbd>⊞ Win</kbd>, type <code>powershell</code>, hit Enter. (Right-click → "Run as administrator" if SmartScreen prompts.)';
+      $('step2-title').textContent = currentOS === 'mac'
+        ? 'Paste this command and press Return'
+        : 'Paste this in PowerShell and press Enter';
+    }
+
+    /* ----- request claim token + start polling ----- */
+    async function startActivation() {
+      const email = getEmail();
+      if (!email) {
+        $('install-error').textContent = 'No email — please sign in again.';
+        return;
+      }
+      try {
+        const r = await fetch('/api/provider/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, gpu_model: '', region: '' })
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          $('install-error').textContent = 'Could not generate token: ' + (d.detail || ('HTTP '+r.status));
+          $('install-cmd').textContent = '# (waiting for token)';
+          return;
+        }
+        claimToken = d.claim_token;
+        renderInstallCmd();
+        try { await navigator.clipboard.writeText(currentOS === 'mac' ? macCmd(claimToken) : winCmd(claimToken)); } catch(_){}
+        pollClaim(d.claim_token, email);
+      } catch (e) {
+        $('install-error').textContent = 'Network error: ' + e.message;
+      }
+    }
+
+    $('copy-btn').addEventListener('click', async () => {
+      const t = $('install-cmd').textContent;
+      try {
+        await navigator.clipboard.writeText(t);
+        $('copy-btn').textContent = 'Copied!';
+        setTimeout(() => { $('copy-btn').textContent = 'Copy'; }, 1400);
+      } catch(_) { $('copy-btn').textContent = 'Press ⌘C'; }
+    });
+
+    function pollClaim(tok, email) {
+      const started = Date.now();
+      const tid = setInterval(async () => {
+        const elapsed = Math.round((Date.now() - started) / 1000);
+        $('status-text').textContent = 'Waiting for your node to check in… ('+elapsed+'s)';
+        try {
+          const r = await fetch('/api/provider/claim-status?claim_token=' + encodeURIComponent(tok));
+          if (r.ok) {
+            const d = await r.json();
+            if (d.claimed) {
+              clearInterval(tid);
+              showLive(d.node_id, email);
+              return;
+            }
+          }
+        } catch(_) {}
+        if (elapsed > 900) {
+          clearInterval(tid);
+          $('status-text').textContent = 'Still waiting — if your terminal shows "heartbeat ok", reload this page.';
+        }
+      }, 4000);
+    }
+
+    const DEFAULT_RATE_PER_HOUR = 0.045;
+    let nodeStartTs = 0;
+    let liveRate = DEFAULT_RATE_PER_HOUR;
+    let liveNodeId = '';
+
+    function showLive(nodeId, email) {
+      $('install-panel').style.display = 'none';
+      $('live-panel').style.display = 'block';
+      liveNodeId = nodeId || ('node-' + Math.random().toString(36).slice(2,10));
+      $('node-id').textContent = liveNodeId;
+
+      const k = 'nm_node_start_' + (nodeId || email);
+      let startTs = parseInt(localStorage.getItem(k) || '0', 10);
+      if (!startTs) { startTs = Date.now(); localStorage.setItem(k, String(startTs)); }
+      nodeStartTs = startTs;
+
+      startEcg();
+      startTickers();
+    }
+
+    function fmtUptime(ms) {
+      const s = Math.max(0, Math.floor(ms / 1000));
+      const d = Math.floor(s / 86400);
+      const h = Math.floor((s % 86400) / 3600);
+      const m = Math.floor((s % 3600) / 60);
+      const sec = s % 60;
+      if (d) return d+'d '+h+'h '+m+'m';
+      if (h) return h+'h '+m+'m '+String(sec).padStart(2,'0')+'s';
+      if (m) return m+'m '+String(sec).padStart(2,'0')+'s';
+      return sec + 's';
+    }
+
+    let lastStatsAt = 0;
+    async function tick() {
+      const now = Date.now();
+      const ms = now - nodeStartTs;
+      const hrs = ms / 3600000;
+      $('uptime-val').textContent = fmtUptime(ms);
+      const earnings = hrs * liveRate;
+      $('earnings-val').textContent = '$' + earnings.toFixed(4);
+
+      if (now - lastStatsAt > 8000 && liveNodeId) {
+        lastStatsAt = now;
+        try {
+          const r = await fetch('/api/provider/node-stats?node_id=' + encodeURIComponent(liveNodeId));
+          if (r.ok) {
+            const d = await r.json();
+            if (d.earnings_usd != null) $('earnings-val').textContent = '$' + Number(d.earnings_usd).toFixed(4);
+            if (d.jobs_served != null || d.tokens_out != null) {
+              $('jobs-sub').textContent = 'Jobs served: ' + (d.jobs_served ?? 0) + ' · Tokens out: ' + (d.tokens_out ?? 0);
+            }
+            if (d.last_beat_ago_s != null) $('hb-last').textContent = d.last_beat_ago_s + 's ago';
+            if (d.bpm != null) $('hb-bpm').textContent = d.bpm + ' BPM';
+            if (d.rate_per_hour_usd != null) {
+              liveRate = Number(d.rate_per_hour_usd);
+              $('rate-sub').textContent = 'Rate: $' + liveRate.toFixed(3) + ' / hour · paid weekly to your wallet';
+            }
+          }
+        } catch(_) {}
+      }
+    }
+
+    function startTickers() { tick(); setInterval(tick, 1000); }
+
+    function startEcg() {
+      const W = 600, H = 60, BASE = H * 0.55;
+      const pts = [];
+      function yAt(phase) {
+        if (phase >= 4 && phase <= 8) return BASE - 4 * Math.sin((phase-4) / 4 * Math.PI);
+        if (phase === 18) return BASE + 4;
+        if (phase === 20) return BASE - 22;
+        if (phase === 22) return BASE + 12;
+        if (phase >= 28 && phase <= 36) return BASE - 6 * Math.sin((phase-28) / 8 * Math.PI);
+        return BASE;
+      }
+      for (let i=0; i<W; i++) pts.push([i, yAt(i % 60)]);
+      const line = $('ecg-line');
+      function render() { line.setAttribute('points', pts.map(p => p[0]+','+p[1].toFixed(1)).join(' ')); }
+      render();
+      let offset = 0;
+      setInterval(() => {
+        offset = (offset + 3) % 60;
+        for (let i=0; i<pts.length; i++) pts[i][1] = yAt((i + offset) % 60);
+        render();
+      }, 55);
+    }
+
+    $('logout').addEventListener('click', e => {
+      e.preventDefault();
+      sessionStorage.clear();
+      window.location.href = '/login.html';
+    });
+
+    renderInstallCmd();
+    startActivation();
+  </script>
 </body>
 </html>

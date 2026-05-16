@@ -18,7 +18,7 @@
 </head>
 <body>
   <nav>
-    <a href="/">NeuralMesh Beta</a>
+    <a href="/" class="brand" aria-label="MeshNet home"><img src="https://meshnet.co/logo-new.png?v=2" alt="MeshNet" style="height:32px;width:auto;display:block;"></a>
     <div class="links">
       <a href="/pricing.html">Pricing</a>
       <a href="/login.html">Login</a>
@@ -33,5 +33,32 @@
     <section><h2>Prompt data</h2><p>Prompt handling policies are finalized in later sprints. Do not submit sensitive personal data during beta onboarding.</p></section>
     <section><h2>Infrastructure</h2><p>Beta infrastructure uses Supabase, Render, Vercel, Cloudflare DNS, Sentry when configured, and provider services required for inference.</p></section>
   </main>
+<style>
+  .site-footer{border-top:1px solid rgba(255,255,255,0.08);margin-top:64px;padding:32px 24px;color:#a1a1aa;font-size:14px}
+  .site-footer .footer-inner{max-width:1100px;margin:0 auto;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px}
+  .site-footer .footer-brand{display:flex;align-items:center;gap:12px}
+  .site-footer .footer-brand img{height:28px;width:auto;display:block}
+  .site-footer .footer-brand span{color:#a1a1aa}
+  .site-footer .footer-links{display:flex;flex-wrap:wrap;gap:20px}
+  .site-footer .footer-links a{color:#a78bfa;text-decoration:none}
+  .site-footer .footer-links a:hover{text-decoration:underline}
+  .site-footer .footer-copy{width:100%;text-align:center;margin-top:16px;color:#71717a;font-size:13px}
+  @media (max-width:560px){.site-footer .footer-inner{flex-direction:column;align-items:flex-start}}
+</style>
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <img src="https://meshnet.co/logo-new.png?v=2" alt="MeshNet">
+      <span>Decentralized AI. Real Money.</span>
+    </div>
+    <div class="footer-links">
+      <a href="#">Docs</a>
+      <a href="https://github.com/WalidElGendy/NuralMesh">GitHub</a>
+      <a href="#">Status</a>
+      <a href="/privacy.html">Privacy Policy</a>
+    </div>
+    <div class="footer-copy">© 2026 MeshNet Inc. All rights reserved.</div>
+  </div>
+</footer>
 </body>
 </html>

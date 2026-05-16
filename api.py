@@ -1184,3 +1184,8 @@ def chat(body: ChatRequest):
 
 
 app.mount("/dashboard", StaticFiles(directory="dashboard", html=True), name="dashboard")
+
+
+# Wire in /api/agents endpoints
+from agents import router as _agents_router
+app.include_router(_agents_router)

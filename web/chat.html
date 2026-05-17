@@ -8,16 +8,347 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/chat.css">
+  <style>
+    :root{
+      --bg:#0b0b0f;
+      --bg-elev:#111118;
+      --bg-elev-2:#171722;
+      --bg-hover:#1c1c2a;
+      --bg-active:#22223a;
+      --border:rgba(255,255,255,.07);
+      --border-strong:rgba(255,255,255,.12);
+      --text:#ececf1;
+      --text-dim:#9a9aae;
+      --text-muted:#6b6b7d;
+      --accent:#7c5cff;
+      --accent-2:#9b87ff;
+      --accent-grad:linear-gradient(135deg,#7c5cff 0%,#5b8cff 100%);
+      --danger:#ff5c7a;
+      --radius:12px;
+      --radius-sm:8px;
+      --shadow:0 8px 28px rgba(0,0,0,.45);
+      --sidebar-w:280px;
+      --composer-max:780px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0}
+    body{
+      font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+      background:var(--bg);
+      color:var(--text);
+      -webkit-font-smoothing:antialiased;
+      overflow:hidden;
+    }
+    a{color:inherit;text-decoration:none}
+    button{font-family:inherit;cursor:pointer;border:0;background:transparent;color:inherit}
+    input,textarea{font-family:inherit;color:inherit}
+    ::-webkit-scrollbar{width:10px;height:10px}
+    ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:8px}
+    ::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.16)}
+
+    /* ===== App layout ===== */
+    #app,.nm-app{
+      display:grid;
+      grid-template-columns:var(--sidebar-w) 1fr;
+      height:100vh;
+      width:100vw;
+    }
+    body.sidebar-collapsed #app,
+    body.sidebar-collapsed .nm-app{grid-template-columns:0 1fr}
+    body.sidebar-collapsed .nm-sidebar,
+    body.sidebar-collapsed #sidebar{transform:translateX(-100%)}
+
+    /* ===== Sidebar ===== */
+    #sidebar,.nm-sidebar{
+      background:var(--bg-elev);
+      border-right:1px solid var(--border);
+      display:flex;
+      flex-direction:column;
+      min-height:0;
+      transition:transform .2s ease;
+    }
+    .nm-sidebar__header,.sidebar-header{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:14px 14px 10px;
+      border-bottom:1px solid var(--border);
+    }
+    .nm-sidebar__brand,.brand{
+      display:flex;
+      align-items:center;
+      gap:9px;
+      font-weight:700;
+      font-size:15px;
+      letter-spacing:.2px;
+      flex:1;
+      color:var(--text);
+    }
+    .nm-sidebar__logo{width:22px;height:22px;border-radius:6px;object-fit:contain}
+    .nm-iconbtn{
+      width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;
+      border-radius:8px;color:var(--text-dim);
+      transition:background .15s,color .15s;
+    }
+    .nm-iconbtn:hover{background:var(--bg-hover);color:var(--text)}
+    .nm-iconbtn--primary{
+      background:var(--accent-grad);
+      color:#fff;
+    }
+    .nm-iconbtn--primary:hover{filter:brightness(1.08);color:#fff}
+
+    .btn-new-agent{
+      padding:7px 12px;
+      border-radius:8px;
+      font-weight:600;
+      font-size:13px;
+      background:var(--accent-grad);
+      color:#fff;
+      transition:filter .15s,transform .05s;
+    }
+    .btn-new-agent:hover{filter:brightness(1.08)}
+    .btn-new-agent:active{transform:translateY(1px)}
+
+    .nm-sidebar__search,.sidebar-search{padding:10px 12px}
+    .nm-sidebar__search input,.sidebar-search input{
+      width:100%;
+      background:var(--bg-elev-2);
+      border:1px solid var(--border);
+      color:var(--text);
+      padding:9px 12px;
+      border-radius:9px;
+      font-size:13px;
+      outline:none;
+      transition:border-color .15s,background .15s;
+    }
+    .nm-sidebar__search input::placeholder,
+    .sidebar-search input::placeholder{color:var(--text-muted)}
+    .nm-sidebar__search input:focus,
+    .sidebar-search input:focus{
+      border-color:var(--accent);
+      background:#1a1a26;
+    }
+
+    .nm-agent-list,.agent-list{
+      list-style:none;margin:0;padding:6px 8px 8px;
+      overflow-y:auto;
+      flex:1;
+      min-height:0;
+    }
+    .agent-row{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:9px 10px;
+      border-radius:9px;
+      cursor:pointer;
+      transition:background .12s;
+      margin-bottom:2px;
+    }
+    .agent-row:hover{background:var(--bg-hover)}
+    .agent-row.active{background:var(--bg-active)}
+    .agent-avatar{
+      width:30px;height:30px;flex:none;
+      border-radius:50%;
+      display:flex;align-items:center;justify-content:center;
+      font-size:12px;font-weight:700;color:#fff;
+      background:var(--accent-grad);
+    }
+    .agent-meta{flex:1;min-width:0}
+    .agent-title{
+      font-size:13.5px;font-weight:600;color:var(--text);
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+      line-height:1.25;
+    }
+    .agent-subtitle{
+      font-size:12px;color:var(--text-muted);
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+      margin-top:2px;line-height:1.2;
+    }
+    .agent-right{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex:none}
+    .agent-time{font-size:11px;color:var(--text-muted)}
+    .agent-badge{
+      min-width:18px;height:18px;padding:0 5px;
+      border-radius:9px;background:var(--accent);
+      color:#fff;font-size:10px;font-weight:700;
+      display:inline-flex;align-items:center;justify-content:center;
+    }
+
+    .empty-state{
+      padding:30px 16px;text-align:center;color:var(--text-muted);font-size:13px;
+    }
+    .empty-state .big-new{margin-top:14px}
+
+    .nm-sidebar__footer{
+      padding:10px 14px;
+      border-top:1px solid var(--border);
+      display:flex;align-items:center;justify-content:space-between;
+      font-size:12px;color:var(--text-dim);
+    }
+    .nm-account-link:hover{color:var(--text)}
+
+    /* ===== Pane / Conversation ===== */
+    #pane,.nm-pane{
+      display:flex;
+      flex-direction:column;
+      min-width:0;
+      background:var(--bg);
+      position:relative;
+    }
+    .nm-pane__header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:14px 22px;
+      border-bottom:1px solid var(--border);
+      background:rgba(11,11,15,.85);
+      backdrop-filter:blur(8px);
+      position:sticky;top:0;z-index:5;
+      min-height:58px;
+    }
+    .nm-pane__title-wrap{display:flex;flex-direction:column;gap:2px;min-width:0}
+    .nm-pane__title{
+      margin:0;font-size:15px;font-weight:600;color:var(--text);
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    }
+    .nm-pane__status{font-size:11.5px;color:var(--text-muted)}
+    .nm-pane__actions{display:flex;gap:6px}
+
+    .nm-messages{
+      flex:1;
+      overflow-y:auto;
+      padding:24px 22px 180px;
+      scroll-behavior:smooth;
+    }
+    .nm-messages-inner{
+      max-width:780px;margin:0 auto;
+      display:flex;flex-direction:column;gap:18px;
+    }
+    .msg{display:flex;gap:12px;animation:fadeIn .18s ease-out;max-width:780px;margin:0 auto;width:100%}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+    .msg__avatar{
+      width:30px;height:30px;flex:none;border-radius:50%;
+      display:flex;align-items:center;justify-content:center;
+      font-size:12px;font-weight:700;color:#fff;
+    }
+    .msg.user .msg__avatar{background:#3a3a52}
+    .msg.assistant .msg__avatar{background:var(--accent-grad)}
+    .msg__body{
+      background:var(--bg-elev);
+      border:1px solid var(--border);
+      padding:11px 14px;border-radius:12px;
+      font-size:14px;line-height:1.55;color:var(--text);
+      white-space:pre-wrap;word-wrap:break-word;
+      max-width:calc(100% - 46px);
+    }
+    .msg.user .msg__body{background:var(--bg-elev-2)}
+    .msg.error .msg__body{
+      border-color:rgba(255,92,122,.4);
+      background:rgba(255,92,122,.08);
+      color:#ffd3dc;
+    }
+    .msg__role{
+      font-size:11px;color:var(--text-muted);
+      text-transform:uppercase;letter-spacing:.6px;
+      margin-bottom:4px;font-weight:600;
+    }
+
+    .nm-empty-hero{
+      max-width:640px;margin:80px auto 0;text-align:center;
+      color:var(--text-dim);
+    }
+    .nm-empty-hero h2{
+      font-size:26px;margin:0 0 8px;font-weight:700;
+      background:var(--accent-grad);-webkit-background-clip:text;background-clip:text;color:transparent;
+    }
+    .nm-empty-hero p{margin:0;font-size:14px}
+
+    /* ===== Composer pinned to bottom ===== */
+    #composer,.nm-composer{
+      position:absolute;
+      left:0;right:0;bottom:0;
+      padding:14px 22px 22px;
+      background:linear-gradient(to top,var(--bg) 60%,rgba(11,11,15,0) 100%);
+      pointer-events:none;
+    }
+    .nm-composer__inner{
+      max-width:var(--composer-max);
+      margin:0 auto;
+      background:var(--bg-elev);
+      border:1px solid var(--border-strong);
+      border-radius:18px;
+      padding:8px 8px 8px 14px;
+      display:flex;align-items:flex-end;gap:8px;
+      box-shadow:var(--shadow);
+      transition:border-color .15s;
+      pointer-events:auto;
+    }
+    .nm-composer__inner:focus-within{border-color:var(--accent)}
+    #composer-input{
+      flex:1;
+      background:transparent;
+      border:0;outline:none;
+      color:var(--text);
+      font-size:14.5px;
+      line-height:1.5;
+      padding:10px 4px;
+      resize:none;
+      max-height:200px;
+      min-height:24px;
+    }
+    #composer-input::placeholder{color:var(--text-muted)}
+    .nm-composer__send{
+      width:36px;height:36px;flex:none;
+      border-radius:10px;
+      background:var(--accent-grad);
+      color:#fff;
+      display:inline-flex;align-items:center;justify-content:center;
+      transition:filter .15s,transform .05s,opacity .15s;
+    }
+    .nm-composer__send:hover{filter:brightness(1.08)}
+    .nm-composer__send:active{transform:translateY(1px)}
+    .nm-composer__send[disabled]{opacity:.5;cursor:not-allowed}
+    .nm-composer__hint{
+      max-width:var(--composer-max);
+      margin:6px auto 0;
+      font-size:11px;color:var(--text-muted);text-align:center;
+      pointer-events:none;
+    }
+
+    /* ===== Toasts ===== */
+    .nm-toast-root{
+      position:fixed;right:18px;bottom:18px;
+      display:flex;flex-direction:column;gap:8px;z-index:50;
+    }
+    .nm-toast{
+      background:var(--bg-elev-2);
+      border:1px solid var(--border-strong);
+      padding:10px 14px;border-radius:10px;
+      font-size:13px;color:var(--text);
+      box-shadow:var(--shadow);
+      animation:fadeIn .18s ease-out;
+    }
+    .nm-toast.error{border-color:rgba(255,92,122,.4);color:#ffd3dc}
+
+    /* ===== Responsive ===== */
+    @media (max-width:780px){
+      :root{--sidebar-w:0px}
+      #sidebar,.nm-sidebar{
+        position:fixed;top:0;bottom:0;left:0;
+        width:280px;z-index:20;
+        transform:translateX(-100%);
+      }
+      body.sidebar-open #sidebar,
+      body.sidebar-open .nm-sidebar{transform:translateX(0)}
+      #app,.nm-app{grid-template-columns:1fr}
+    }
+  </style>
 </head>
 <body>
   <div id="app" class="nm-app">
     <aside id="sidebar" class="nm-sidebar" aria-label="Agents">
       <header class="nm-sidebar__header">
-        <button id="sidebar-toggle" class="nm-iconbtn" title="Toggle sidebar" aria-label="Toggle sidebar">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-        </button>
-        <div class="nm-sidebar__brand">
+        <div class="nm-sidebar__brand brand">
           <img src="https://meshnet.co/logo-new.png?v=2" alt="MeshNet" class="nm-sidebar__logo">
           <span class="nm-sidebar__title">NeuralMesh</span>
         </div>
@@ -26,11 +357,12 @@
         </button>
       </header>
       <div class="nm-sidebar__search">
-        <input id="search" type="search" placeholder="Search agents (Cmd+K)" autocomplete="off">
+        <input id="search" type="search" placeholder="Search agents…" autocomplete="off">
       </div>
       <ul id="agent-list" class="nm-agent-list" role="listbox" aria-label="Agent list"></ul>
       <footer class="nm-sidebar__footer">
         <a href="/account.html" class="nm-account-link">Account</a>
+        <a href="/host/terms.html" class="nm-account-link">Terms</a>
       </footer>
     </aside>
     <section id="pane" class="nm-pane" aria-label="Conversation">
@@ -45,12 +377,20 @@
           </button>
         </div>
       </header>
-      <div id="messages" class="nm-messages" aria-live="polite" aria-relevant="additions"></div>
+      <div id="messages" class="nm-messages" aria-live="polite" aria-relevant="additions">
+        <div class="nm-empty-hero">
+          <h2>Welcome to NeuralMesh</h2>
+          <p>Select an agent on the left or create a new one to start chatting on the decentralized AI network.</p>
+        </div>
+      </div>
       <div id="composer" class="nm-composer">
-        <textarea id="composer-input" rows="1" placeholder="Send a message..." aria-label="Message"></textarea>
-        <button id="composer-send" class="nm-composer__send" title="Send (Enter)" aria-label="Send">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-        </button>
+        <div class="nm-composer__inner">
+          <textarea id="composer-input" rows="1" placeholder="Message your agent…" aria-label="Message"></textarea>
+          <button id="composer-send" class="nm-composer__send" title="Send (Enter)" aria-label="Send">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </button>
+        </div>
+        <div class="nm-composer__hint">Enter to send • Shift+Enter for newline</div>
       </div>
     </section>
   </div>

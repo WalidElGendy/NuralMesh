@@ -308,6 +308,67 @@
       .nm-mesh .nm-node, .nm-mesh .nm-edge, .nm-typing__dots i{ animation:none; }
     }
 
+    /* === Premium message rows (brand-row layout) =================== */
+    .nm-messages .msg{
+      display:block; gap:0; margin:0 0 18px 0; max-width:760px;
+    }
+    .nm-messages .msg + .msg{ margin-top:6px; }
+    .nm-messages .msg.assistant + .msg.user,
+    .nm-messages .msg.user + .msg.assistant{ margin-top:22px; }
+
+    /* hide the old avatar circle entirely — brand row replaces it */
+    .msg__avatar{ display:none !important; }
+
+    /* User bubble: clean text, no avatar, no name */
+    .msg.user .msg__body{
+      background:transparent;
+      border:0; padding:2px 0;
+      color:var(--text);
+      font-size:15px; line-height:1.6;
+      max-width:100%;
+    }
+
+    /* Assistant brand row: logo + agent name in purple */
+    .nm-brand{
+      display:flex; align-items:center; gap:10px;
+      margin:0 0 8px 0;
+    }
+    .nm-brand__logo{
+      width:22px; height:22px; display:block;
+      object-fit:contain;
+      filter:drop-shadow(0 0 6px rgba(124,92,255,.45));
+    }
+    .nm-brand__name{
+      font-size:14px; font-weight:600; letter-spacing:.2px;
+      background:linear-gradient(135deg,#a78bfa 0%, #7c5cff 60%, #5b8bff 100%);
+      -webkit-background-clip:text; background-clip:text;
+      -webkit-text-fill-color:transparent; color:transparent;
+    }
+
+    /* Assistant body: borderless, just text, sits flush under the brand row */
+    .msg.assistant .msg__body{
+      background:transparent; border:0;
+      padding:0; color:var(--text);
+      font-size:15px; line-height:1.65;
+      max-width:100%;
+    }
+    .msg.assistant.nm-typing .msg__body{ padding:4px 0 0 0; }
+    .msg.assistant.nm-typing .nm-typing__row{ margin-left:-2px; }
+
+    /* error bubbles keep their alert styling */
+    .msg.error .msg__body{
+      border:1px solid rgba(255,92,122,.4);
+      background:rgba(255,92,122,.08);
+      color:#ffd3dc;
+      padding:11px 14px; border-radius:12px;
+    }
+
+    /* a little extra left-padding so the brand row sits clean against the rail */
+    .nm-messages{ padding-left:8px; padding-right:8px; }
+    @media (min-width:900px){ .nm-messages{ padding-left:14px; padding-right:14px; } }
+
+
+
     .msg__role{
       font-size:11px;color:var(--text-muted);
       text-transform:uppercase;letter-spacing:.6px;

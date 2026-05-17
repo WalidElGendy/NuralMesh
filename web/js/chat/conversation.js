@@ -61,7 +61,7 @@ export function mountConversation(headerEl, messagesEl) {
       messagesEl.innerHTML = '<div class="nm-empty-hero"><h2>' + escapeHtml(a && a.title || 'New conversation') + '</h2><p>Send your first message to start the conversation.</p></div>';
       return;
     }
-    const brandSvg = '<img class="nm-brand__logo" src="https://meshnet.co/logo-new.png" alt="" aria-hidden="true"/>';
+    const brandSvg = '<svg class="nm-brand__logo" viewBox="0 0 36 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs><linearGradient id="nmLogoGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#c4b5fd"/><stop offset="100%" stop-color="#7c5cff"/></linearGradient></defs><path d="M5 28 L5 8 Q5 5 8 5 Q11 5 13 8 L23 24 Q23 27 26 27 Q29 27 29 24 L29 8" fill="none" stroke="url(#nmLogoGrad)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="33" cy="26" r="3.2" fill="url(#nmLogoGrad)"/></svg>';
       const agentName = (a && a.title) || 'NeuralMesh';
       const html = msgs.map(function(m) {
         const role = m.role === 'user' ? 'user' : 'assistant';

@@ -85,8 +85,7 @@ export function mountSidebar(root) {
   root.innerHTML = '' +
     '<div class="sidebar-header">' +
       '<div class="brand">' +
-        '<img src="https://meshnet.co/logo-new.png?v=2" alt="" class="nm-sidebar__logo">' +
-        '<span>NeuralMesh</span>' +
+        '<img src="https://meshnet.co/logo-new.png?v=2" alt="MeshNet" class="nm-sidebar__logo">' +
       '</div>' +
       '<button class="btn-new-agent" id="btn-new-agent" title="New chat">+ New</button>' +
     '</div>' +

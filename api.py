@@ -735,6 +735,14 @@ def installer_script():
     )
 
 
+@app.get("/win.ps1")
+def installer_script_windows():
+    return Response(
+        content=(INSTALLER_ROOT / "win.ps1").read_text(encoding="utf-8"),
+        media_type="text/plain; charset=utf-8",
+    )
+
+
 @app.get("/install/vendor/install_ollama.sh")
 def vendor_ollama_script():
     return Response(

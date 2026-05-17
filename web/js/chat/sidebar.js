@@ -69,6 +69,8 @@ async function ensureNamedAgents() {
   }
 }
 
+const nmIconSvg = '<svg class="nm-agent-mark" viewBox="0 0 36 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs><linearGradient id="nmSideGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ffffff"/><stop offset="100%" stop-color="#e9e3ff"/></linearGradient></defs><path d="M5 28 L5 8 Q5 5 8 5 Q11 5 13 8 L23 24 Q23 27 26 27 Q29 27 29 24 L29 8" stroke="url(#nmSideGrad)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="33" cy="26" r="3.2" fill="url(#nmSideGrad)"/></svg>';
+
 export function mountSidebar(root) {
   root.innerHTML = '' +
     '<div class="sidebar-header">' +
@@ -112,7 +114,7 @@ export function mountSidebar(root) {
       const tb = b.last_message_at ? new Date(b.last_message_at).getTime() : 0;
       return tb - ta;
     });
-    const items = sorted.filter(a => !filter || (a.title || '').toLowerCase().includes(filter));
+    const items = sorted.filter(a => NAMED_AGENTS.indexOf((a.title||'').trim()) !== -1).filter(a => !filter || (a.title || '').toLowerCase().includes(filter));
 
     if (!items.length) {
       listEl.innerHTML = '<div class="empty-state">No agents yet.<div class="big-new"><button class="btn-new-agent" id="empty-new">+ New agent</button></div></div>';
@@ -125,7 +127,7 @@ export function mountSidebar(root) {
       const badge = a.unread > 0 ? '<span class="agent-badge">' + a.unread + '</span>' : '';
       const subtitle = a.last_preview || '';
       return '<div class="agent-row' + active + '" data-id="' + a.id + '">' +
-        '<div class="agent-avatar">' + escapeHtml(initials(a.title)) + '</div>' +
+        '<div class="agent-avatar">' + nmIconSvg + '</div>' +
         '<div class="agent-meta">' +
           '<div class="agent-title">' + escapeHtml(a.title || 'Untitled') + '</div>' +
           (subtitle ? '<div class="agent-subtitle">' + escapeHtml(subtitle) + '</div>' : '') +

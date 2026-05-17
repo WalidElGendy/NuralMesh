@@ -61,7 +61,7 @@ export function mountConversation(headerEl, messagesEl) {
       messagesEl.innerHTML = '<div class="nm-empty-hero"><h2>' + escapeHtml(a && a.title || 'New conversation') + '</h2><p>Send your first message to start the conversation.</p></div>';
       return;
     }
-    const brandSvg = '<svg class="nm-brand__logo" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs><linearGradient id="nmg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#7c5cff"/><stop offset="100%" stop-color="#a78bfa"/></linearGradient></defs><g stroke="url(#nmg)" stroke-width="1.6" stroke-linecap="round" fill="none"><line x1="6"  y1="16" x2="16" y2="6"/><line x1="6"  y1="16" x2="16" y2="26"/><line x1="16" y1="6"  x2="26" y2="16"/><line x1="16" y1="26" x2="26" y2="16"/><line x1="16" y1="6"  x2="16" y2="26"/><line x1="6"  y1="16" x2="26" y2="16"/></g><g fill="url(#nmg)"><circle cx="6"  cy="16" r="2.4"/><circle cx="16" cy="6"  r="2.4"/><circle cx="26" cy="16" r="2.4"/><circle cx="16" cy="26" r="2.4"/><circle cx="16" cy="16" r="2.8"/></g></svg>';
+    const brandSvg = '<img class="nm-brand__logo" src="https://meshnet.co/logo-new.png" alt="" aria-hidden="true"/>';
       const agentName = (a && a.title) || 'NeuralMesh';
       const html = msgs.map(function(m) {
         const role = m.role === 'user' ? 'user' : 'assistant';

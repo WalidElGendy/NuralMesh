@@ -3,46 +3,58 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Chat - NeuralMesh Beta</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <title>NeuralMesh Beta</title>
+  <link rel="icon" type="image/png" href="https://meshnet.co/logo-new.png?v=2">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/chat.css">
 </head>
-<body class="min-h-screen bg-zinc-950 text-white">
-  <main class="mx-auto max-w-3xl px-6 py-12">
-    <nav class="mb-8 flex justify-between text-sm"><a href="/account.html">Account</a><a href="/host/terms.html">Provider terms</a></nav>
-    <h1 class="text-4xl font-bold">NeuralMesh chat</h1>
-    <form id="chat-form" class="mt-8">
-      <textarea id="prompt" rows="6" class="w-full rounded-2xl bg-black/40 p-4" placeholder="Ask the beta network..." required></textarea>
-      <button class="mt-4 rounded-xl bg-violet-600 px-5 py-3 font-semibold">Send</button>
-    </form>
-    <pre id="output" class="mt-6 min-h-56 whitespace-pre-wrap rounded-2xl border border-white/10 bg-black/40 p-4 text-sm"></pre>
-  </main>
-  <script>
-    function csrfToken() {
-      return document.cookie.split("; ").find((row) => row.startsWith("nm_csrf="))?.split("=")[1] || "";
-    }
-    document.getElementById("chat-form").addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const prompt = document.getElementById("prompt");
-      const output = document.getElementById("output");
-      output.textContent = "Sending...";
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: {"Content-Type": "application/json", "X-CSRF-Token": csrfToken()},
-        body: JSON.stringify({stream: false, messages: [{role: "user", content: prompt.value}]}),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (response.status === 402) {
-        output.textContent = data.message;
-        window.location.href = data.checkout_url;
-        return;
-      }
-      if (!response.ok) {
-        output.textContent = data.detail || "Chat failed";
-        return;
-      }
-      output.textContent = data.answer || JSON.stringify(data, null, 2);
-      prompt.value = "";
-    });
-  </script>
+<body>
+  <div id="app" class="nm-app">
+    <aside id="sidebar" class="nm-sidebar" aria-label="Agents">
+      <header class="nm-sidebar__header">
+        <button id="sidebar-toggle" class="nm-iconbtn" title="Toggle sidebar" aria-label="Toggle sidebar">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div class="nm-sidebar__brand">
+          <img src="https://meshnet.co/logo-new.png?v=2" alt="MeshNet" class="nm-sidebar__logo">
+          <span class="nm-sidebar__title">NeuralMesh</span>
+        </div>
+        <button id="new-agent" class="nm-iconbtn nm-iconbtn--primary" title="New agent (Cmd+N)" aria-label="New agent">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+      </header>
+      <div class="nm-sidebar__search">
+        <input id="search" type="search" placeholder="Search agents (Cmd+K)" autocomplete="off">
+      </div>
+      <ul id="agent-list" class="nm-agent-list" role="listbox" aria-label="Agent list"></ul>
+      <footer class="nm-sidebar__footer">
+        <a href="/account.html" class="nm-account-link">Account</a>
+      </footer>
+    </aside>
+    <section id="pane" class="nm-pane" aria-label="Conversation">
+      <header id="pane-header" class="nm-pane__header">
+        <div class="nm-pane__title-wrap">
+          <h1 id="pane-title" class="nm-pane__title">No agent selected</h1>
+          <span id="pane-status" class="nm-pane__status"></span>
+        </div>
+        <div class="nm-pane__actions">
+          <button id="rename-agent" class="nm-iconbtn" title="Rename agent" aria-label="Rename agent" hidden>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          </button>
+        </div>
+      </header>
+      <div id="messages" class="nm-messages" aria-live="polite" aria-relevant="additions"></div>
+      <div id="composer" class="nm-composer">
+        <textarea id="composer-input" rows="1" placeholder="Send a message..." aria-label="Message"></textarea>
+        <button id="composer-send" class="nm-composer__send" title="Send (Enter)" aria-label="Send">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+    </section>
+  </div>
+  <div id="toast-root" class="nm-toast-root" aria-live="polite"></div>
+  <script type="module" src="/js/chat/main.js"></script>
 </body>
 </html>

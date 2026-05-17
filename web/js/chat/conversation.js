@@ -1,4 +1,4 @@
-// NeuralMesh chat — conversation pane: header + messages (v0.2)
+—// NeuralMesh chat — conversation pane: header + messages (v0.2)
 import { store } from './store.js';
 import { api } from './api.js';
 
@@ -61,16 +61,19 @@ export function mountConversation(headerEl, messagesEl) {
       messagesEl.innerHTML = '<div class="nm-empty-hero"><h2>' + escapeHtml(a && a.title || 'New conversation') + '</h2><p>Send your first message to start the conversation.</p></div>';
       return;
     }
-    const html = msgs.map(function(m) {
-      const role = m.role === 'user' ? 'user' : 'assistant';
-      const avatar = role === 'user' ? 'U' : (initials(a && a.title) || 'A');
-      return ''+
-        '<div class="msg ' + role + '">' +
-          '<div class="msg__avatar">' + escapeHtml(avatar) + '</div>' +
+    const brandSvg = '<svg class="nm-brand__logo" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs><linearGradient id="nmg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#7c5cff"/><stop offset="100%" stop-color="#a78bfa"/></linearGradient></defs><g stroke="url(#nmg)" stroke-width="1.6" stroke-linecap="round" fill="none"><line x1="6"  y1="16" x2="16" y2="6"/><line x1="6"  y1="16" x2="16" y2="26"/><line x1="16" y1="6"  x2="26" y2="16"/><line x1="16" y1="26" x2="26" y2="16"/><line x1="16" y1="6"  x2="16" y2="26"/><line x1="6"  y1="16" x2="26" y2="16"/></g><g fill="url(#nmg)"><circle cx="6"  cy="16" r="2.4"/><circle cx="16" cy="6"  r="2.4"/><circle cx="26" cy="16" r="2.4"/><circle cx="16" cy="26" r="2.4"/><circle cx="16" cy="16" r="2.8"/></g></svg>';
+      const agentName = (a && a.title) || 'NeuralMesh';
+      const html = msgs.map(function(m) {
+        const role = m.role === 'user' ? 'user' : 'assistant';
+        if (role === 'user') {
+          return '<div class="msg user"><div class="msg__body">' + escapeHtml(m.content || '') + '</div></div>';
+        }
+        return '<div class="msg assistant">' +
+          '<div class="nm-brand">' + brandSvg + '<span class="nm-brand__name">' + escapeHtml(agentName) + '</span></div>' +
           '<div class="msg__body">' + escapeHtml(m.content || '') + '</div>' +
-        '</div>';
-    }).join('');
-    const typing = pending ? '<div class="msg assistant nm-typing"><div class="msg__avatar">' + escapeHtml(initials(a && a.title) || 'A') + '</div><div class="msg__body nm-typing__body"><div class="nm-typing__row"><svg class="nm-mesh" viewBox="0 0 120 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><g class="nm-mesh__edges" stroke="currentColor" stroke-width="1" stroke-linecap="round" fill="none"><line x1="14" y1="20" x2="42" y2="10" class="nm-edge nm-edge--1"/><line x1="14" y1="20" x2="42" y2="30" class="nm-edge nm-edge--2"/><line x1="42" y1="10" x2="78" y2="20" class="nm-edge nm-edge--3"/><line x1="42" y1="30" x2="78" y2="20" class="nm-edge nm-edge--4"/><line x1="78" y1="20" x2="106" y2="10" class="nm-edge nm-edge--5"/><line x1="78" y1="20" x2="106" y2="30" class="nm-edge nm-edge--6"/><line x1="42" y1="10" x2="42" y2="30" class="nm-edge nm-edge--7"/></g><g class="nm-mesh__nodes" fill="currentColor"><circle cx="14"  cy="20" r="3.2" class="nm-node nm-node--1"/><circle cx="42"  cy="10" r="3.2" class="nm-node nm-node--2"/><circle cx="42"  cy="30" r="3.2" class="nm-node nm-node--3"/><circle cx="78"  cy="20" r="3.6" class="nm-node nm-node--4"/><circle cx="106" cy="10" r="3.2" class="nm-node nm-node--5"/><circle cx="106" cy="30" r="3.2" class="nm-node nm-node--6"/></g></svg><span class="nm-typing__label">thinking<span class="nm-typing__dots"><i></i><i></i><i></i></span></span></div></div></div>' : '';
+          '</div>';
+      }).join('');
+    const typing = pending ? '<div class="msg assistant nm-typing"><div class="nm-brand">' + brandSvg + '<span class="nm-brand__name">' + escapeHtml(agentName) + '</span></div><div class="msg__body nm-typing__body"><div class="nm-typing__row"><svg class="nm-mesh" viewBox="0 0 120 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><g class="nm-mesh__edges" stroke="currentColor" stroke-width="1" stroke-linecap="round" fill="none"><line x1="14" y1="20" x2="42" y2="10" class="nm-edge nm-edge--1"/><line x1="14" y1="20" x2="42" y2="30" class="nm-edge nm-edge--2"/><line x1="42" y1="10" x2="78" y2="20" class="nm-edge nm-edge--3"/><line x1="42" y1="30" x2="78" y2="20" class="nm-edge nm-edge--4"/><line x1="78" y1="20" x2="106" y2="10" class="nm-edge nm-edge--5"/><line x1="78" y1="20" x2="106" y2="30" class="nm-edge nm-edge--6"/><line x1="42" y1="10" x2="42" y2="30" class="nm-edge nm-edge--7"/></g><g class="nm-mesh__nodes" fill="currentColor"><circle cx="14"  cy="20" r="3.2" class="nm-node nm-node--1"/><circle cx="42"  cy="10" r="3.2" class="nm-node nm-node--2"/><circle cx="42"  cy="30" r="3.2" class="nm-node nm-node--3"/><circle cx="78"  cy="20" r="3.6" class="nm-node nm-node--4"/><circle cx="106" cy="10" r="3.2" class="nm-node nm-node--5"/><circle cx="106" cy="30" r="3.2" class="nm-node nm-node--6"/></g></svg><span class="nm-typing__label">thinking<span class="nm-typing__dots"><i></i><i></i><i></i></span></span></div></div></div>' : '';
     messagesEl.innerHTML = html + typing;
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }

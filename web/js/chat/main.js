@@ -22,8 +22,7 @@ async function boot() {
 
   try {
     const agents = await api.listAgents();
-    const list = Array.isArray(agents) ? agents : (agents && Array.isArray(agents.items) ? agents.items : []);
-        const normalized = list.map(function(a) {return Object.assign({ unread: 0 }, a);
+    const list = Array.isArray(agents) ? agents : (agents && Array.isArray(agents.agents) ? agents.agents : (agents && Array.isArray(agents.items) ? agents.items : []));        const normalized = list.map(function(a) {return Object.assign({ unread: 0 }, a);
     });
     store.setAgents(normalized);
     if (normalized.length > 0) {

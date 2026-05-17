@@ -1,4 +1,4 @@
-—// NeuralMesh chat — conversation pane: header + messages (v0.2)
+/// NeuralMesh chat — conversation pane: header + messages (v0.2)
 import { store } from './store.js';
 import { api } from './api.js';
 

@@ -66,7 +66,7 @@
         message.textContent = data.message;
         return;
       }
-      sessionStorage.setItem("nm_email", payload.email); var __i=localStorage.getItem("nm_intent"); window.location.href = __i==="provider" ? "/host-dashboard.html" : "/chat.html";
+      sessionStorage.setItem("nm_email", payload.email); try { if (data && data.access_token) { localStorage.setItem("nm_access_token", data.access_token); } } catch (_) {} var __i=localStorage.getItem("nm_intent"); window.location.href = __i==="provider" ? "/host-dashboard.html" : "/chat.html";
     }
     form.addEventListener("submit", (event) => {
       event.preventDefault();
@@ -98,7 +98,7 @@
       <a href="#">Status</a>
       <a href="/privacy.html">Privacy Policy</a>
     </div>
-    <div class="footer-copy">© 2026 MeshNet Inc. All rights reserved.</div>
+    <div class="footer-copy">Â© 2026 MeshNet Inc. All rights reserved.</div>
   </div>
 </footer>
 </body>

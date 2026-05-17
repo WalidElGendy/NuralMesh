@@ -61,7 +61,7 @@ export function mountConversation(headerEl, messagesEl) {
       messagesEl.innerHTML = '<div class="nm-empty-hero"><h2>' + escapeHtml(a && a.title || 'New conversation') + '</h2><p>Send your first message to start the conversation.</p></div>';
       return;
     }
-    const brandSvg = '<svg class="nm-brand__logo" viewBox="0 0 40 36" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs><linearGradient id="nmBrandGradX" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#c4b5fd"/><stop offset="100%" stop-color="#7c5cff"/></linearGradient></defs><g stroke="url(#nmBrandGradX)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none"><line x1="7" y1="30" x2="13" y2="6"/><line x1="13" y1="6" x2="23" y2="30"/><line x1="23" y1="30" x2="29" y2="6"/></g><circle cx="33" cy="30" r="3.6" fill="url(#nmBrandGradX)"/></svg>';
+    const brandSvg = '<span class="nm-brand__mark" aria-hidden="true"><img class="nm-brand__mark-img" src="https://meshnet.co/logo-new.png?v=2" alt=""/></span>';
       const agentName = (a && a.title) || 'NeuralMesh';
       const html = msgs.map(function(m) {
         const role = m.role === 'user' ? 'user' : 'assistant';

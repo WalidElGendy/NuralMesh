@@ -250,6 +250,64 @@
       background:rgba(255,92,122,.08);
       color:#ffd3dc;
     }
+        /* === Network-mesh typing indicator ============================== */
+    .msg.nm-typing .msg__body{ padding:10px 14px; }
+    .nm-typing__row{ display:flex; align-items:center; gap:10px; }
+    .nm-typing__label{
+      font-size:12px; color:var(--text-muted);
+      letter-spacing:.4px; text-transform:lowercase;
+      display:inline-flex; align-items:baseline; gap:2px;
+    }
+    .nm-typing__dots{ display:inline-flex; gap:3px; margin-left:4px; }
+    .nm-typing__dots i{
+      width:4px; height:4px; border-radius:50%;
+      background:var(--text-muted); display:inline-block;
+      animation:nm-dot 1.2s ease-in-out infinite;
+    }
+    .nm-typing__dots i:nth-child(2){ animation-delay:.15s; }
+    .nm-typing__dots i:nth-child(3){ animation-delay:.30s; }
+    @keyframes nm-dot{
+      0%,80%,100%{ opacity:.25; transform:translateY(0); }
+      40%{ opacity:1; transform:translateY(-2px); }
+    }
+    .nm-mesh{
+      width:88px; height:30px; flex:0 0 auto;
+      color:#8b8cff; overflow:visible;
+      filter:drop-shadow(0 0 4px rgba(139,140,255,.35));
+    }
+    .nm-mesh .nm-node{
+      transform-origin:center; transform-box:fill-box;
+      animation:nm-pulse 1.6s ease-in-out infinite;
+    }
+    .nm-mesh .nm-node--1{ animation-delay:0s; }
+    .nm-mesh .nm-node--2{ animation-delay:.12s; }
+    .nm-mesh .nm-node--3{ animation-delay:.24s; color:#a78bfa; }
+    .nm-mesh .nm-node--4{ animation-delay:.36s; color:#7c83ff; }
+    .nm-mesh .nm-node--5{ animation-delay:.48s; color:#a78bfa; }
+    .nm-mesh .nm-node--6{ animation-delay:.60s; }
+    @keyframes nm-pulse{
+      0%,100%{ opacity:.45; transform:scale(.85); }
+      50%   { opacity:1;   transform:scale(1.15); }
+    }
+    .nm-mesh .nm-edge{
+      stroke-dasharray:6 8; opacity:.55;
+      animation:nm-flow 1.4s linear infinite;
+    }
+    .nm-mesh .nm-edge--2{ animation-delay:.10s; }
+    .nm-mesh .nm-edge--3{ animation-delay:.20s; }
+    .nm-mesh .nm-edge--4{ animation-delay:.30s; }
+    .nm-mesh .nm-edge--5{ animation-delay:.40s; }
+    .nm-mesh .nm-edge--6{ animation-delay:.50s; }
+    .nm-mesh .nm-edge--7{ animation-delay:.60s; }
+    @keyframes nm-flow{
+      from{ stroke-dashoffset:14; opacity:.25; }
+      50% { opacity:.9; }
+      to  { stroke-dashoffset:0;  opacity:.25; }
+    }
+    @media (prefers-reduced-motion: reduce){
+      .nm-mesh .nm-node, .nm-mesh .nm-edge, .nm-typing__dots i{ animation:none; }
+    }
+
     .msg__role{
       font-size:11px;color:var(--text-muted);
       text-transform:uppercase;letter-spacing:.6px;

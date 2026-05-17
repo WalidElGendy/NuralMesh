@@ -69,7 +69,7 @@ async function ensureNamedAgents() {
   }
 }
 
-const nmIconSvg = '<svg class="nm-agent-mark" viewBox="0 0 36 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs><linearGradient id="nmSideGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ffffff"/><stop offset="100%" stop-color="#e9e3ff"/></linearGradient></defs><path d="M5 28 L5 8 Q5 5 8 5 Q11 5 13 8 L23 24 Q23 27 26 27 Q29 27 29 24 L29 8" stroke="url(#nmSideGrad)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="33" cy="26" r="3.2" fill="url(#nmSideGrad)"/></svg>';
+const nmIconSvg = '<svg class="nm-agent-mark" viewBox="0 0 40 36" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><g stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none"><line x1="7" y1="30" x2="13" y2="6"/><line x1="13" y1="6" x2="23" y2="30"/><line x1="23" y1="30" x2="29" y2="6"/></g><circle cx="33" cy="30" r="3.6" fill="currentColor"/></svg>';
 
 export function mountSidebar(root) {
   root.innerHTML = '' +

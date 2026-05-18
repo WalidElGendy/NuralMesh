@@ -1180,6 +1180,47 @@ def auth_login(body: AuthLoginRequest):
     return AuthLoginResponse(access_token=session.access_token, refresh_token=session.refresh_token, expires_at=int(getattr(session, "expires_at", 0) or 0), user_id=user.id, email=user.email, intent=intent_value)
 
 
+class IntentUpdateRequest(BaseModel):
+    intent: str = Field(min_length=1, max_length=32)
+
+
+class IntentUpdateResponse(BaseModel):
+    intent: str
+
+
+@app.post("/api/auth/intent", response_model=IntentUpdateResponse)
+def auth_update_intent(body: IntentUpdateRequest, authorization: str | None = Header(default=None)):
+    """Update the authenticated user's preferred role (intent) in Supabase user metadata."""
+    new_intent = (body.intent or "").strip().lower()
+    if new_intent not in ("user", "provider"):
+        raise HTTPException(status_code=400, detail="invalid_intent")
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="missing_token")
+    token = authorization.split(" ", 1)[1].strip()
+    if not token:
+        raise HTTPException(status_code=401, detail="missing_token")
+    supabase = get_supabase_client()
+    try:
+        user_resp = supabase.auth.get_user(token)
+    except Exception:
+        logging.exception("auth_intent_get_user_failed")
+        raise HTTPException(status_code=401, detail="invalid_token")
+    user = getattr(user_resp, "user", None)
+    if not user or not getattr(user, "id", None):
+        raise HTTPException(status_code=401, detail="invalid_token")
+    existing_meta = getattr(user, "user_metadata", None) or {}
+    if not isinstance(existing_meta, dict):
+        existing_meta = {}
+    merged_meta = dict(existing_meta)
+    merged_meta["intent"] = new_intent
+    try:
+        supabase.auth.admin.update_user_by_id(user.id, {"user_metadata": merged_meta})
+    except Exception:
+        logging.exception("auth_intent_update_failed")
+        raise HTTPException(status_code=502, detail="intent_update_failed")
+    return IntentUpdateResponse(intent=new_intent)
+
+
 @app.post("/api/auth/magic-link")
 def auth_magic_link(body: MagicLinkRequest):
     if not EMAILRE.match(body.email):

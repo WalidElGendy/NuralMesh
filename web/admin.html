@@ -93,6 +93,47 @@
         </div>
       </div>
     </section>
+
+    <section class="mt-10 rounded-3xl border border-white/10 bg-white/[0.04] p-6 max-w-5xl mx-auto">
+      <div class="flex items-center justify-between">
+        <h2 class="text-xl font-semibold">Waitlist — AI Users</h2>
+        <button onclick="loadWaitlist()" class="text-sm text-zinc-400 hover:text-white">Refresh</button>
+      </div>
+      <div class="mt-4 overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="text-left text-zinc-400"><tr>
+            <th class="py-2 pr-4">When</th>
+            <th class="py-2 pr-4">Name</th>
+            <th class="py-2 pr-4">Email</th>
+            <th class="py-2 pr-4">Company</th>
+            <th class="py-2 pr-4">Use case</th>
+            <th class="py-2 pr-4">Budget</th>
+          </tr></thead>
+          <tbody id="waitlist-user-rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="mt-10 rounded-3xl border border-white/10 bg-white/[0.04] p-6 max-w-5xl mx-auto">
+      <div class="flex items-center justify-between">
+        <h2 class="text-xl font-semibold">Waitlist — GPU Providers</h2>
+        <button onclick="loadWaitlist()" class="text-sm text-zinc-400 hover:text-white">Refresh</button>
+      </div>
+      <div class="mt-4 overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="text-left text-zinc-400"><tr>
+            <th class="py-2 pr-4">When</th>
+            <th class="py-2 pr-4">Name</th>
+            <th class="py-2 pr-4">Email</th>
+            <th class="py-2 pr-4">GPU</th>
+            <th class="py-2 pr-4">Qty</th>
+            <th class="py-2 pr-4">Hours/day</th>
+            <th class="py-2 pr-4">Region</th>
+            <th class="py-2 pr-4">Earnings goal</th>
+          </tr></thead>
+          <tbody id="waitlist-provider-rows"></tbody>
+        </table>
+      </div>
   </main>
 
   <script>
@@ -132,7 +173,22 @@
       }).join("");
       $("invite-rows").innerHTML = rows || `<tr><td colspan="4" class="py-4 text-zinc-500">No invites yet.</td></tr>`;
     }
-    async function refreshAll() { try { await Promise.all([loadStats(), loadInvites()]); } catch(_) {} }
+    async function refreshAll() { try { await Promise.all([loadStats(), loadInvites(), loadWaitlist()]); } catch(_) {} }
+    async function loadWaitlist() {
+      try {
+        const data = await api("/api/admin/waitlist");
+        const users = (data && data.users) || [];
+        const providers = (data && data.providers) || [];
+        const fmt = (s) => s ? new Date(s).toLocaleString() : "";
+        const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
+        const ub = users.map(r => `<tr class="border-t border-white/5"><td class="py-2 pr-4 text-zinc-400">${esc(fmt(r.created_at))}</td><td class="py-2 pr-4">${esc(r.full_name)}</td><td class="py-2 pr-4">${esc(r.email)}</td><td class="py-2 pr-4">${esc(r.company)}</td><td class="py-2 pr-4">${esc(r.primary_use_case)}</td><td class="py-2 pr-4">${esc(r.monthly_budget)}</td></tr>`).join("");
+        const pb = providers.map(r => `<tr class="border-t border-white/5"><td class="py-2 pr-4 text-zinc-400">${esc(fmt(r.created_at))}</td><td class="py-2 pr-4">${esc(r.full_name)}</td><td class="py-2 pr-4">${esc(r.email)}</td><td class="py-2 pr-4">${esc(r.gpu_model)}</td><td class="py-2 pr-4">${esc(r.number_of_gpus)}</td><td class="py-2 pr-4">${esc(r.available_hours_per_day)}</td><td class="py-2 pr-4">${esc(r.region)}</td><td class="py-2 pr-4">${esc(r.expected_monthly_earnings_goal)}</td></tr>`).join("");
+        const ue = document.getElementById("waitlist-user-rows");
+        const pe = document.getElementById("waitlist-provider-rows");
+        if (ue) ue.innerHTML = ub || `<tr><td class="py-3 text-zinc-500" colspan="6">No entries yet.</td></tr>`;
+        if (pe) pe.innerHTML = pb || `<tr><td class="py-3 text-zinc-500" colspan="8">No entries yet.</td></tr>`;
+      } catch (e) { console.warn("loadWaitlist failed", e); }
+    }
     async function doPasswordLogin() {
       const email = $("email").value.trim(); const password = $("password").value;
       if (!email || !password) { $("gate-error").textContent = "Email and password are required."; return; }

@@ -36,11 +36,12 @@
       <h1>Log in</h1>
       <p>Use password login or request a Supabase magic link.</p>
       <label>Email<input name="email" type="email" required></label>
+      <fieldset style="margin-top:14px;border:0;padding:0"><legend style="font-size:13px;color:#e4e4e7;font-weight:700">Sign in as</legend><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px"><label style="display:flex;align-items:center;gap:8px;border:1px solid #292940;border-radius:10px;padding:8px 10px;cursor:pointer;font-weight:500"><input type="radio" name="login_as" value="user"> AI user</label><label style="display:flex;align-items:center;gap:8px;border:1px solid #292940;border-radius:10px;padding:8px 10px;cursor:pointer;font-weight:500"><input type="radio" name="login_as" value="provider"> GPU provider</label></div><p style="margin:6px 0 0;font-size:12px;color:#71717a">Optional — we’ll use what you signed up with by default.</p></fieldset>
       <label>Password<input name="password" type="password"></label>
       <button type="submit">Log in with password</button>
       <button id="magic-link" class="secondary" type="button">Email me a magic link</button>
       <p id="message"></p>
-      <p><a href="/signup.html">Need an account? Sign up with an invite.</a></p>
+      <p>Need an account? <a href="/signup.html?intent=user">Sign up as AI user</a> &middot; <a href="/signup.html?intent=provider">Sign up as GPU provider</a></p>
     </form>
   </main>
   <script>
@@ -66,7 +67,7 @@
         message.textContent = data.message;
         return;
       }
-      sessionStorage.setItem("nm_email", payload.email); try { if (data && data.access_token) { localStorage.setItem("nm_access_token", data.access_token); } } catch (_) {} var __i=localStorage.getItem("nm_intent"); window.location.href = __i==="provider" ? "/host-dashboard.html" : "/chat.html";
+      sessionStorage.setItem("nm_email", payload.email); try { if (data && data.access_token) { localStorage.setItem("nm_access_token", data.access_token); } } catch (_) {} var __serverIntent=(data&&data.intent)||null; var __formIntent=(formData.get("login_as")||"").toString(); var __stored=localStorage.getItem("nm_intent"); var __i=__serverIntent||__formIntent||__stored||"user"; try{localStorage.setItem("nm_intent", __i);}catch(_){} window.location.href = __i==="provider" ? "/host-dashboard.html" : "/chat.html";
     }
     form.addEventListener("submit", (event) => {
       event.preventDefault();

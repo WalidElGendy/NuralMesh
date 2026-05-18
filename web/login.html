@@ -80,13 +80,15 @@
         message.textContent = data.message;
         return;
       }
-      sessionStorage.setItem("nm_email", payload.email); try { if (data && data.access_token) { localStorage.setItem("nm_access_token", data.access_token); } } catch (_) {} var __serverIntent=(data&&data.intent)||null; var __formIntent=(formData.get("login_as")||"").toString(); var __stored=localStorage.getItem("nm_intent"); var __i=__serverIntent||__formIntent||__stored||"user"; try{localStorage.setItem("nm_intent", __i);}catch(_){} window.location.href = __i==="provider" ? "/host-dashboard.html" : "/chat.html";
+      sessionStorage.setItem("nm_email", payload.email); try { if (data && data.access_token) { localStorage.setItem("nm_access_token", data.access_token); } } catch (_) {} var __serverIntent=(data&&data.intent)||null; var __formIntent=(new FormData(form).get("login_as")||"").toString(); var __stored=localStorage.getItem("nm_intent"); var __i=__serverIntent||__formIntent||__stored||"user"; try{localStorage.setItem("nm_intent", __i);}catch(_){} window.location.href = __i==="provider" ? "/host-dashboard.html" : "/chat.html";
     }
     form.addEventListener("submit", (event) => {
       event.preventDefault();
       submitLogin(false);
     });
     document.getElementById("magic-link").addEventListener("click", () => submitLogin(true));
+  
+    try { var __nmI = (localStorage.getItem("nm_intent")||"").toLowerCase(); if (__nmI === "user" || __nmI === "provider") { var __r = form.querySelector('input[name="login_as"][value="'+__nmI+'"]'); if (__r) __r.checked = true; } } catch(_) {}
   </script>
 <style>
   .site-footer{border-top:1px solid rgba(255,255,255,0.08);margin-top:64px;padding:32px 24px;color:#a1a1aa;font-size:14px}

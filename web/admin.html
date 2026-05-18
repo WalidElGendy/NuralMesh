@@ -10,10 +10,11 @@
     .brand .dot { color: #8b5cf6; }
     .grad-btn { background: linear-gradient(135deg,#8b5cf6,#22d3ee); color: #020617; }
     .grad-btn:hover { filter: brightness(1.1); }
+    .tab-btn.active { background: rgba(139,92,246,0.18); color: #fff; }
   </style>
 </head>
 <body class="min-h-screen text-white">
-  <main class="mx-auto max-w-5xl px-6 py-10">
+  <main class="mx-auto max-w-6xl px-6 py-10">
     <header class="flex items-center justify-between">
       <a class="brand text-2xl font-extrabold tracking-tight" href="/">N<span class="dot">.</span>eshnet <span class="ml-2 text-base font-semibold text-zinc-400">admin</span></a>
       <button id="logout" class="text-sm text-zinc-400 hover:text-white">Sign out</button>
@@ -92,68 +93,102 @@
           </table>
         </div>
       </div>
-    </section>
 
-    <section class="mt-10 rounded-3xl border border-white/10 bg-white/[0.04] p-6 max-w-5xl mx-auto">
-      <div class="flex items-center justify-between">
-        <h2 class="text-xl font-semibold">Waitlist — AI Users</h2>
-        <button onclick="loadWaitlist()" class="text-sm text-zinc-400 hover:text-white">Refresh</button>
-      </div>
-      <div class="mt-4 overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead class="text-left text-zinc-400"><tr>
-            <th class="py-2 pr-4">When</th>
-            <th class="py-2 pr-4">Name</th>
-            <th class="py-2 pr-4">Email</th>
-            <th class="py-2 pr-4">Company</th>
-            <th class="py-2 pr-4">Use case</th>
-            <th class="py-2 pr-4">Budget</th>
-          </tr></thead>
-          <tbody id="waitlist-user-rows"></tbody>
-        </table>
+      <div class="mt-8 rounded-3xl border border-white/10 bg-white/[0.04] p-6">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-lg font-semibold tracking-tight">Waitlist registrations</h2>
+            <p class="mt-1 text-sm text-zinc-400">Submissions from <code class="text-violet-300">meshnet.co</code> &amp; the beta site.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="flex rounded-xl bg-black/40 p-1 text-sm">
+              <button data-tab="users" class="tab-btn active rounded-lg px-3 py-1.5 text-zinc-300">
+                AI Users <span id="wl-users-count" class="ml-1 rounded-md bg-white/10 px-1.5 py-0.5 text-xs text-zinc-300">0</span>
+              </button>
+              <button data-tab="providers" class="tab-btn rounded-lg px-3 py-1.5 text-zinc-300">
+                Providers <span id="wl-providers-count" class="ml-1 rounded-md bg-white/10 px-1.5 py-0.5 text-xs text-zinc-300">0</span>
+              </button>
+            </div>
+            <input id="wl-search" type="text" placeholder="Filter by name / email / company…" class="w-56 rounded-xl bg-black/40 px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-violet-500">
+            <button id="wl-export" class="rounded-xl bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 text-sm">Export CSV</button>
+            <button id="wl-refresh" class="text-sm text-zinc-400 hover:text-white">Refresh</button>
+          </div>
+        </div>
+
+        <div id="wl-users-wrap" class="mt-4 overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="text-left text-zinc-400">
+              <tr>
+                <th class="py-2 pr-4">When</th>
+                <th class="py-2 pr-4">Full name</th>
+                <th class="py-2 pr-4">Email</th>
+                <th class="py-2 pr-4">Company</th>
+                <th class="py-2 pr-4">Primary use case</th>
+                <th class="py-2 pr-4">Monthly budget</th>
+                <th class="py-2 pr-4">Source</th>
+              </tr>
+            </thead>
+            <tbody id="wl-users-rows"></tbody>
+          </table>
+        </div>
+
+        <div id="wl-providers-wrap" class="mt-4 hidden overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="text-left text-zinc-400">
+              <tr>
+                <th class="py-2 pr-4">When</th>
+                <th class="py-2 pr-4">Full name</th>
+                <th class="py-2 pr-4">Email</th>
+                <th class="py-2 pr-4">GPU model</th>
+                <th class="py-2 pr-4">#GPUs</th>
+                <th class="py-2 pr-4">Hours / day</th>
+                <th class="py-2 pr-4">Region</th>
+                <th class="py-2 pr-4">Earnings goal</th>
+                <th class="py-2 pr-4">Source</th>
+              </tr>
+            </thead>
+            <tbody id="wl-providers-rows"></tbody>
+          </table>
+        </div>
       </div>
     </section>
-
-    <section class="mt-10 rounded-3xl border border-white/10 bg-white/[0.04] p-6 max-w-5xl mx-auto">
-      <div class="flex items-center justify-between">
-        <h2 class="text-xl font-semibold">Waitlist — GPU Providers</h2>
-        <button onclick="loadWaitlist()" class="text-sm text-zinc-400 hover:text-white">Refresh</button>
-      </div>
-      <div class="mt-4 overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead class="text-left text-zinc-400"><tr>
-            <th class="py-2 pr-4">When</th>
-            <th class="py-2 pr-4">Name</th>
-            <th class="py-2 pr-4">Email</th>
-            <th class="py-2 pr-4">GPU</th>
-            <th class="py-2 pr-4">Qty</th>
-            <th class="py-2 pr-4">Hours/day</th>
-            <th class="py-2 pr-4">Region</th>
-            <th class="py-2 pr-4">Earnings goal</th>
-          </tr></thead>
-          <tbody id="waitlist-provider-rows"></tbody>
-        </table>
-      </div>
   </main>
 
   <script>
     const $ = id => document.getElementById(id);
     const TOK_KEY = "nm_admin_token";
     const TOK_KIND = "nm_admin_token_kind";
-    function getCreds() { const tok = sessionStorage.getItem(TOK_KEY); const kind = sessionStorage.getItem(TOK_KIND); return tok ? { tok, kind } : null; }
+
+    function getCreds() {
+      const tok = sessionStorage.getItem(TOK_KEY);
+      const kind = sessionStorage.getItem(TOK_KIND);
+      return tok ? { tok, kind } : null;
+    }
     function setCreds(tok, kind) { sessionStorage.setItem(TOK_KEY, tok); sessionStorage.setItem(TOK_KIND, kind); }
     function clearCreds() { sessionStorage.removeItem(TOK_KEY); sessionStorage.removeItem(TOK_KIND); }
+
     async function api(path, opts = {}) {
       const creds = getCreds();
       const headers = Object.assign({ "Content-Type": "application/json" }, opts.headers || {});
-      if (creds) { if (creds.kind === "key") headers["X-Admin-Key"] = creds.tok; else headers["Authorization"] = "Bearer " + creds.tok; }
+      if (creds) {
+        if (creds.kind === "key") headers["X-Admin-Key"] = creds.tok;
+        else headers["Authorization"] = "Bearer " + creds.tok;
+      }
       const response = await fetch(path, Object.assign({}, opts, { headers }));
       if (response.status === 401 || response.status === 403) { clearCreds(); showGate("Session expired. Sign in again."); throw new Error("auth"); }
       if (response.status === 503) { showGate("Admin API not configured on server."); throw new Error("server"); }
       return response.json();
     }
+
     function showGate(err) { $("gate").classList.remove("hidden"); $("panel").classList.add("hidden"); $("gate-error").textContent = err || ""; }
     function showPanel() { $("gate").classList.add("hidden"); $("panel").classList.remove("hidden"); refreshAll(); }
+
+    function escapeHtml(s) {
+      return String(s == null ? "" : s)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    }
+
     async function loadStats() {
       const data = await api("/api/admin/stats");
       $("m-users").textContent = (data.users_total ?? 0).toLocaleString();
@@ -163,57 +198,140 @@
       $("m-invites-total").textContent = "of " + (data.invites_total ?? 0) + " issued";
       $("m-tokens").textContent = (data.tokens_served_total ?? 0).toLocaleString();
     }
+
     async function loadInvites() {
       const data = await api("/api/admin/invites");
       const rows = (data.invites || []).map(row => {
         const status = row.revoked ? "revoked" : row.claimed_by_user_id ? "claimed" : "open";
         const color = status === "claimed" ? "text-emerald-300" : status === "revoked" ? "text-red-300" : "text-zinc-300";
         const claimedAt = row.claimed_at ? new Date(row.claimed_at).toLocaleString() : "-";
-        return `<tr class="border-t border-white/5"><td class="py-2 pr-4 font-mono">${row.code}</td><td class="py-2 pr-4 ${color}">${status}</td><td class="py-2 pr-4 text-zinc-400">${claimedAt}</td><td class="py-2 pr-4 text-zinc-400">${row.notes || ""}</td></tr>`;
+        return `<tr class="border-t border-white/5"><td class="py-2 pr-4 font-mono">${escapeHtml(row.code)}</td><td class="py-2 pr-4 ${color}">${status}</td><td class="py-2 pr-4 text-zinc-400">${claimedAt}</td><td class="py-2 pr-4 text-zinc-400">${escapeHtml(row.notes || "")}</td></tr>`;
       }).join("");
       $("invite-rows").innerHTML = rows || `<tr><td colspan="4" class="py-4 text-zinc-500">No invites yet.</td></tr>`;
     }
-    async function refreshAll() { try { await Promise.all([loadStats(), loadInvites(), loadWaitlist()]); } catch(_) {} }
+
+    // ---------- Waitlist ----------
+    let WL = { users: [], providers: [], tab: "users", filter: "" };
+
+    function renderWaitlist() {
+      const q = WL.filter.trim().toLowerCase();
+      const matches = (row, fields) => !q || fields.some(f => String(row[f] || "").toLowerCase().includes(q));
+
+      const users = WL.users.filter(r => matches(r, ["full_name","email","company","primary_use_case","monthly_budget"]));
+      const providers = WL.providers.filter(r => matches(r, ["full_name","email","gpu_model","region","available_hours_per_day","expected_monthly_earnings_goal"]));
+
+      $("wl-users-count").textContent = WL.users.length;
+      $("wl-providers-count").textContent = WL.providers.length;
+
+      $("wl-users-rows").innerHTML = users.length ? users.map(r => {
+        const when = r.created_at ? new Date(r.created_at).toLocaleString() : "-";
+        return `<tr class="border-t border-white/5">
+          <td class="py-2 pr-4 text-zinc-400 whitespace-nowrap">${when}</td>
+          <td class="py-2 pr-4">${escapeHtml(r.full_name || "-")}</td>
+          <td class="py-2 pr-4"><a class="text-violet-300 hover:underline" href="mailto:${escapeHtml(r.email || "")}">${escapeHtml(r.email || "-")}</a></td>
+          <td class="py-2 pr-4 text-zinc-300">${escapeHtml(r.company || "-")}</td>
+          <td class="py-2 pr-4 text-zinc-300">${escapeHtml(r.primary_use_case || "-")}</td>
+          <td class="py-2 pr-4 text-zinc-300">${escapeHtml(r.monthly_budget || "-")}</td>
+          <td class="py-2 pr-4 text-zinc-500">${escapeHtml(r.source || "-")}</td>
+        </tr>`;
+      }).join("") : `<tr><td colspan="7" class="py-4 text-zinc-500">No AI user signups yet.</td></tr>`;
+
+      $("wl-providers-rows").innerHTML = providers.length ? providers.map(r => {
+        const when = r.created_at ? new Date(r.created_at).toLocaleString() : "-";
+        return `<tr class="border-t border-white/5">
+          <td class="py-2 pr-4 text-zinc-400 whitespace-nowrap">${when}</td>
+          <td class="py-2 pr-4">${escapeHtml(r.full_name || "-")}</td>
+          <td class="py-2 pr-4"><a class="text-violet-300 hover:underline" href="mailto:${escapeHtml(r.email || "")}">${escapeHtml(r.email || "-")}</a></td>
+          <td class="py-2 pr-4 text-zinc-300">${escapeHtml(r.gpu_model || "-")}</td>
+          <td class="py-2 pr-4 text-zinc-300">${r.number_of_gpus ?? "-"}</td>
+          <td class="py-2 pr-4 text-zinc-300">${escapeHtml(r.available_hours_per_day || "-")}</td>
+          <td class="py-2 pr-4 text-zinc-300">${escapeHtml(r.region || "-")}</td>
+          <td class="py-2 pr-4 text-zinc-300">${escapeHtml(r.expected_monthly_earnings_goal || "-")}</td>
+          <td class="py-2 pr-4 text-zinc-500">${escapeHtml(r.source || "-")}</td>
+        </tr>`;
+      }).join("") : `<tr><td colspan="9" class="py-4 text-zinc-500">No provider signups yet.</td></tr>`;
+    }
+
+    function setWaitlistTab(tab) {
+      WL.tab = tab;
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+      $("wl-users-wrap").classList.toggle("hidden", tab !== "users");
+      $("wl-providers-wrap").classList.toggle("hidden", tab !== "providers");
+    }
+
     async function loadWaitlist() {
       try {
         const data = await api("/api/admin/waitlist");
-        const users = (data && data.users) || [];
-        const providers = (data && data.providers) || [];
-        const fmt = (s) => s ? new Date(s).toLocaleString() : "";
-        const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
-        const ub = users.map(r => `<tr class="border-t border-white/5"><td class="py-2 pr-4 text-zinc-400">${esc(fmt(r.created_at))}</td><td class="py-2 pr-4">${esc(r.full_name)}</td><td class="py-2 pr-4">${esc(r.email)}</td><td class="py-2 pr-4">${esc(r.company)}</td><td class="py-2 pr-4">${esc(r.primary_use_case)}</td><td class="py-2 pr-4">${esc(r.monthly_budget)}</td></tr>`).join("");
-        const pb = providers.map(r => `<tr class="border-t border-white/5"><td class="py-2 pr-4 text-zinc-400">${esc(fmt(r.created_at))}</td><td class="py-2 pr-4">${esc(r.full_name)}</td><td class="py-2 pr-4">${esc(r.email)}</td><td class="py-2 pr-4">${esc(r.gpu_model)}</td><td class="py-2 pr-4">${esc(r.number_of_gpus)}</td><td class="py-2 pr-4">${esc(r.available_hours_per_day)}</td><td class="py-2 pr-4">${esc(r.region)}</td><td class="py-2 pr-4">${esc(r.expected_monthly_earnings_goal)}</td></tr>`).join("");
-        const ue = document.getElementById("waitlist-user-rows");
-        const pe = document.getElementById("waitlist-provider-rows");
-        if (ue) ue.innerHTML = ub || `<tr><td class="py-3 text-zinc-500" colspan="6">No entries yet.</td></tr>`;
-        if (pe) pe.innerHTML = pb || `<tr><td class="py-3 text-zinc-500" colspan="8">No entries yet.</td></tr>`;
-      } catch (e) { console.warn("loadWaitlist failed", e); }
+        WL.users = data.users || [];
+        WL.providers = data.providers || [];
+        renderWaitlist();
+      } catch (e) {
+        if (e.message !== "auth") console.error("waitlist load failed", e);
+      }
     }
+
+    function exportCsv() {
+      const rows = WL.tab === "users" ? WL.users : WL.providers;
+      if (!rows.length) { alert("Nothing to export yet."); return; }
+      const headers = Object.keys(rows[0]);
+      const esc = v => {
+        if (v == null) return "";
+        const s = typeof v === "object" ? JSON.stringify(v) : String(v);
+        return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+      };
+      const csv = [headers.join(",")].concat(rows.map(r => headers.map(h => esc(r[h])).join(","))).join("\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "waitlist_" + WL.tab + "_" + new Date().toISOString().slice(0,10) + ".csv";
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    async function refreshAll() {
+      try { await Promise.all([loadStats(), loadInvites(), loadWaitlist()]); } catch(_) {}
+    }
+
     async function doPasswordLogin() {
-      const email = $("email").value.trim(); const password = $("password").value;
+      const email = $("email").value.trim();
+      const password = $("password").value;
       if (!email || !password) { $("gate-error").textContent = "Email and password are required."; return; }
       $("gate-error").textContent = "";
-      $("unlock").disabled = true; $("unlock").textContent = "Signing in…";
+      $("unlock").disabled = true;
+      $("unlock").textContent = "Signing in…";
       try {
         const r = await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) });
         const d = await r.json().catch(()=>({}));
-        if (!r.ok) { const map = { invalid_credentials: "Wrong email or password.", email_not_confirmed: "Email not yet confirmed.", invalid_email: "That doesn't look like a valid email.", auth_provider_error: "Auth provider error — try again." }; $("gate-error").textContent = map[d.detail] || ("Login failed: " + (d.detail || ("HTTP " + r.status))); return; }
+        if (!r.ok) {
+          const map = { invalid_credentials: "Wrong email or password.", email_not_confirmed: "Email not yet confirmed.", invalid_email: "That doesn't look like a valid email.", auth_provider_error: "Auth provider error — try again." };
+          $("gate-error").textContent = map[d.detail] || ("Login failed: " + (d.detail || ("HTTP " + r.status)));
+          return;
+        }
         setCreds(d.access_token, "jwt");
         try { await loadStats(); } catch (_) { return; }
         showPanel();
-      } catch (e) { $("gate-error").textContent = "Network error: " + e.message; }
-      finally { $("unlock").disabled = false; $("unlock").textContent = "Sign in"; }
+      } catch (e) {
+        $("gate-error").textContent = "Network error: " + e.message;
+      } finally {
+        $("unlock").disabled = false;
+        $("unlock").textContent = "Sign in";
+      }
     }
+
     async function doKeyLogin() {
       const key = $("api-key").value.trim();
       if (!key) { $("gate-error").textContent = "Paste a key first."; return; }
       setCreds(key, "key");
       try { await loadStats(); showPanel(); } catch (_) {}
     }
+
     async function doGenerate() {
       const count = Math.max(1, Math.min(50, parseInt($("gen-count").value || "1", 10)));
       const notes = $("gen-notes").value.trim();
-      $("gen").disabled = true; const original = $("gen").textContent; $("gen").textContent = "Generating…";
+      $("gen").disabled = true;
+      const original = $("gen").textContent;
+      $("gen").textContent = "Generating…";
       try {
         const response = await api("/api/admin/invites", { method: "POST", body: JSON.stringify({ count, notes }) });
         const codes = response.codes || [];
@@ -221,10 +339,18 @@
         $("gen-summary").textContent = codes.length + " new code" + (codes.length === 1 ? "" : "s") + " — share with friends or paste into signup.";
         $("gen-output").textContent = codes.join("\n");
         await loadInvites();
-      } catch (e) { if (e.message !== "auth") alert("Couldn't generate codes: " + e.message); }
-      finally { $("gen").disabled = false; $("gen").textContent = original; }
+      } catch (e) {
+        if (e.message !== "auth") alert("Couldn't generate codes: " + e.message);
+      } finally {
+        $("gen").disabled = false;
+        $("gen").textContent = original;
+      }
     }
-    $("gen-copy").addEventListener("click", async () => { const txt = $("gen-output").textContent; try { await navigator.clipboard.writeText(txt); $("gen-copy").textContent = "Copied!"; setTimeout(()=>{$("gen-copy").textContent="Copy all";},1400); } catch(_){} });
+
+    $("gen-copy").addEventListener("click", async () => {
+      const txt = $("gen-output").textContent;
+      try { await navigator.clipboard.writeText(txt); $("gen-copy").textContent = "Copied!"; setTimeout(()=>{$("gen-copy").textContent="Copy all";},1400); } catch(_){}
+    });
     $("unlock").addEventListener("click", doPasswordLogin);
     $("unlock-key").addEventListener("click", doKeyLogin);
     $("password").addEventListener("keydown", e => { if (e.key === "Enter") doPasswordLogin(); });
@@ -232,6 +358,11 @@
     $("logout").addEventListener("click", () => { clearCreds(); showGate(""); });
     $("refresh").addEventListener("click", refreshAll);
     $("gen").addEventListener("click", doGenerate);
+    $("wl-refresh").addEventListener("click", loadWaitlist);
+    $("wl-export").addEventListener("click", exportCsv);
+    $("wl-search").addEventListener("input", e => { WL.filter = e.target.value; renderWaitlist(); });
+    document.querySelectorAll(".tab-btn").forEach(b => b.addEventListener("click", () => setWaitlistTab(b.dataset.tab)));
+
     if (getCreds()) { loadStats().then(showPanel).catch(()=>{}); } else { showGate(""); }
   </script>
 </body>

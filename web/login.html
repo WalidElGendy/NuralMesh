@@ -123,9 +123,9 @@
     .nm-role-group { display: flex; gap: 10px; margin-top: 8px; }
     .nm-role-choice { flex: 1 1 0; display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid #292940; border-radius: 12px; background: rgba(255,255,255,0.02); cursor: pointer; transition: border-color 0.15s, background 0.15s, box-shadow 0.15s; white-space: nowrap; user-select: none; }
     .nm-role-choice:hover { border-color: #3d3d5c; background: rgba(255,255,255,0.04); }
-    .nm-role-choice input[type="radio"] { appearance: none; -webkit-appearance: none; margin: 0; width: 18px; height: 18px; min-width: 18px; border: 2px solid #4a4a66; border-radius: 50%; background: transparent; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+    .nm-role-choice input[type="radio"] { appearance: none !important; -webkit-appearance: none !important; box-sizing: border-box !important; margin: 0 !important; padding: 0 !important; width: 18px !important; height: 18px !important; min-width: 18px !important; max-width: 18px !important; flex: 0 0 18px !important; border: 2px solid #4a4a66 !important; border-radius: 50% !important; background: transparent !important; display: inline-block !important; position: relative !important; cursor: pointer !important; vertical-align: middle; }
     .nm-role-choice input[type="radio"]::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #fff; transform: scale(0); transition: transform 0.15s; }
-    .nm-role-choice input[type="radio"]:checked { border-color: #8b5cf6; background: #8b5cf6; }
+    .nm-role-choice input[type="radio"]:checked { border-color: #8b5cf6 !important; background: radial-gradient(circle, #8b5cf6 0 4px, transparent 5px) !important; }
     .nm-role-choice input[type="radio"]:checked::after { transform: scale(1); }
     .nm-role-choice:has(input:checked) { border-color: #8b5cf6; background: rgba(139,92,246,0.10); box-shadow: 0 0 0 1px rgba(139,92,246,0.45) inset; }
     .nm-role-choice__label { font-size: 14px; color: #e4e4e7; font-weight: 500; line-height: 1.2; }

@@ -25,6 +25,18 @@
     </form>
   </main>
   <script>
+    // Pre-select intent from ?intent=provider URL parameter
+    (function () {
+      try {
+        var params = new URLSearchParams(window.location.search);
+        var wanted = (params.get("intent") || "").toLowerCase();
+        if (wanted === "provider" || wanted === "user") {
+          var radio = document.querySelector('input[name="intent"][value="' + wanted + '"]');
+          if (radio) radio.checked = true;
+        }
+      } catch (e) {}
+    })();
+
     const form = document.getElementById("signup-form");
     const message = document.getElementById("message");
     form.addEventListener("submit", async (event) => {

@@ -36,7 +36,20 @@
       <h1>Log in</h1>
       <p>Use password login or request a Supabase magic link.</p>
       <label>Email<input name="email" type="email" required></label>
-      <fieldset style="margin-top:14px;border:0;padding:0"><legend style="font-size:13px;color:#e4e4e7;font-weight:700">Sign in as</legend><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px"><label style="display:flex;align-items:center;gap:8px;border:1px solid #292940;border-radius:10px;padding:8px 10px;cursor:pointer;font-weight:500"><input type="radio" name="login_as" value="user"> AI user</label><label style="display:flex;align-items:center;gap:8px;border:1px solid #292940;border-radius:10px;padding:8px 10px;cursor:pointer;font-weight:500"><input type="radio" name="login_as" value="provider"> GPU provider</label></div><p style="margin:6px 0 0;font-size:12px;color:#71717a">Optional — we’ll use what you signed up with by default.</p></fieldset>
+      <fieldset class="nm-role-fieldset">
+        <legend>Sign in as</legend>
+        <div class="nm-role-group">
+          <label class="nm-role-choice">
+            <input type="radio" name="login_as" value="user">
+            <span class="nm-role-choice__label">AI user</span>
+          </label>
+          <label class="nm-role-choice">
+            <input type="radio" name="login_as" value="provider">
+            <span class="nm-role-choice__label">GPU provider</span>
+          </label>
+        </div>
+        <p class="nm-role-hint">Optional — we’ll use what you signed up with by default.</p>
+      </fieldset>
       <label>Password<input name="password" type="password"></label>
       <button type="submit">Log in with password</button>
       <button id="magic-link" class="secondary" type="button">Email me a magic link</button>
@@ -86,7 +99,21 @@
   .site-footer .footer-links a:hover{text-decoration:underline}
   .site-footer .footer-copy{width:100%;text-align:center;margin-top:16px;color:#71717a;font-size:13px}
   @media (max-width:560px){.site-footer .footer-inner{flex-direction:column;align-items:flex-start}}
-</style>
+
+    /* Role chooser ("Sign in as") */
+    .nm-role-group { display: flex; gap: 10px; margin-top: 8px; }
+    .nm-role-choice { flex: 1 1 0; display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid #292940; border-radius: 12px; background: rgba(255,255,255,0.02); cursor: pointer; transition: border-color 0.15s, background 0.15s, box-shadow 0.15s; white-space: nowrap; user-select: none; }
+    .nm-role-choice:hover { border-color: #3d3d5c; background: rgba(255,255,255,0.04); }
+    .nm-role-choice input[type="radio"] { appearance: none; -webkit-appearance: none; margin: 0; width: 18px; height: 18px; min-width: 18px; border: 2px solid #4a4a66; border-radius: 50%; background: transparent; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+    .nm-role-choice input[type="radio"]::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #fff; transform: scale(0); transition: transform 0.15s; }
+    .nm-role-choice input[type="radio"]:checked { border-color: #8b5cf6; background: #8b5cf6; }
+    .nm-role-choice input[type="radio"]:checked::after { transform: scale(1); }
+    .nm-role-choice:has(input:checked) { border-color: #8b5cf6; background: rgba(139,92,246,0.10); box-shadow: 0 0 0 1px rgba(139,92,246,0.45) inset; }
+    .nm-role-choice__label { font-size: 14px; color: #e4e4e7; font-weight: 500; line-height: 1.2; }
+    .nm-role-fieldset { margin-top: 16px; border: 0; padding: 0; }
+    .nm-role-fieldset > legend { font-size: 13px; color: #e4e4e7; font-weight: 700; padding: 0; }
+    .nm-role-hint { font-size: 12px; color: #8b91a3; margin: 8px 0 0; }
+  </style>
 <footer class="site-footer">
   <div class="footer-inner">
     <div class="footer-brand">

@@ -478,7 +478,13 @@
 /* Sidebar agent N. mark */
 .agent-avatar{display:flex;align-items:center;justify-content:center;font-size:0}
 .agent-avatar .nm-agent-mark{width:62%;height:62%;display:block;color:#ffffff;filter:drop-shadow(0 1px 2px rgba(0,0,0,.25))}
-</style>
+
+    .nm-session-mini { padding: 8px 10px; margin-bottom: 8px; border: 1px solid rgba(124,77,255,0.25); border-radius: 8px; background: rgba(124,77,255,0.06); display: flex; flex-direction: column; gap: 2px; }
+    .nm-session-mini__label { font-size: 11px; color: #8b91a3; text-transform: uppercase; letter-spacing: 0.04em; }
+    .nm-session-mini__email { font-size: 13px; color: #f8fafc; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .nm-session-mini__role { font-size: 11px; color: #c4b5fd; }
+    .nm-switch-role { color: #c4b5fd !important; }
+  </style>
 </head>
 <body>
   <div id="app" class="nm-app">
@@ -497,6 +503,12 @@
       </div>
       <ul id="agent-list" class="nm-agent-list" role="listbox" aria-label="Agent list"></ul>
       <footer class="nm-sidebar__footer">
+        <div class="nm-session-mini" id="session-badge" hidden>
+          <div class="nm-session-mini__label">Signed in as</div>
+          <div class="nm-session-mini__email" id="session-email"></div>
+          <div class="nm-session-mini__role" id="session-role">AI user</div>
+        </div>
+        <a href="/host-dashboard.html" class="nm-account-link nm-switch-role" id="switch-role" hidden title="Open the GPU provider dashboard">Switch to host dashboard →</a>
         <a href="/account.html" class="nm-account-link">Account</a>
         <a href="/host/terms.html" class="nm-account-link">Terms</a>
       </footer>
@@ -532,5 +544,21 @@
   </div>
   <div id="toast-root" class="nm-toast-root" aria-live="polite"></div>
   <script type="module" src="/js/chat/main.js"></script>
+
+  <script>
+    (function initSessionBadge(){
+      try {
+        const email = sessionStorage.getItem('nm_email') || localStorage.getItem('nm_email') || '';
+        const intent = (localStorage.getItem('nm_intent') || 'user').toLowerCase();
+        const badge = document.getElementById('session-badge');
+        const emailEl = document.getElementById('session-email');
+        const roleEl = document.getElementById('session-role');
+        const switchEl = document.getElementById('switch-role');
+        if (email && badge && emailEl) { emailEl.textContent = email; badge.hidden = false; }
+        if (roleEl) roleEl.textContent = intent === 'provider' ? 'GPU provider' : 'AI user';
+        if (switchEl && intent === 'provider') { switchEl.hidden = false; }
+      } catch (e) { /* ignore */ }
+    })();
+  </script>
 </body>
 </html>

@@ -1149,6 +1149,7 @@ class AuthLoginResponse(BaseModel):
     expires_at: int
     user_id: str
     email: str
+    intent: str | None = None
 
 
 class MagicLinkRequest(BaseModel):
@@ -1174,7 +1175,9 @@ def auth_login(body: AuthLoginRequest):
     user = getattr(result, "user", None)
     if not session or not user:
         raise HTTPException(status_code=401, detail="invalid_credentials")
-    return AuthLoginResponse(access_token=session.access_token, refresh_token=session.refresh_token, expires_at=int(getattr(session, "expires_at", 0) or 0), user_id=user.id, email=user.email)
+    user_meta = getattr(user, "user_metadata", None) or {}
+    intent_value = user_meta.get("intent") if isinstance(user_meta, dict) else None
+    return AuthLoginResponse(access_token=session.access_token, refresh_token=session.refresh_token, expires_at=int(getattr(session, "expires_at", 0) or 0), user_id=user.id, email=user.email, intent=intent_value)
 
 
 @app.post("/api/auth/magic-link")

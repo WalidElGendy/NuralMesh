@@ -321,12 +321,31 @@
 
     /* Tooltip-ish for OS step */
     .hidden { display: none !important; }
+  
+    /* Session badge + role switcher */
+    nav { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .nm-session { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; margin-right: 8px; font-size: 13px; color: #aab0c0; flex-wrap: wrap; }
+    .nm-session__label { color: #8b91a3; }
+    .nm-session__email { color: #fff; font-weight: 500; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .nm-session__role { background: rgba(124,77,255,0.18); color: #c4b5fd; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 500; letter-spacing: 0.02em; }
+    .nm-switch-role { color: #c4b5fd; text-decoration: none; border: 1px solid rgba(124,77,255,0.4); padding: 4px 10px; border-radius: 999px; font-size: 12px; transition: background 0.15s, color 0.15s; }
+    .nm-switch-role:hover { background: rgba(124,77,255,0.22); color: #fff; }
+    @media (max-width: 720px) {
+      .nm-session__label, .nm-session__email { display: none; }
+      .nm-switch-role { padding: 4px 8px; }
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <nav>
       <a class="brand" href="/" aria-label="Meshnet">N<span class="dot">.</span>eshnet</a>
+      <div class="nm-session" id="session-badge" hidden>
+        <span class="nm-session__label">Signed in as</span>
+        <span class="nm-session__email" id="session-email"></span>
+        <span class="nm-session__role" id="session-role">GPU provider</span>
+        <a class="nm-switch-role" href="/chat.html" id="switch-role" title="Open the AI inference dashboard">Switch to AI inference →</a>
+      </div>
       <a class="signout" href="/login.html" id="logout">Sign out</a>
     </nav>
 
@@ -657,6 +676,25 @@
 
     renderInstallCmd();
     startActivation();
+  
+
+    /* ---- Session badge + role switcher ---- */
+    (function initSessionBadge(){
+      try {
+        const email = sessionStorage.getItem('nm_email') || localStorage.getItem('nm_email') || '';
+        const intent = (localStorage.getItem('nm_intent') || 'provider').toLowerCase();
+        const badge = document.getElementById('session-badge');
+        const emailEl = document.getElementById('session-email');
+        const roleEl = document.getElementById('session-role');
+        const switchEl = document.getElementById('switch-role');
+        if (!badge) return;
+        if (email) { emailEl.textContent = email; badge.hidden = false; }
+        if (intent === 'user') {
+          roleEl.textContent = 'AI user';
+          if (switchEl) { switchEl.textContent = 'Switch to host dashboard \u2192'; switchEl.href = '/host-dashboard.html'; }
+        }
+      } catch (e) { /* ignore */ }
+    })();
   </script>
 </body>
 </html>

@@ -23,7 +23,7 @@ from supabase import create_client
 
 
 PRODUCTION_ENV = "production"
-DEFAULT_ALLOWED_ORIGINS = "https://beta.meshnet.co"
+DEFAULT_ALLOWED_ORIGINS = "https://beta.meshnet.co,https://meshnet.co,https://www.meshnet.co"
 REQUIRED_PRODUCTION_ENV = (
     "DATABASE_URL",
     "SUPABASE_URL",
@@ -1008,6 +1008,60 @@ def auth_signup(body: AuthSignupRequest):
         confirmation_email_sent=True,
         message="Check your email to confirm your account.",
     )
+
+
+@app.post("/api/waitlist")
+def public_waitlist_submit(body: dict):
+    """Public endpoint for meshnet.co waitlist forms. Accepts {kind, payload}."""
+    kind = (body or {}).get("kind")
+    payload = (body or {}).get("payload") or {}
+    if kind not in ("user", "provider"):
+        raise HTTPException(status_code=400, detail="kind must be 'user' or 'provider'")
+    email = (payload.get("email") or "").strip()
+    if not email or "@" not in email:
+        raise HTTPException(status_code=400, detail="valid email is required")
+    table = "waitlist_users" if kind == "user" else "waitlist_providers"
+    if kind == "user":
+        allowed = {"full_name", "email", "company", "primary_use_case", "monthly_budget"}
+    else:
+        allowed = {"full_name", "email", "gpu_model", "number_of_gpus", "available_hours_per_day", "region", "expected_monthly_earnings_goal"}
+    row = {k: payload.get(k) for k in allowed if payload.get(k) not in (None, "")}
+    if "number_of_gpus" in row:
+        try:
+            row["number_of_gpus"] = int(row["number_of_gpus"])
+        except (TypeError, ValueError):
+            row.pop("number_of_gpus", None)
+    row["source"] = (payload.get("source") or "meshnet.co")[:80]
+    try:
+        supabase = get_supabase_client()
+        supabase.table(table).insert(row).execute()
+    except Exception as error:
+        logger.warning("waitlist_insert_failed kind=%s error=%s", kind, error)
+        raise HTTPException(status_code=500, detail="Could not record waitlist entry")
+    return {"status": "ok"}
+
+
+@app.get("/api/admin/waitlist")
+def admin_list_waitlist(_: bool = Depends(verify_admin)):
+    supabase = get_supabase_client()
+    users = (
+        supabase.table("waitlist_users")
+        .select("*")
+        .order("created_at", desc=True)
+        .limit(500)
+        .execute()
+    )
+    providers = (
+        supabase.table("waitlist_providers")
+        .select("*")
+        .order("created_at", desc=True)
+        .limit(500)
+        .execute()
+    )
+    return {
+        "users": users.data or [],
+        "providers": providers.data or [],
+    }
 
 
 @app.get("/admin")

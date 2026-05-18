@@ -557,6 +557,34 @@
         if (email && badge && emailEl) { emailEl.textContent = email; badge.hidden = false; }
         if (roleEl) roleEl.textContent = intent === 'provider' ? 'GPU provider' : 'AI user';
         if (switchEl && intent === 'provider') { switchEl.hidden = false; }
+        if (switchEl) {
+          switchEl.addEventListener('click', async function(ev){
+            const dest = switchEl.getAttribute('href') || '/host-dashboard.html';
+            const target = 'provider';
+            const token = localStorage.getItem('nm_access_token');
+            if (!token) return; /* let link navigate normally */
+            ev.preventDefault();
+            const original = switchEl.textContent;
+            switchEl.textContent = 'Switching\u2026';
+            switchEl.style.pointerEvents = 'none';
+            try {
+              const r = await fetch('/api/auth/intent', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify({ intent: target })
+              });
+              if (r.ok) {
+                const j = await r.json().catch(() => ({}));
+                if (j && j.intent) localStorage.setItem('nm_intent', j.intent);
+              } else {
+                console.warn('intent update failed', r.status);
+              }
+            } catch (err) {
+              console.warn('intent update error', err);
+            }
+            window.location.href = dest;
+          });
+        }
       } catch (e) { /* ignore */ }
     })();
   </script>

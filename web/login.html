@@ -80,7 +80,24 @@
         message.textContent = data.message;
         return;
       }
-      sessionStorage.setItem("nm_email", payload.email); try { if (data && data.access_token) { localStorage.setItem("nm_access_token", data.access_token); } } catch (_) {} var __serverIntent=(data&&data.intent)||null; var __formIntent=(new FormData(form).get("login_as")||"").toString(); var __stored=localStorage.getItem("nm_intent"); var __i=__serverIntent||__formIntent||__stored||"user"; try{localStorage.setItem("nm_intent", __i);}catch(_){} window.location.href = __i==="provider" ? "/host-dashboard.html" : "/chat.html";
+      sessionStorage.setItem("nm_email", payload.email); try { if (data && data.access_token) { localStorage.setItem("nm_access_token", data.access_token); } } catch (_) {} var __serverIntent = (data && data.intent) || null;
+      var __formIntent = (new FormData(form).get("login_as") || "").toString().toLowerCase();
+      if (__formIntent !== "user" && __formIntent !== "provider") __formIntent = "";
+      var __stored = localStorage.getItem("nm_intent");
+      // Priority: explicit form pick > server-stored > localStorage fallback > "user"
+      var __i = __formIntent || __serverIntent || __stored || "user";
+      try { localStorage.setItem("nm_intent", __i); } catch(_) {}
+      // If user picked a role on the form that differs from server-stored, persist it to Supabase
+      if (__formIntent && __serverIntent && __formIntent !== __serverIntent && data && data.access_token) {
+        try {
+          await fetch("/api/auth/intent", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": "Bearer " + data.access_token },
+            body: JSON.stringify({ intent: __formIntent })
+          });
+        } catch(_) {}
+      }
+      window.location.href = __i === "provider" ? "/host-dashboard.html" : "/chat.html";
     }
     form.addEventListener("submit", (event) => {
       event.preventDefault();

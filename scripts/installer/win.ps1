@@ -22,11 +22,57 @@ function Fail      { param([string]$Message) Write-Host "[meshnet] ERROR: $Messa
 function Test-CommandExists { param([string]$Name) [bool](Get-Command $Name -ErrorAction SilentlyContinue) }
 function Ensure-Directory { param([string]$Path) if (-not (Test-Path -LiteralPath $Path)) { New-Item -ItemType Directory -Force -Path $Path | Out-Null } }
 
+function Test-PythonExe {
+  param([string]$Exe, [string[]]$PreArgs = @())
+  try {
+    $argsList = @()
+    if ($PreArgs) { $argsList += $PreArgs }
+    $argsList += '--version'
+    $out = & $Exe @argsList 2>&1 | Out-String
+    if ($LASTEXITCODE -ne 0) { return $false }
+    if ($out -match 'Python\s+3\.') { return $true }
+    return $false
+  } catch { return $false }
+}
+
+function Resolve-PythonCommand {
+  $py = Get-Command 'py' -ErrorAction SilentlyContinue
+  if ($py -and (Test-PythonExe -Exe $py.Source -PreArgs @('-3'))) {
+    return @{ Exe = $py.Source; PreArgs = @('-3') }
+  }
+  foreach ($name in @('python3','python')) {
+    $cands = @(Get-Command $name -All -ErrorAction SilentlyContinue)
+    foreach ($c in $cands) {
+      $src = $c.Source
+      if (-not $src) { continue }
+      if ($src -like '*\WindowsApps\*') { continue }
+      if (Test-PythonExe -Exe $src) {
+        return @{ Exe = $src; PreArgs = @() }
+      }
+    }
+  }
+  return $null
+}
+
+function Install-PythonViaWinget {
+  if (-not (Test-CommandExists 'winget')) { return $false }
+  Write-Log 'Installing Python 3.12 via winget (this can take a minute)...'
+  try {
+    & winget install --silent --accept-source-agreements --accept-package-agreements --exact --id Python.Python.3.12 | Out-Null
+  } catch { return $false }
+  $env:Path = [System.Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path','User')
+  return $true
+}
+
 function Get-PythonExe {
-  if (Test-CommandExists 'python')  { return 'python' }
-  if (Test-CommandExists 'python3') { return 'python3' }
-  if (Test-CommandExists 'py')      { return 'py -3' }
-  Fail 'Python 3 is required. Install from https://www.python.org/downloads/windows/ and re-run.'
+  $resolved = Resolve-PythonCommand
+  if ($resolved) { return $resolved }
+  Write-Log 'No working Python 3 found on PATH. Attempting auto-install via winget...'
+  if (Install-PythonViaWinget) {
+    $resolved = Resolve-PythonCommand
+    if ($resolved) { return $resolved }
+  }
+  Fail 'Python 3 is required. Install from https://www.python.org/downloads/windows/ (tick "Add Python to PATH") and re-run. If only the Microsoft Store Python alias is present, install the real package from python.org.'
 }
 
 function Install-OllamaWindows {
@@ -99,12 +145,21 @@ function Update-NodeClient {
 
 function Install-PythonDeps {
   $py = Get-PythonExe
-  Write-Log "Creating virtual environment in $($script:VenvDir)..."
-  if ($py -eq 'py -3') { & py -3 -m venv $script:VenvDir } else { & $py -m venv $script:VenvDir }
+  $pyExe  = $py.Exe
+  $pyArgs = @()
+  if ($py.PreArgs) { $pyArgs += $py.PreArgs }
+  Write-Log "Creating virtual environment in $($script:VenvDir) (using $pyExe $($pyArgs -join ' '))..."
+  $venvArgs = @()
+  if ($pyArgs) { $venvArgs += $pyArgs }
+  $venvArgs += @('-m','venv',$script:VenvDir)
+  & $pyExe @venvArgs
+  if ($LASTEXITCODE -ne 0) { Fail "Failed to create virtualenv at $($script:VenvDir)" }
   $venvPy = Join-Path $script:VenvDir 'Scripts\python.exe'
   if (-not (Test-Path $venvPy)) { Fail "Failed to create virtualenv at $($script:VenvDir)" }
   & $venvPy -m pip install --upgrade pip
+  if ($LASTEXITCODE -ne 0) { Fail 'pip upgrade failed' }
   & $venvPy -m pip install -r (Join-Path $script:NodeDir 'requirements.txt')
+  if ($LASTEXITCODE -ne 0) { Fail 'pip install -r requirements.txt failed' }
 }
 
 function Install-MeshnetService {

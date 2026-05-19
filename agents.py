@@ -20,6 +20,18 @@ from api import get_supabase_client  # reuse the same Supabase client factory
 router = APIRouter(prefix="/api/agents", tags=["agents"])
 logger = logging.getLogger(__name__)
 
+# ---------------- Canonical seeded agent set ----------------
+NAMED_AGENTS = [
+    "Design Agent",
+    "Content Agent",
+    "Cowork Agent",
+    "Email Agent",
+    "Sales Agent",
+    "Marketing Agent",
+    "Personal Assistant Agent",
+]
+
+
 
 # ---------------- Agent persona system prompts ----------------
 AGENT_PERSONAS = {
@@ -174,10 +186,31 @@ def list_agents(user_id: str = Depends(get_current_user_id)):
             .limit(200)
             .execute()
         )
+        rows = res.data or []
+        # Auto-seed: ensure this user has a row for each canonical NAMED_AGENT
+        existing_titles = {(r.get("title") or "").strip() for r in rows}
+        missing = [t for t in NAMED_AGENTS if t not in existing_titles]
+        if missing:
+            try:
+                payload = [{"user_id": user_id, "title": t} for t in missing]
+                supabase.table("conversations").insert(payload).execute()
+                # Re-fetch so the response includes the freshly seeded rows
+                res = (
+                    supabase.table("conversations")
+                    .select("*")
+                    .eq("user_id", user_id)
+                    .is_("deleted_at", "null")
+                    .order("updated_at", desc=True)
+                    .limit(200)
+                    .execute()
+                )
+                rows = res.data or []
+            except Exception:
+                logger.exception("seed_named_agents_failed")
     except Exception as e:
         logger.exception("list_agents_failed")
         raise HTTPException(status_code=500, detail=f"list_agents_failed: {e}")
-    return AgentListResponse(agents=[_row_to_agent_summary(r) for r in (res.data or [])])
+    return AgentListResponse(agents=[_row_to_agent_summary(r) for r in rows])
 
 
 @router.post("", response_model=AgentSummary)

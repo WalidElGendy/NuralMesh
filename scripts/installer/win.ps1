@@ -180,24 +180,64 @@ function Invoke-NativeQuiet {
 function Install-MeshnetService {
   param([switch]$SkipService)
   if ($SkipService -or $env:MESHNET_SKIP_SERVICE -eq '1') { Write-Log 'Skipping service install (MESHNET_SKIP_SERVICE).'; return }
-  $venvPy = Join-Path $script:VenvDir 'Scripts\python.exe'
-  $nodePy = Join-Path $script:NodeDir 'node.py'
+  $venvPy   = Join-Path $script:VenvDir 'Scripts\python.exe'
+  $nodePy   = Join-Path $script:NodeDir 'node.py'
+  $launcher = Join-Path $script:MeshnetDir 'start-node.cmd'
   $taskName = 'MeshnetNode'
-  $envBlock = "`$env:MESHNET_API_BASE_URL='$($script:BackendUrl)'; `$env:MESHNET_CREDENTIALS_FILE='$($script:CredentialsFile)';"
-  $cmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -Command `"$envBlock & '$venvPy' '$nodePy' *>> '$($script:LogFile)'`""
+
+  if (-not (Test-Path -LiteralPath $venvPy)) { Fail "Python not found at $venvPy" }
+  if (-not (Test-Path -LiteralPath $nodePy)) { Fail "node.py not found at $nodePy" }
+
+  # Write a self-contained .cmd wrapper. No quoting fragility: just plain batch.
+  $launcherBody = @"
+@echo off
+setlocal
+set "MESHNET_API_BASE_URL=$($script:BackendUrl)"
+set "MESHNET_CREDENTIALS_FILE=$($script:CredentialsFile)"
+set "MESHNET_DIR=$($script:MeshnetDir)"
+"$venvPy" "$nodePy" >> "$($script:LogFile)" 2>&1
+"@
+  Set-Content -LiteralPath $launcher -Value $launcherBody -Encoding ASCII
+  Write-Log "Wrote node launcher: $launcher"
+
   Write-Log "Registering scheduled task '$taskName' (runs at logon)..."
-  # Best-effort delete (ignore "task not found")
+  # Best-effort delete any previous task
   Invoke-NativeQuiet -Exe 'schtasks.exe' -Args @('/Delete','/TN',$taskName,'/F') | Out-Null
-  # Create the task — this one must succeed
-  $createRes = Invoke-NativeQuiet -Exe 'schtasks.exe' -Args @('/Create','/TN',$taskName,'/SC','ONLOGON','/RL','LIMITED','/F','/TR',$cmd)
+
+  # Create — point /TR at the wrapper script. /TR must be a single token, so we pass it as one quoted arg.
+  $trArg = '"' + $launcher + '"'
+  $createRes = Invoke-NativeQuiet -Exe 'schtasks.exe' -Args @('/Create','/TN',$taskName,'/SC','ONLOGON','/RL','LIMITED','/F','/TR',$trArg)
   if ($createRes.ExitCode -ne 0) {
     Write-Log "schtasks /Create output: $($createRes.Output.Trim())"
     Fail "Failed to register scheduled task '$taskName' (exit $($createRes.ExitCode)). Try running PowerShell as Administrator."
   }
-  # Start the task — non-fatal if it can't start immediately (it'll still run at next logon)
+
+  # Verify the task actually exists post-create (catches the silent-discard case).
+  $verify = Invoke-NativeQuiet -Exe 'schtasks.exe' -Args @('/Query','/TN',$taskName)
+  if ($verify.ExitCode -ne 0) {
+    Write-Log "schtasks /Query output: $($verify.Output.Trim())"
+    Write-Log "Falling back to direct launch (no scheduled task)..."
+    # Fallback: start the launcher in the background so the user still gets a running node.
+    try {
+      Start-Process -FilePath 'cmd.exe' -ArgumentList @('/c', $launcher) -WindowStyle Hidden | Out-Null
+      Write-Log "Node launched directly. Logs: $($script:LogFile)"
+      Write-Log "NOTE: scheduled task could not be registered; node will NOT auto-restart at next logon. Re-run installer as Administrator to fix."
+      return
+    } catch {
+      Fail "Scheduled task did not persist after /Create and direct launch also failed: $($_.Exception.Message)"
+    }
+  }
+
+  # Start now — non-fatal if it can't start immediately
   $runRes = Invoke-NativeQuiet -Exe 'schtasks.exe' -Args @('/Run','/TN',$taskName)
   if ($runRes.ExitCode -ne 0) {
-    Write-Log "Scheduled task registered but did not start now (exit $($runRes.ExitCode)). It will run automatically at next logon. Output: $($runRes.Output.Trim())"
+    Write-Log "Scheduled task registered but did not start now (exit $($runRes.ExitCode)). It will run at next logon. Falling back to direct launch for this session..."
+    try {
+      Start-Process -FilePath 'cmd.exe' -ArgumentList @('/c', $launcher) -WindowStyle Hidden | Out-Null
+      Write-Log "Node launched directly. Logs: $($script:LogFile)"
+    } catch {
+      Write-Log "Direct launch failed: $($_.Exception.Message). Log out and back in to start the task."
+    }
   } else {
     Write-Log "Scheduled task started. Logs: $($script:LogFile)"
   }
@@ -233,7 +273,7 @@ function Install-Meshnet {
   Install-MeshnetService -SkipService:$SkipService
   Confirm-Heartbeat
   Write-Log 'Done. Your MeshNet node is registered and running.'
-  Write-Log 'Dashboard: https://beta.meshnet.co/host/dashboard'
+  Write-Log 'Dashboard: https://beta.meshnet.co/host-dashboard.html'
 }
 
 # When piped through iex, the function is defined but not invoked.

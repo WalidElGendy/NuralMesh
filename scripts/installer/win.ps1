@@ -162,22 +162,45 @@ function Install-PythonDeps {
   if ($LASTEXITCODE -ne 0) { Fail 'pip install -r requirements.txt failed' }
 }
 
+function Invoke-NativeQuiet {
+  # Run a native command suppressing stderr noise; return @{ ExitCode = N; Output = '...' }
+  param([string]$Exe, [string[]]$Args)
+  $prevEAP = $ErrorActionPreference
+  $ErrorActionPreference = 'Continue'
+  try {
+    $out = & $Exe @Args 2>&1 | Out-String
+    return @{ ExitCode = $LASTEXITCODE; Output = $out }
+  } catch {
+    return @{ ExitCode = 1; Output = $_.Exception.Message }
+  } finally {
+    $ErrorActionPreference = $prevEAP
+  }
+}
+
 function Install-MeshnetService {
   param([switch]$SkipService)
-  if ($SkipService -or $env:MESHNET_SKIP_SERVICE -eq '1') {
-    Write-Log 'Skipping service install (MESHNET_SKIP_SERVICE).'
-    return
-  }
+  if ($SkipService -or $env:MESHNET_SKIP_SERVICE -eq '1') { Write-Log 'Skipping service install (MESHNET_SKIP_SERVICE).'; return }
   $venvPy = Join-Path $script:VenvDir 'Scripts\python.exe'
   $nodePy = Join-Path $script:NodeDir 'node.py'
   $taskName = 'MeshnetNode'
   $envBlock = "`$env:MESHNET_API_BASE_URL='$($script:BackendUrl)'; `$env:MESHNET_CREDENTIALS_FILE='$($script:CredentialsFile)';"
   $cmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -Command `"$envBlock & '$venvPy' '$nodePy' *>> '$($script:LogFile)'`""
   Write-Log "Registering scheduled task '$taskName' (runs at logon)..."
-  schtasks.exe /Delete /TN $taskName /F 2>$null | Out-Null
-  schtasks.exe /Create /TN $taskName /SC ONLOGON /RL LIMITED /F /TR $cmd | Out-Null
-  schtasks.exe /Run    /TN $taskName | Out-Null
-  Write-Log "Scheduled task started. Logs: $($script:LogFile)"
+  # Best-effort delete (ignore "task not found")
+  Invoke-NativeQuiet -Exe 'schtasks.exe' -Args @('/Delete','/TN',$taskName,'/F') | Out-Null
+  # Create the task — this one must succeed
+  $createRes = Invoke-NativeQuiet -Exe 'schtasks.exe' -Args @('/Create','/TN',$taskName,'/SC','ONLOGON','/RL','LIMITED','/F','/TR',$cmd)
+  if ($createRes.ExitCode -ne 0) {
+    Write-Log "schtasks /Create output: $($createRes.Output.Trim())"
+    Fail "Failed to register scheduled task '$taskName' (exit $($createRes.ExitCode)). Try running PowerShell as Administrator."
+  }
+  # Start the task — non-fatal if it can't start immediately (it'll still run at next logon)
+  $runRes = Invoke-NativeQuiet -Exe 'schtasks.exe' -Args @('/Run','/TN',$taskName)
+  if ($runRes.ExitCode -ne 0) {
+    Write-Log "Scheduled task registered but did not start now (exit $($runRes.ExitCode)). It will run automatically at next logon. Output: $($runRes.Output.Trim())"
+  } else {
+    Write-Log "Scheduled task started. Logs: $($script:LogFile)"
+  }
 }
 
 function Confirm-Heartbeat {

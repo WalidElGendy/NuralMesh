@@ -80,7 +80,7 @@ def check_gpu_memory():
 
 
 def startup_self_check():
-    if not check_ollama_models() or not check_gpu_memory():
+    if not check_ollama_models():
         logger.error("Node startup self-check failed; exiting")
         raise SystemExit(1)
 

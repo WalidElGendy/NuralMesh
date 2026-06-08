@@ -380,7 +380,7 @@ class InMemoryProviderStore:
                 "last_seen": provider["last_seen_at"],
                 "latency_p50_ms": 220,
                 "latency_p95_ms": 520,
-                "success_rate": 0.99,
+                "success_rate": 0.99, "gpu_info": provider.get("gpu_info", {}),
                 "models": ["llama3.3:70b-instruct-q4_K_M"],
             }
             for provider in self.providers.values()

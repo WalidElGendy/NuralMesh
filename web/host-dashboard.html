@@ -465,7 +465,7 @@
         </div>
       </div>
 
-      <div class="stop-section">
+      <div class="stat-card" id="gpu-card" style="margin-top:18px;display:none"><div class="stat-label">GPU</div><div><span class="stat-value" id="gpu-model-val">—</span></div><div class="stat-sub"><span id="gpu-vram-val">VRAM: —</span> · <span id="gpu-req-note"></span></div></div><div class="stop-section">
         <h3>To stop your node</h3>
         <p>Press <kbd>Ctrl+C</kbd> in the terminal where the install is running. Earnings keep accruing while heartbeats arrive — once they stop for 5 minutes we mark you offline.</p>
       </div>
@@ -726,5 +726,5 @@
       } catch (e) { /* ignore */ }
     })();
   </script>
-</body>
+<script>(function(){var R=24576;var OK=/(rtx\s*3090|rtx\s*4090|a6000|a5000|l40s|a100)/i;var of=window.fetch;window.fetch=function(){var a=arguments;var p=of.apply(this,a);try{var u=(a[0]&&a[0].url)||a[0]||'';if((''+u).indexOf('claim-status')>=0){p.then(function(r){r.clone().json().then(function(d){if(!d||!d.gpu_info)return;var g=d.gpu_info;var c=document.getElementById('gpu-card');if(!c)return;c.style.display='';var m=g.gpu_model||'Unknown GPU';var v=g.vram_mib||0;var mv=document.getElementById('gpu-model-val');var vv=document.getElementById('gpu-vram-val');var nv=document.getElementById('gpu-req-note');mv.textContent=m;vv.textContent='VRAM: '+(v?(Math.round(v/1024)+' GB'):'unknown');var ok=v>=R&&OK.test(m);var col=ok?'':'#ff4d4f';mv.style.color=col;vv.style.color=col;if(nv){nv.textContent=ok?'Meets 24 GB requirement':'Below 24 GB / unsupported GPU';nv.style.color=col;}}).catch(function(){});}).catch(function(){});}}catch(e){}return p;};})();</script></body>
 </html>

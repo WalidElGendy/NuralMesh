@@ -803,8 +803,20 @@ def node_heartbeat(
     return {"status": "ok", "node_id": provider["node_id"], "last_seen_at": isoformat(utc_now())}
 
 
+MIN_VRAM_MIB = 24576
+SUPPORTED_GPUS = ("rtx 3090", "rtx 4090", "a6000", "a5000", "l40s", "a100")
+
+
+def node_meets_requirements(gpu_info: dict[str, Any]) -> bool:
+    gpu_info = gpu_info or {}
+    vram = gpu_info.get("vram_mib") or 0
+    model = (gpu_info.get("gpu_model") or "").lower()
+    return vram >= MIN_VRAM_MIB and any(g in model for g in SUPPORTED_GPUS)
+    
 @app.get("/api/node/jobs/next")
 def next_node_job(provider=Depends(verify_node_credentials)):
+    if not node_meets_requirements(provider.get("gpu_info")):
+        return {"job": None}
     supabase = get_supabase_client()
     result = supabase.table("jobs").select("*").eq("status", "pending").limit(1).execute()
     if not result.data:

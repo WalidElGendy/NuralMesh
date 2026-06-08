@@ -352,7 +352,7 @@ class InMemoryProviderStore:
             "last_seen_at": isoformat(utc_now()),
             "payout_method": {},
         }
-        record["used_at"] = isoformat(utc_now())
+        record["used_at"] = isoformat(utc_now()); record["node_id"] = node_id
         return {"provider_id": provider_id, "node_id": node_id, "node_secret": node_secret}
 
     def validate_node(self, node_id: str, node_secret: str) -> dict[str, Any]:
@@ -785,6 +785,13 @@ def claim_provider_node(body: ProviderClaimRequest, provider_store=Depends(get_p
 def provider_dashboard(provider_store=Depends(get_provider_store)):
     return provider_store.dashboard()
 
+@app.get("/api/provider/claim-status")
+def provider_claim_status(claim_token: str, provider_store=Depends(get_provider_store)):
+    record = provider_store.claim_tokens.get(claim_token) or {}
+    provider = provider_store.providers.get(record.get("node_id") or "") or {}
+    if not provider: return {"claimed": False}
+    age_s = max(0, int((utc_now() - parse_datetime(provider["last_seen_at"])).total_seconds()))
+    return {"claimed": True, "node_id": provider["node_id"], "status": provider.get("status", "online"), "gpu_info": provider.get("gpu_info", {}), "earnings_usd": round(0.045 * (age_s / 3600.0), 4), "jobs_served": 0, "tokens_out": 0, "last_beat_ago_s": age_s, "bpm": 60, "rate_per_hour_usd": 0.045}
 
 @app.post("/api/node/heartbeat")
 def node_heartbeat(

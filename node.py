@@ -209,9 +209,11 @@ def poll_for_jobs():
         raise RuntimeError(f"Missing NODE_ID or NODE_SECRET in {CREDENTIALS_FILE}")
     api_base_url = os.environ.get("MESHNET_API_BASE_URL", DEFAULT_API_BASE_URL).rstrip("/")
     session = build_session(node_id, node_secret)
-    heartbeat(session, api_base_url)
-
-    print(f"Node {node_id} is online and polling {api_base_url}...")
+    try:
+        heartbeat(session, api_base_url)
+        print(f"Node {node_id} is online and polling {api_base_url}...")
+    except Exception as error:
+        print(f"Initial heartbeat failed, will retry in loop: {error}")
 
     while True:
         try:

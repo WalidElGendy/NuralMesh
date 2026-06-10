@@ -807,12 +807,18 @@ MIN_VRAM_MIB = 24576
 SUPPORTED_GPUS = ("rtx 3090", "rtx 4090", "a6000", "a5000", "l40s", "a100")
 
 
-def node_meets_requirements(gpu_info: dict[str, Any]) -> bool:
-    gpu_info = gpu_info or {}
-    vram = gpu_info.get("vram_mib") or 0
-    model = (gpu_info.get("gpu_model") or "").lower()
-    return vram >= MIN_VRAM_MIB and any(g in model for g in SUPPORTED_GPUS)
-    
+def node_meets_requirements(gpu_info: Any) -> bool:
+    try:
+        if isinstance(gpu_info, str):
+            gpu_info = json.loads(gpu_info)
+        if not isinstance(gpu_info, dict):
+            return False
+        vram = int(gpu_info.get("vram_mib") or 0)
+        model = str(gpu_info.get("gpu_model") or "").lower()
+        return vram >= MIN_VRAM_MIB and any(g in model for g in SUPPORTED_GPUS)
+    except (ValueError, TypeError, AttributeError):
+        return False
+
 @app.get("/api/node/jobs/next")
 def next_node_job(provider=Depends(verify_node_credentials)):
     if not node_meets_requirements(provider.get("gpu_info")):

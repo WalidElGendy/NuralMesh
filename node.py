@@ -201,6 +201,27 @@ def process_job(session, api_base_url, job):
     )
 
 
+def get_gpu_info():
+    try:
+        result = subprocess.run(
+            [
+                "nvidia-smi",
+                "--query-gpu=memory.total,name",
+                "--format=csv,noheader,nounits",
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        first = result.stdout.strip().splitlines()[0]
+        total_str, name = [part.strip() for part in first.split(",", 1)]
+        return {"vram_mib": int(total_str), "gpu_model": name}
+    except Exception as error:
+        logger.error("Failed to read GPU info: %s", error)
+        return {}
+
+
 def poll_for_jobs():
     credentials = read_credentials()
     node_id = credentials.get("NODE_ID")
@@ -209,15 +230,16 @@ def poll_for_jobs():
         raise RuntimeError(f"Missing NODE_ID or NODE_SECRET in {CREDENTIALS_FILE}")
     api_base_url = os.environ.get("MESHNET_API_BASE_URL", DEFAULT_API_BASE_URL).rstrip("/")
     session = build_session(node_id, node_secret)
+    gpu_info = get_gpu_info()
     try:
-        heartbeat(session, api_base_url)
+        heartbeat(session, api_base_url, gpu_info)
         print(f"Node {node_id} is online and polling {api_base_url}...")
     except Exception as error:
         print(f"Initial heartbeat failed, will retry in loop: {error}")
 
     while True:
         try:
-            heartbeat(session, api_base_url)
+            heartbeat(session, api_base_url, gpu_info)
             job = claim_pending_job(session, api_base_url)
             if job:
                 print(f"Claimed job {job['id']}")

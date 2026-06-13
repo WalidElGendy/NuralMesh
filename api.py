@@ -21,6 +21,8 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from supabase import create_client
 
+import waitlist_emails
+
 
 PRODUCTION_ENV = "production"
 DEFAULT_ALLOWED_ORIGINS = "https://beta.meshnet.co,https://meshnet.co,https://www.meshnet.co"
@@ -1063,6 +1065,13 @@ def public_waitlist_submit(body: dict):
     except Exception as error:
         logger.warning("waitlist_insert_failed kind=%s error=%s", kind, error)
         raise HTTPException(status_code=500, detail="Could not record waitlist entry")
+
+    # Auto-issue an activation code and email it to the new signup.
+    name = (payload.get("full_name") or "").strip()
+    waitlist_emails.handle_waitlist_signup(
+        supabase, isoformat, utc_now, kind, email, name
+    )
+
     return {"status": "ok"}
 
 

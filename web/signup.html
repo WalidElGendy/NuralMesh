@@ -30,6 +30,12 @@
       try {
         var params = new URLSearchParams(window.location.search);
         var wanted = (params.get("intent") || "").toLowerCase();
+        // Prefill the activation code from the ?invite= link in the welcome email.
+        var inviteParam = params.get("invite");
+        if (inviteParam) {
+          var inviteField = document.querySelector('[name="invite_code"]');
+          if (inviteField) inviteField.value = inviteParam;
+        }
         if (wanted === "provider" || wanted === "user") {
           var radio = document.querySelector('input[name="intent"][value="' + wanted + '"]');
           if (radio) radio.checked = true;

@@ -61,9 +61,9 @@ export default function Overview({
           accent
           sub={
             <div className="space-y-1.5">
-              <Progress value={disbursed} max={committed} />
-              <span className="flex items-center gap-1 text-forest-600">
-                <ShieldCheck size={11} /> all verified
+              <Progress value={disbursed} max={committed} verified />
+              <span className="flex items-center gap-1 text-verify-600">
+                <ShieldCheck size={11} /> all satellite-verified
               </span>
             </div>
           }

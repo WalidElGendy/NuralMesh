@@ -83,6 +83,27 @@ export interface Milestone {
   verified_at: string | null;
 }
 
+/** One attempt by the verification job to read the ground and judge a milestone.
+ *  Recorded whether or not it changed anything — this is the evidence chain a regulator
+ *  will ask to see. `decision` is never 'verified' without a real observed_value. */
+export interface VerificationRun {
+  id: number;
+  milestone_id: string;
+  initiative_id: string;
+  provider: "sentinel_hub" | "copernicus" | "manual" | "none";
+  layer: string | null;
+  metric_key: string | null;
+  observed_value: number | null;
+  target_value: number | null;
+  comparator: string | null;
+  decision: "verified" | "failed" | "inconclusive" | "no_provider";
+  reason: string;
+  scene_date: string | null;
+  cloud_pct: number | null;
+  evidence: Record<string, unknown>;
+  created_at: string;
+}
+
 export interface Disbursement {
   id: string;
   org_id: string;

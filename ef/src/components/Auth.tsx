@@ -135,7 +135,12 @@ export default function Auth() {
           alt="Date palms in Wadi Sharma, NEOM Nature Reserve, Saudi Arabia"
           className="absolute inset-0 h-full w-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-navy-900 via-navy-900/45 to-navy-900/5" />
+        {/* Two scrims. The wide one seats the photo in the brand; the tight bottom one
+            buys real contrast for the headline — the grove is bright exactly where the
+            text lands, and without this the copy washes out. */}
+        <div className="absolute inset-0 bg-navy-900/25" />
+        <div className="absolute inset-x-0 bottom-0 h-3/4 bg-gradient-to-t from-navy-900 via-navy-900/85 to-transparent" />
+
         <div className="absolute inset-x-0 bottom-0 p-12">
           <p className="max-w-md font-display text-3xl leading-snug text-white">
             Every milestone confirmed from orbit — before a single riyal moves.

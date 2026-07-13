@@ -1,0 +1,103 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    @apply h-full;
+  }
+  body {
+    @apply bg-paper text-forest-900 antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "ss01";
+  }
+  ::selection {
+    @apply bg-forest-200 text-forest-900;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl border border-line bg-paper-raised shadow-card;
+  }
+  .label {
+    @apply font-mono text-[10px] uppercase tracking-[0.12em] text-forest-900/40;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium transition;
+  }
+  .btn-primary {
+    @apply btn bg-forest-800 text-white hover:bg-forest-700 disabled:opacity-40;
+  }
+  .btn-ghost {
+    @apply btn border border-line bg-paper-raised text-forest-800 hover:border-line-strong hover:bg-paper-sunk;
+  }
+  .input {
+    @apply w-full rounded-lg border border-line bg-paper-raised px-3 py-2.5 text-sm outline-none transition placeholder:text-forest-900/30 focus:border-forest-500 focus:ring-2 focus:ring-forest-500/10;
+  }
+}
+
+/* Numeric tables should align — tabular figures everywhere we show money. */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Map (dark surface inside the light shell) ─────────────────────────────── */
+.maplibregl-ctrl-group {
+  @apply overflow-hidden rounded-lg border border-field-line bg-field-800 !important;
+  box-shadow: none !important;
+}
+.maplibregl-ctrl-group button {
+  @apply bg-field-800 !important;
+}
+.maplibregl-ctrl-group button + button {
+  border-top: 1px solid #2a352d !important;
+}
+.maplibregl-ctrl-group button span {
+  filter: invert(0.85);
+}
+.maplibregl-ctrl-attrib {
+  @apply bg-field-900/70 text-[10px] !important;
+}
+.maplibregl-ctrl-attrib a {
+  @apply text-white/50 !important;
+}
+.maplibregl-ctrl-scale {
+  @apply border-white/25 bg-transparent text-[10px] text-white/50 !important;
+}
+.mapbox-gl-draw_ctrl-draw-btn {
+  @apply bg-field-800 !important;
+}
+.mapbox-gl-draw_ctrl-draw-btn.active {
+  background-color: rgba(63, 214, 140, 0.2) !important;
+}
+
+/* ── Scrollbars ───────────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply rounded-full border-[3px] border-solid border-transparent bg-line-strong bg-clip-content;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-forest-200 bg-clip-content;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-fade-up {
+  animation: fade-up 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}

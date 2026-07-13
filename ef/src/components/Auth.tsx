@@ -37,15 +37,22 @@ export default function Auth() {
     <div className="flex min-h-screen">
       {/* Left: the form */}
       <div className="flex w-full flex-col justify-between px-8 py-10 lg:w-[46%] lg:px-16">
-        <div className="flex items-center gap-2.5">
-          <img src="/favicon.svg" alt="" className="h-7 w-7 rounded-md" />
-          <span className="font-display text-lg tracking-tight">EFund</span>
+        <div className="flex items-center gap-3">
+          <img src="/logo.svg" alt="" className="h-10 w-10" />
+          <div>
+            <div className="font-display text-lg leading-none tracking-tight text-navy-900">
+              EFund
+            </div>
+            <div dir="rtl" className="mt-1 text-xs leading-none text-navy-900/50">
+              صندوق البيئة
+            </div>
+          </div>
         </div>
 
         <div className="mx-auto w-full max-w-sm animate-fade-up py-12">
           {step === "invite" ? (
             <form onSubmit={submitInvite}>
-              <h1 className="font-display text-[2.6rem] leading-[1.1] tracking-tight">
+              <h1 className="font-display text-[2.6rem] leading-[1.1] tracking-tight text-navy-900">
                 Join the Saudi
                 <br />
                 Environment Fund.
@@ -119,21 +126,26 @@ export default function Auth() {
         </div>
       </div>
 
-      {/* Right: the field. Dark, alive — the thing the money is actually buying. */}
-      <div className="relative hidden overflow-hidden bg-field-900 lg:block lg:w-[54%]">
+      {/* Right: the field. Date palms in Wadi Sharma, NEOM — the NEOM Nature Reserve, a real
+          Saudi restoration site. Photo by NEOM (Unsplash License). The previous image was
+          Monument Valley, Utah, which is not a good look on a Saudi government product. */}
+      <div className="relative hidden overflow-hidden bg-navy-900 lg:block lg:w-[54%]">
         <img
-          src="https://images.unsplash.com/photo-1509316785289-025f5b846b35?q=80&w=2000&auto=format&fit=crop"
-          alt=""
-          className="absolute inset-0 h-full w-full object-cover opacity-55"
+          src="https://images.unsplash.com/photo-1682695796795-cc287af78a2b?q=80&w=2000&auto=format&fit=crop"
+          alt="Date palms in Wadi Sharma, NEOM Nature Reserve, Saudi Arabia"
+          className="absolute inset-0 h-full w-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-field-900 via-field-900/40 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-navy-900 via-navy-900/45 to-navy-900/5" />
         <div className="absolute inset-x-0 bottom-0 p-12">
           <p className="max-w-md font-display text-3xl leading-snug text-white">
             Every milestone confirmed from orbit — before a single riyal moves.
           </p>
-          <p className="mt-3 max-w-md text-sm leading-relaxed text-white/50">
+          <p className="mt-3 max-w-md text-sm leading-relaxed text-white/60">
             EFund pairs each funding tranche with the satellite layer that verifies it. The
             imagery agrees, or the money stays put.
+          </p>
+          <p className="mt-6 font-mono text-[10px] uppercase tracking-[0.12em] text-white/35">
+            Wadi Sharma · NEOM Nature Reserve
           </p>
         </div>
       </div>

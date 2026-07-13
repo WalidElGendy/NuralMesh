@@ -39,11 +39,11 @@ export default function Shell({
     <div className="flex h-screen">
       <aside className="flex w-60 shrink-0 flex-col border-r border-line bg-paper-raised">
         <div className="flex items-center gap-2.5 px-5 py-5">
-          <img src="/favicon.svg" alt="" className="h-7 w-7 rounded-md" />
+          <img src="/logo.svg" alt="" className="h-8 w-8" />
           <div>
-            <div className="font-display text-base leading-none">EFund</div>
-            <div className="mt-1 text-[9px] uppercase tracking-[0.12em] text-forest-900/35">
-              Saudi Environment Fund
+            <div className="font-display text-base leading-none text-navy-900">EFund</div>
+            <div dir="rtl" className="mt-1 text-[11px] leading-none text-navy-900/45">
+              صندوق البيئة
             </div>
           </div>
         </div>

@@ -11,29 +11,32 @@ export function Stat({
   label: string;
   value: ReactNode;
   sub?: ReactNode;
-  accent?: boolean;
-}) {
+}  & { accent?: boolean }) {
   return (
     <div className="card p-5">
       <div className="label">{label}</div>
       <div
         className={`tnum mt-2 font-display text-3xl leading-none ${
-          accent ? "text-forest-600" : "text-forest-900"
+          // `accent` marks a figure that is green because it was verified — disbursed
+          // capital. Not decoration.
+          accent ? "text-verify-600" : "text-navy-900"
         }`}
       >
         {value}
       </div>
-      {sub && <div className="mt-2 text-xs text-forest-900/50">{sub}</div>}
+      {sub && <div className="mt-2 text-xs text-navy-900/50">{sub}</div>}
     </div>
   );
 }
 
-export function Progress({ value, max }: { value: number; max: number }) {
+export function Progress({ value, max, verified }: { value: number; max: number; verified?: boolean }) {
   const p = max > 0 ? Math.min((value / max) * 100, 100) : 0;
   return (
     <div className="h-1.5 w-full overflow-hidden rounded-full bg-paper-sunk">
       <div
-        className="h-full rounded-full bg-forest-600 transition-[width] duration-700"
+        className={`h-full rounded-full transition-[width] duration-700 ${
+          verified ? "bg-verify-500" : "bg-navy-600"
+        }`}
         style={{ width: `${p}%` }}
       />
     </div>
@@ -41,8 +44,10 @@ export function Progress({ value, max }: { value: number; max: number }) {
 }
 
 const MILESTONE_STYLE: Record<MilestoneStatus, { cls: string; icon: ReactNode; text: string }> = {
+  // Green here is load-bearing: it means the imagery agreed. Nothing else in the UI
+  // is allowed to be green, so a scan of the page shows exactly what's been proven.
   verified: {
-    cls: "bg-forest-100 text-forest-700",
+    cls: "bg-verify-100 text-verify-700",
     icon: <ShieldCheck size={11} />,
     text: "Satellite-verified",
   },
@@ -72,8 +77,9 @@ export function MilestoneBadge({ status }: { status: MilestoneStatus }) {
 }
 
 const DISB_STYLE: Record<DisbursementStatus, string> = {
-  paid: "bg-forest-100 text-forest-700",
-  approved: "bg-forest-50 text-forest-600",
+  // Money that actually moved is green — it only moved because the imagery cleared it.
+  paid: "bg-verify-100 text-verify-700",
+  approved: "bg-verify-50 text-verify-600",
   requested: "bg-sand/15 text-[#8A6F12]",
   held: "bg-paper-sunk text-forest-900/45",
   rejected: "bg-clay/12 text-clay",

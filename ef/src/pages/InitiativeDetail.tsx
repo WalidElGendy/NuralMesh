@@ -28,7 +28,9 @@ export default function InitiativeDetail({
   orgId: string;
   onChanged: () => void;
 }) {
-  const { kpis, milestones, disbursements, refresh } = useInitiativeDetail(initiative.id);
+  const { kpis, milestones, disbursements, latestRun, refresh } = useInitiativeDetail(
+    initiative.id,
+  );
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -151,6 +153,7 @@ export default function InitiativeDetail({
           {milestones.map((m) => {
             const released = disbursements.some((d) => d.milestone_id === m.id);
             const releasable = m.status === "verified" && !released && canMoveMoney;
+            const run = latestRun(m.id);
 
             return (
               <div key={m.id} className="card p-5">
@@ -195,6 +198,42 @@ export default function InitiativeDetail({
                     </div>
                   </div>
                 </div>
+
+                {/* The machine's last reading. Shown even when it verified nothing —
+                    an honest "couldn't measure this" is itself the evidence. */}
+                {run && (
+                  <div
+                    className={`mt-3 rounded-lg border p-3 ${
+                      run.decision === "verified"
+                        ? "border-forest-200 bg-forest-50"
+                        : run.decision === "failed"
+                          ? "border-clay/25 bg-clay/[0.03]"
+                          : "border-line bg-paper-sunk/50"
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-forest-900/45">
+                      <Satellite size={10} />
+                      automated check · {date(run.created_at)}
+                      {run.scene_date && <span>· scene {date(run.scene_date)}</span>}
+                    </div>
+
+                    <p className="mt-1.5 text-xs leading-relaxed text-forest-900/70">
+                      {run.reason}
+                    </p>
+
+                    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[10px] text-forest-900/45">
+                      <span>provider · {run.provider}</span>
+                      {run.observed_value !== null ? (
+                        <span className="text-forest-700">
+                          observed · {num(run.observed_value, 2)}
+                        </span>
+                      ) : (
+                        <span className="text-clay">no reading obtained</span>
+                      )}
+                      <span>decision · {run.decision.replace("_", " ")}</span>
+                    </div>
+                  </div>
+                )}
 
                 <div className="mt-4 flex items-center justify-between border-t border-line pt-3">
                   <span className="text-xs text-forest-900/45">

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none" role="img" aria-label="EFund">
+  <title>EFund — verified from orbit</title>
+
+  <!-- Orbit. The ring is the satellite pass: the thing that does the verifying. -->
+  <ellipse cx="24" cy="24" rx="21" ry="9.5"
+           transform="rotate(-28 24 24)"
+           stroke="#2E3A87" stroke-width="1.6" opacity="0.55"/>
+
+  <!-- Leaf. Simple, symmetric, reads cleanly at 24px. -->
+  <path d="M24 9C33 14.5 35 26 24 39C13 26 15 14.5 24 9Z"
+        fill="#3D9970"/>
+  <!-- Midrib + veins, knocked out of the leaf so it keeps structure when small. -->
+  <path d="M24 12.5V36" stroke="#FBFAF9" stroke-width="1.3" stroke-linecap="round" opacity="0.85"/>
+  <path d="M24 20L29 16.5M24 20L19 16.5M24 27L30 23M24 27L18 23"
+        stroke="#FBFAF9" stroke-width="1.1" stroke-linecap="round" opacity="0.55"/>
+
+  <!-- The satellite itself, riding the orbit. -->
+  <circle cx="40.5" cy="16.5" r="3.1" fill="#2E3A87"/>
+  <circle cx="40.5" cy="16.5" r="1.2" fill="#FBFAF9"/>
+</svg>

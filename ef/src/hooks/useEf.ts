@@ -12,6 +12,7 @@ import type {
   Poi,
   Report,
   Role,
+  VerificationRun,
 } from "../lib/types";
 
 /** Auth + the caller's org and role. RLS does the real enforcing; this only shapes the UI. */
@@ -101,20 +102,22 @@ export function usePortfolio(orgId: string | null) {
   return { fund, initiatives, disbursements, pois, loading, refresh };
 }
 
-/** Everything hanging off a single initiative. */
+/** Everything hanging off a single initiative, including the verification evidence chain. */
 export function useInitiativeDetail(initiativeId: string | null) {
   const [kpis, setKpis] = useState<Kpi[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [disbursements, setDisbursements] = useState<Disbursement[]>([]);
+  const [runs, setRuns] = useState<VerificationRun[]>([]);
 
   const refresh = useCallback(async () => {
     if (!initiativeId) {
       setKpis([]);
       setMilestones([]);
       setDisbursements([]);
+      setRuns([]);
       return;
     }
-    const [k, m, d] = await Promise.all([
+    const [k, m, d, v] = await Promise.all([
       supabase.from("kpis").select("*").eq("initiative_id", initiativeId),
       supabase
         .from("milestones")
@@ -126,17 +129,29 @@ export function useInitiativeDetail(initiativeId: string | null) {
         .select("*")
         .eq("initiative_id", initiativeId)
         .order("requested_at", { ascending: false }),
+      supabase
+        .from("verification_runs")
+        .select("*")
+        .eq("initiative_id", initiativeId)
+        .order("created_at", { ascending: false }),
     ]);
     setKpis((k.data as Kpi[]) ?? []);
     setMilestones((m.data as Milestone[]) ?? []);
     setDisbursements((d.data as Disbursement[]) ?? []);
+    setRuns((v.data as VerificationRun[]) ?? []);
   }, [initiativeId]);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
 
-  return { kpis, milestones, disbursements, refresh };
+  /** Most recent run per milestone — what the machine last concluded. */
+  const latestRun = useCallback(
+    (milestoneId: string) => runs.find((r) => r.milestone_id === milestoneId) ?? null,
+    [runs],
+  );
+
+  return { kpis, milestones, disbursements, runs, latestRun, refresh };
 }
 
 export function useReports(orgId: string | null) {

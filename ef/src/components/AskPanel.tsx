@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
-import { Cpu, MapPin, Send, ShieldCheck, Square } from "lucide-react";
+import { AlertTriangle, MapPin, Send, Square } from "lucide-react";
 
-import { ask, buildGeoPrompt, type DoneEvent, type StageEvent } from "../lib/mesh";
+import { ask, buildGeoPrompt, INFERENCE_PROVIDER, SOVEREIGN_INFERENCE } from "../lib/mesh";
 import { logAudit } from "../lib/audit";
 import { formatArea } from "../lib/geo";
 import type { Aoi } from "../lib/types";
@@ -9,7 +9,7 @@ import type { Aoi } from "../lib/types";
 interface Turn {
   role: "user" | "assistant";
   text: string;
-  meta?: DoneEvent;
+  meta?: { provider: string; latency_ms: number };
 }
 
 interface Props {
@@ -37,8 +37,6 @@ export default function AskPanel({ aoi, activeLayers, initiativeName, orgId, lan
   const [turns, setTurns] = useState<Turn[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
-  const [stages, setStages] = useState<StageEvent[]>([]);
-  const [conversationId, setConversationId] = useState<string | null>(null);
   const abortRef = useRef<(() => void) | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -53,10 +51,8 @@ export default function AskPanel({ aoi, activeLayers, initiativeName, orgId, lan
     setTurns((t) => [...t, { role: "user", text: question }, { role: "assistant", text: "" }]);
     setInput("");
     setBusy(true);
-    setStages([]);
     scrollDown();
 
-    // Ground the question in the AOI before it ever reaches the model.
     const prompt = buildGeoPrompt({ question, aoi, activeLayers, initiativeName, lang });
 
     if (orgId) {
@@ -65,15 +61,13 @@ export default function AskPanel({ aoi, activeLayers, initiativeName, orgId, lan
         action: "ask.query",
         aoi,
         sourceLayers: activeLayers,
-        outputs: { question },
+        outputs: { question, provider: INFERENCE_PROVIDER },
       });
     }
 
     abortRef.current = await ask(
-      { message: prompt, conversationId, mode: "auto" },
+      { message: prompt },
       {
-        onConversation: (e) => setConversationId(e.conversation_id),
-        onStage: (s) => setStages((prev) => [...prev, s]),
         onToken: (text) => {
           setTurns((prev) => {
             const next = [...prev];
@@ -91,29 +85,24 @@ export default function AskPanel({ aoi, activeLayers, initiativeName, orgId, lan
             return next;
           });
           setBusy(false);
-          setStages([]);
           scrollDown();
         },
         onError: (err) => {
           setTurns((prev) => {
             const next = [...prev];
             const last = next[next.length - 1];
-            if (last?.role === "assistant") last.text = `Could not reach MeshNet: ${err.message}`;
+            if (last?.role === "assistant") last.text = err.message;
             return next;
           });
           setBusy(false);
-          setStages([]);
         },
       },
     );
   }
 
   return (
-    <div
-      className="flex h-full flex-col bg-field-900"
-      dir={lang === "ar" ? "rtl" : "ltr"}
-    >
-      {/* AOI context — makes it unambiguous what the AI is reasoning about. */}
+    <div className="flex h-full flex-col bg-field-900" dir={lang === "ar" ? "rtl" : "ltr"}>
+      {/* AOI context — makes it unambiguous what the model is reasoning about. */}
       <div className="border-b border-field-line px-4 py-3">
         <div className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-signal">
           <MapPin size={11} />
@@ -139,6 +128,19 @@ export default function AskPanel({ aoi, activeLayers, initiativeName, orgId, lan
           </div>
         )}
       </div>
+
+      {/* Residency banner. While inference leaves the Kingdom, say so — plainly, in the
+          place the analyst is actually looking. Hiding it would make the platform lie. */}
+      {!SOVEREIGN_INFERENCE && (
+        <div className="flex items-start gap-2 border-b border-amber-500/20 bg-amber-500/10 px-4 py-2.5">
+          <AlertTriangle size={13} className="mt-0.5 shrink-0 text-amber-400" />
+          <p className="text-[11px] leading-relaxed text-amber-200/90">
+            {lang === "ar"
+              ? "الاستدلال يعمل حالياً على مزوّد خارجي، وليس داخل المملكة. لا تُدخل بيانات مصنّفة."
+              : "Inference currently runs on an external provider, not inside the Kingdom. Do not enter classified data."}
+          </p>
+        </div>
+      )}
 
       <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
         {turns.length === 0 && (
@@ -167,42 +169,20 @@ export default function AskPanel({ aoi, activeLayers, initiativeName, orgId, lan
             ) : (
               <div className="max-w-[95%]">
                 <div className="whitespace-pre-wrap text-sm leading-relaxed text-white/80">
-                  {turn.text || <span className="text-white/25">…</span>}
+                  {turn.text || (busy ? <span className="text-white/25">Thinking…</span> : null)}
                 </div>
 
-                {/* Residency proof: name the GPU node that actually served this. */}
+                {/* Provenance, stated accurately — whatever it happens to be. */}
                 {turn.meta && (
                   <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[10px] text-white/35">
-                    <span className="flex items-center gap-1 text-signal">
-                      <ShieldCheck size={11} />
-                      served by {turn.meta.served_by}
-                    </span>
+                    <span>served by {turn.meta.provider}</span>
                     <span>{turn.meta.latency_ms} ms</span>
-                    <span>{turn.meta.tokens} tok</span>
                   </div>
                 )}
               </div>
             )}
           </div>
         ))}
-
-        {/* The 7-stage pipeline, live. Shows the sovereign compute path doing its work. */}
-        {busy && stages.length > 0 && (
-          <div className="rounded-lg border border-field-line bg-field-800 p-3">
-            <div className="mb-2 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-white/35">
-              <Cpu size={11} /> MeshNet pipeline
-            </div>
-            <div className="space-y-1">
-              {stages.map((s, i) => (
-                <div key={i} className="flex items-center gap-2 font-mono text-[11px]">
-                  <span className="h-1 w-1 shrink-0 rounded-full bg-signal" />
-                  <span className="text-signal">{s.stage}</span>
-                  <span className="truncate text-white/35">{s.message}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       <div className="border-t border-field-line p-3">
@@ -225,7 +205,6 @@ export default function AskPanel({ aoi, activeLayers, initiativeName, orgId, lan
               onClick={() => {
                 abortRef.current?.();
                 setBusy(false);
-                setStages([]);
               }}
               className="rounded-lg border border-field-line bg-field-800 p-2 text-white/50 transition hover:text-white"
               title="Stop"

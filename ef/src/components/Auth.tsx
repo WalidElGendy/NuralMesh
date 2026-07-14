@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ArrowRight, ShieldCheck } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { claimInvite, verifyInvite } from "../lib/invite";
+import { SOVEREIGN_INFERENCE } from "../lib/mesh";
 
 type Step = "invite" | "signin";
 
@@ -161,9 +162,13 @@ export default function Auth() {
           )}
         </div>
 
+        {/* This is the most public claim in the whole product — it sits on an unauthenticated
+            page. It only makes the residency promise when the residency is real. */}
         <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.12em] text-navy-900/35">
           <ShieldCheck size={11} />
-          KSA-resident · No egress · Powered by MeshNet
+          {SOVEREIGN_INFERENCE
+            ? "KSA-resident · No egress · Powered by MeshNet"
+            : "Powered by MeshNet"}
         </div>
       </div>
 

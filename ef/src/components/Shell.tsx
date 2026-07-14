@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import {
+  AlertTriangle,
   FileText,
   Globe2,
   LayoutGrid,
@@ -11,6 +12,7 @@ import {
 
 import { navigate, useRoute } from "../hooks/useEf";
 import { supabase } from "../lib/supabase";
+import { SOVEREIGN_INFERENCE } from "../lib/mesh";
 import type { Role } from "../lib/types";
 
 const NAV = [
@@ -70,15 +72,29 @@ export default function Shell({
         </nav>
 
         <div className="border-t border-line p-3">
-          <div className="rounded-lg bg-forest-50 px-3 py-2.5">
-            <div className="flex items-center gap-1.5 text-[10px] font-medium text-forest-700">
-              <ShieldCheck size={11} />
-              Sovereign compute
+          {/* Tell the truth about where inference runs. The sovereign claim goes back the
+              moment the orchestrator is deployed and routing to KSA GPU nodes — not before. */}
+          {SOVEREIGN_INFERENCE ? (
+            <div className="rounded-lg bg-verify-50 px-3 py-2.5">
+              <div className="flex items-center gap-1.5 text-[10px] font-medium text-verify-700">
+                <ShieldCheck size={11} />
+                Sovereign compute
+              </div>
+              <p className="mt-1 text-[10px] leading-relaxed text-navy-900/45">
+                Inference runs on MeshNet GPU nodes inside the Kingdom.
+              </p>
             </div>
-            <p className="mt-1 text-[10px] leading-relaxed text-forest-900/45">
-              Inference runs on MeshNet GPU nodes inside the Kingdom.
-            </p>
-          </div>
+          ) : (
+            <div className="rounded-lg bg-amber-50 px-3 py-2.5">
+              <div className="flex items-center gap-1.5 text-[10px] font-medium text-amber-800">
+                <AlertTriangle size={11} />
+                Inference not yet sovereign
+              </div>
+              <p className="mt-1 text-[10px] leading-relaxed text-amber-900/60">
+                Prompts are served by an external provider. Not cleared for classified data.
+              </p>
+            </div>
+          )}
 
           <div className="mt-3 flex items-center justify-between px-1">
             <div className="min-w-0">

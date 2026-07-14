@@ -60,18 +60,31 @@
 
       <div class="mt-8 rounded-3xl border border-white/10 bg-white/[0.04] p-6">
         <h2 class="text-lg font-semibold tracking-tight">Generate invitation codes</h2>
-        <p class="mt-1 text-sm text-zinc-400">Each code can be claimed once by a new signup at <code class="text-violet-300">/signup.html</code>.</p>
+        <p class="mt-1 text-sm text-zinc-400">Each code can be claimed once. Choose which platform it unlocks.</p>
         <div class="mt-4 flex flex-wrap items-end gap-3">
-          <div class="flex-1 min-w-[160px]">
+          <div class="flex-1 min-w-[190px]">
+            <label class="block text-xs uppercase tracking-wide text-zinc-400">Platform</label>
+            <select id="gen-intent" class="mt-2 w-full rounded-xl bg-black/40 px-4 py-2 outline-none focus:ring-2 focus:ring-violet-500">
+              <option value="user">MeshNet — AI user (NMESH-)</option>
+              <option value="provider">MeshNet — GPU provider (NMPRO-)</option>
+              <option value="ef">EFund — Environment Fund (EF-)</option>
+            </select>
+          </div>
+          <div class="w-28">
             <label class="block text-xs uppercase tracking-wide text-zinc-400">How many</label>
             <input id="gen-count" type="number" min="1" max="50" value="5" class="mt-2 w-full rounded-xl bg-black/40 px-4 py-2">
           </div>
-          <div class="flex-1 min-w-[240px]">
+          <div class="flex-1 min-w-[220px]">
+            <label class="block text-xs uppercase tracking-wide text-zinc-400">Issue to email (optional)</label>
+            <input id="gen-email" type="email" placeholder="name@ef.gov.sa" class="mt-2 w-full rounded-xl bg-black/40 px-4 py-2 outline-none focus:ring-2 focus:ring-violet-500">
+          </div>
+          <div class="flex-1 min-w-[200px]">
             <label class="block text-xs uppercase tracking-wide text-zinc-400">Notes (optional)</label>
-            <input id="gen-notes" type="text" placeholder="Friends batch" class="mt-2 w-full rounded-xl bg-black/40 px-4 py-2">
+            <input id="gen-notes" type="text" placeholder="Board members" class="mt-2 w-full rounded-xl bg-black/40 px-4 py-2">
           </div>
           <button id="gen" class="grad-btn rounded-xl px-5 py-2 font-bold">Generate</button>
         </div>
+        <p id="gen-hint" class="mt-3 hidden text-xs text-amber-300"></p>
         <div id="gen-result" class="mt-4 hidden">
           <div class="flex items-center justify-between">
             <span class="text-sm text-zinc-400" id="gen-summary"></span>
@@ -88,7 +101,7 @@
         </div>
         <div class="mt-4 overflow-x-auto">
           <table class="w-full text-sm">
-            <thead class="text-left text-zinc-400"><tr><th class="py-2 pr-4">Code</th><th class="py-2 pr-4">Status</th><th class="py-2 pr-4">Claimed at</th><th class="py-2 pr-4">Notes</th></tr></thead>
+            <thead class="text-left text-zinc-400"><tr><th class="py-2 pr-4">Code</th><th class="py-2 pr-4">Platform</th><th class="py-2 pr-4">Issued to</th><th class="py-2 pr-4">Status</th><th class="py-2 pr-4">Claimed at</th><th class="py-2 pr-4">Notes</th></tr></thead>
             <tbody id="invite-rows"></tbody>
           </table>
         </div>
@@ -205,9 +218,12 @@
         const status = row.revoked ? "revoked" : row.claimed_by_user_id ? "claimed" : "open";
         const color = status === "claimed" ? "text-emerald-300" : status === "revoked" ? "text-red-300" : "text-zinc-300";
         const claimedAt = row.claimed_at ? new Date(row.claimed_at).toLocaleString() : "-";
-        return `<tr class="border-t border-white/5"><td class="py-2 pr-4 font-mono">${escapeHtml(row.code)}</td><td class="py-2 pr-4 ${color}">${status}</td><td class="py-2 pr-4 text-zinc-400">${claimedAt}</td><td class="py-2 pr-4 text-zinc-400">${escapeHtml(row.notes || "")}</td></tr>`;
+        const platform = PLATFORM_LABEL[row.intent] || "—";
+        const platformColor = row.intent === "ef" ? "text-emerald-300" : row.intent === "provider" ? "text-sky-300" : "text-zinc-300";
+        const issuedTo = row.email ? escapeHtml(row.email) : `<span class="text-zinc-600">anyone</span>`;
+        return `<tr class="border-t border-white/5"><td class="py-2 pr-4 font-mono">${escapeHtml(row.code)}</td><td class="py-2 pr-4 ${platformColor}">${platform}</td><td class="py-2 pr-4 text-zinc-400">${issuedTo}</td><td class="py-2 pr-4 ${color}">${status}</td><td class="py-2 pr-4 text-zinc-400">${claimedAt}</td><td class="py-2 pr-4 text-zinc-400">${escapeHtml(row.notes || "")}</td></tr>`;
       }).join("");
-      $("invite-rows").innerHTML = rows || `<tr><td colspan="4" class="py-4 text-zinc-500">No invites yet.</td></tr>`;
+      $("invite-rows").innerHTML = rows || `<tr><td colspan="6" class="py-4 text-zinc-500">No invites yet.</td></tr>`;
     }
 
     // ---------- Waitlist ----------
@@ -326,17 +342,26 @@
       try { await loadStats(); showPanel(); } catch (_) {}
     }
 
+    const PLATFORM_LABEL = { user: "MeshNet user", provider: "GPU provider", ef: "EFund" };
+    const PLATFORM_TARGET = { user: "beta.meshnet.co", provider: "beta.meshnet.co/host", ef: "ef.meshnet.co" };
+
     async function doGenerate() {
-      const count = Math.max(1, Math.min(50, parseInt($("gen-count").value || "1", 10)));
+      const intent = $("gen-intent").value;
+      const email = $("gen-email").value.trim().toLowerCase();
       const notes = $("gen-notes").value.trim();
+      // A targeted code belongs to exactly one person — minting a batch of them would make
+      // every code in the batch collide on the same address. The API clamps this too.
+      const count = email ? 1 : Math.max(1, Math.min(50, parseInt($("gen-count").value || "1", 10)));
       $("gen").disabled = true;
       const original = $("gen").textContent;
       $("gen").textContent = "Generating…";
       try {
-        const response = await api("/api/admin/invites", { method: "POST", body: JSON.stringify({ count, notes }) });
+        const response = await api("/api/admin/invites", { method: "POST", body: JSON.stringify({ count, notes, intent, email: email || null }) });
         const codes = response.codes || [];
         $("gen-result").classList.remove("hidden");
-        $("gen-summary").textContent = codes.length + " new code" + (codes.length === 1 ? "" : "s") + " — share with friends or paste into signup.";
+        const where = PLATFORM_TARGET[intent] || "";
+        $("gen-summary").textContent = codes.length + " " + (PLATFORM_LABEL[intent] || "") + " code" + (codes.length === 1 ? "" : "s")
+          + (email ? " for " + email : "") + " — redeem at " + where;
         $("gen-output").textContent = codes.join("\n");
         await loadInvites();
       } catch (e) {
@@ -358,6 +383,12 @@
     $("logout").addEventListener("click", () => { clearCreds(); showGate(""); });
     $("refresh").addEventListener("click", refreshAll);
     $("gen").addEventListener("click", doGenerate);
+    $("gen-email").addEventListener("input", e => {
+      const on = !!e.target.value.trim();
+      $("gen-count").disabled = on;
+      $("gen-hint").classList.toggle("hidden", !on);
+      $("gen-hint").textContent = on ? "Targeted invite — one code, usable only by this email address." : "";
+    });
     $("wl-refresh").addEventListener("click", loadWaitlist);
     $("wl-export").addEventListener("click", exportCsv);
     $("wl-search").addEventListener("input", e => { WL.filter = e.target.value; renderWaitlist(); });

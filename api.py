@@ -215,6 +215,10 @@ class AuthSignupResponse(BaseModel):
 class AdminInviteRequest(BaseModel):
     count: int = Field(default=1, ge=1, le=50)
     notes: str = Field(default="")
+    # Which platform the code unlocks. "ef" = EFund (ef.meshnet.co).
+    intent: str = Field(default="user")
+    # Optional: bind the code to one address. A targeted code only works for that email.
+    email: str | None = None
 
 
 def verify_admin(
@@ -1149,7 +1153,7 @@ def admin_list_invites(_: bool = Depends(verify_admin)):
     supabase = get_supabase_client()
     result = (
         supabase.table("invites")
-        .select("code, claimed_by_user_id, claimed_at, revoked, notes, created_at")
+        .select("code, intent, email, claimed_by_user_id, claimed_at, revoked, notes, created_at")
         .order("created_at", desc=True)
         .limit(200)
         .execute()
@@ -1157,20 +1161,44 @@ def admin_list_invites(_: bool = Depends(verify_admin)):
     return {"invites": result.data or []}
 
 
+# Each platform gets its own recognisable prefix, so a code tells you where it works.
+INVITE_PREFIXES = {"user": "NMESH", "provider": "NMPRO", "ef": "EF"}
+
+
 @app.post("/api/admin/invites")
 def admin_create_invites(body: AdminInviteRequest, _: bool = Depends(verify_admin)):
+    intent = (body.intent or "user").strip().lower()
+    if intent not in INVITE_PREFIXES:
+        raise HTTPException(status_code=400, detail="invalid_intent")
+
+    email = (body.email or "").strip().lower() or None
+    if email and not EMAILRE.match(email):
+        raise HTTPException(status_code=400, detail="invalid_email")
+
+    # A targeted code is issued to exactly one person, so minting a batch of them is
+    # almost certainly a mistake — they would all collide on the same address.
+    count = 1 if email else body.count
+
+    prefix = INVITE_PREFIXES[intent]
     supabase = get_supabase_client()
     codes: list[str] = []
-    for _i in range(body.count):
-        code = f"NMESH-{secrets.token_hex(2).upper()}-{secrets.token_hex(2).upper()}"
+    for _i in range(count):
+        code = f"{prefix}-{secrets.token_hex(2).upper()}-{secrets.token_hex(2).upper()}"
         result = (
             supabase.table("invites")
-            .insert({"code": code, "notes": body.notes or "Admin-generated"})
+            .insert(
+                {
+                    "code": code,
+                    "notes": body.notes or "Admin-generated",
+                    "intent": intent,
+                    "email": email,
+                }
+            )
             .execute()
         )
         if result.data:
             codes.append(code)
-    return {"codes": codes}
+    return {"codes": codes, "intent": intent, "email": email}
 
 class AuthLoginRequest(BaseModel):
     email: str = Field(min_length=3, max_length=255)

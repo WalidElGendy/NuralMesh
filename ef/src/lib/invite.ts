@@ -2,29 +2,41 @@
  * Invitation gate client.
  *
  * Talks to the `ef-invite` edge function, which is the only thing permitted to read
- * MeshNet's `invites` table. The browser never sees it: if the anon key could read
- * `public.invites`, the valid codes would just be listable.
+ * MeshNet's `invites` table or `auth.users`. The browser never sees either: if the anon key
+ * could read `public.invites`, the valid codes would simply be listable.
  */
 
-import { getAccessToken, supabase } from "./supabase";
+import { getAccessToken } from "./supabase";
 
-const FN_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ef-invite`;
+const FN = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ef-invite`;
 const ANON = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
 export interface InviteResult {
   valid: boolean;
   reason?: string;
+  /** The code was already redeemed. */
   used?: boolean;
+  /** An auth account already exists for this email. */
+  hasAccount?: boolean;
+  /** The person still has to SET a password (new account, or a targeted invite authorising
+   *  a reset). When false, they already have one and should just sign in. */
+  needsPassword?: boolean;
+  /** The password was set on a pre-existing account. */
+  reset?: boolean;
+  /** A fresh account was just created. */
+  created?: boolean;
+  /** The EF role the invite carries. */
+  role?: "viewer" | "analyst" | "operator" | "admin";
 }
 
 async function call(body: Record<string, unknown>, token?: string): Promise<InviteResult> {
   try {
-    const res = await fetch(FN_BASE, {
+    const res = await fetch(FN, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        // The function is public (it must be callable before sign-in), so the anon key is
-        // just the gateway credential. The real check happens server-side.
+        // The function must be callable before sign-in, so the anon key is just the gateway
+        // credential. Every real check happens server-side under the service role.
         Authorization: `Bearer ${token ?? ANON}`,
         apikey: ANON,
       },
@@ -36,17 +48,23 @@ async function call(body: Record<string, unknown>, token?: string): Promise<Invi
   }
 }
 
-/** Check an (email, code) pair. Does NOT consume the invite. */
+/** Check an (email, code) pair. Never consumes the invite. */
 export function verifyInvite(email: string, code: string): Promise<InviteResult> {
   return call({ action: "verify", email, code });
 }
 
-/** Consume the invite. Only meaningful once a real session exists. */
+/** First run: create the account, grant the membership, burn the invite. */
+export function setPassword(
+  email: string,
+  code: string,
+  password: string,
+): Promise<InviteResult> {
+  return call({ action: "set_password", email, code, password });
+}
+
+/** Returning user: attach membership and consume the invite. Requires a live session. */
 export async function claimInvite(email: string, code: string): Promise<InviteResult> {
   const token = await getAccessToken();
   if (!token) return { valid: false, reason: "Not signed in." };
   return call({ action: "claim", email, code }, token);
 }
-
-/** Exposed for the sign-out path in the shell. */
-export { supabase };

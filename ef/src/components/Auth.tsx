@@ -1,26 +1,44 @@
 import { useState } from "react";
 import { ArrowRight, ShieldCheck } from "lucide-react";
 import { supabase } from "../lib/supabase";
+import { claimInvite, verifyInvite } from "../lib/invite";
 
 type Step = "invite" | "signin";
 
 /**
- * Two-step gate. The invite code is a soft gate (it decides who sees the sign-in form);
- * Supabase auth + RLS are the hard gate. We never pretend the code itself is security —
- * it's an access-control funnel, and the database enforces the real boundary.
+ * Two-step gate.
+ *
+ * Step 1 checks (email, code) against MeshNet's shared `invites` table via an edge function
+ * running under the service role — the browser can never read that table directly, or the
+ * valid codes would simply be listable.
+ *
+ * The code is an access funnel, not the security boundary. Supabase auth + RLS are. We keep
+ * both, because a valid code with no account still gets you nothing.
  */
 export default function Auth() {
   const [step, setStep] = useState<Step>("invite");
-  const [code, setCode] = useState("");
   const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  function submitInvite(e: React.FormEvent) {
+  async function submitInvite(e: React.FormEvent) {
     e.preventDefault();
-    if (!code.trim()) return;
+    setBusy(true);
     setErr(null);
+
+    const res = await verifyInvite(email, code);
+
+    if (!res.valid) {
+      // An already-used code is the one case worth being specific about — it's almost
+      // always a returning user, and sending them round the loop again is just cruel.
+      setErr(res.reason ?? "That invitation code isn't valid for this email.");
+      setBusy(false);
+      return;
+    }
+
+    setBusy(false);
     setStep("signin");
   }
 
@@ -28,8 +46,17 @@ export default function Auth() {
     e.preventDefault();
     setBusy(true);
     setErr(null);
+
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) setErr(error.message);
+    if (error) {
+      setErr(error.message);
+      setBusy(false);
+      return;
+    }
+
+    // Burn the invite only now — after a real session exists. Verifying alone must never
+    // consume it, or a stranger could void someone else's code just by typing it.
+    await claimInvite(email, code);
     setBusy(false);
   }
 
@@ -57,39 +84,9 @@ export default function Auth() {
                 <br />
                 Environment Fund.
               </h1>
-              <p className="mt-4 text-sm leading-relaxed text-forest-900/55">
-                Enter your invitation code to fund, track and verify sustainability
+              <p className="mt-4 text-sm leading-relaxed text-navy-900/55">
+                Enter your email and invitation code to fund, track and verify sustainability
                 initiatives across the Kingdom.
-              </p>
-
-              <label className="label mt-8 block">Invitation code</label>
-              <input
-                value={code}
-                onChange={(e) => setCode(e.target.value.toUpperCase())}
-                placeholder="EF-XXXX-XXXX"
-                className="input mt-1.5 font-mono tracking-widest"
-                autoFocus
-              />
-
-              <button type="submit" disabled={!code.trim()} className="btn-primary mt-5 w-full">
-                Continue <ArrowRight size={15} />
-              </button>
-            </form>
-          ) : (
-            <form onSubmit={signIn}>
-              <button
-                type="button"
-                onClick={() => setStep("invite")}
-                className="label mb-6 hover:text-forest-600"
-              >
-                ← Back
-              </button>
-
-              <h1 className="font-display text-[2.6rem] leading-[1.1] tracking-tight">
-                Sign in.
-              </h1>
-              <p className="mt-3 text-sm text-forest-900/55">
-                Code <span className="font-mono text-forest-700">{code}</span> accepted.
               </p>
 
               <label className="label mt-8 block">Email</label>
@@ -98,46 +95,88 @@ export default function Auth() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="input mt-1.5"
                 autoFocus
+                placeholder="name@ef.gov.sa"
+                className="input mt-1.5"
               />
 
-              <label className="label mt-4 block">Password</label>
+              <label className="label mt-4 block">Invitation code</label>
+              <input
+                value={code}
+                onChange={(e) => setCode(e.target.value.toUpperCase())}
+                required
+                placeholder="EF-XXXX-XXXX"
+                className="input mt-1.5 font-mono tracking-widest"
+              />
+
+              {err && <p className="mt-3 text-xs leading-relaxed text-clay">{err}</p>}
+
+              <button
+                type="submit"
+                disabled={busy || !email.trim() || !code.trim()}
+                className="btn-primary mt-5 w-full"
+              >
+                {busy ? "Checking…" : "Continue"}
+                {!busy && <ArrowRight size={15} />}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={signIn}>
+              <button
+                type="button"
+                onClick={() => {
+                  setStep("invite");
+                  setErr(null);
+                }}
+                className="label mb-6 hover:text-navy-600"
+              >
+                ← Back
+              </button>
+
+              <h1 className="font-display text-[2.6rem] leading-[1.1] tracking-tight text-navy-900">
+                Welcome.
+              </h1>
+              <p className="mt-3 text-sm text-navy-900/55">
+                Invitation accepted for{" "}
+                <span className="font-medium text-navy-800">{email}</span>.
+              </p>
+
+              <label className="label mt-8 block">Password</label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                autoFocus
                 className="input mt-1.5"
               />
 
               {err && <p className="mt-3 text-xs text-clay">{err}</p>}
 
               <button type="submit" disabled={busy} className="btn-primary mt-5 w-full">
-                {busy ? "Signing in…" : "Sign in"} {!busy && <ArrowRight size={15} />}
+                {busy ? "Signing in…" : "Sign in"}
+                {!busy && <ArrowRight size={15} />}
               </button>
             </form>
           )}
         </div>
 
-        <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.12em] text-forest-900/35">
+        <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.12em] text-navy-900/35">
           <ShieldCheck size={11} />
           KSA-resident · No egress · Powered by MeshNet
         </div>
       </div>
 
-      {/* Right: the field. Date palms in Wadi Sharma, NEOM — the NEOM Nature Reserve, a real
-          Saudi restoration site. Photo by NEOM (Unsplash License). The previous image was
-          Monument Valley, Utah, which is not a good look on a Saudi government product. */}
+      {/* Right: the field. Date palms in Wadi Sharma, NEOM Nature Reserve — a real Saudi
+          restoration site. Photo by NEOM (Unsplash License). */}
       <div className="relative hidden overflow-hidden bg-navy-900 lg:block lg:w-[54%]">
         <img
           src="https://images.unsplash.com/photo-1682695796795-cc287af78a2b?q=80&w=2000&auto=format&fit=crop"
           alt="Date palms in Wadi Sharma, NEOM Nature Reserve, Saudi Arabia"
           className="absolute inset-0 h-full w-full object-cover"
         />
-        {/* Two scrims. The wide one seats the photo in the brand; the tight bottom one
-            buys real contrast for the headline — the grove is bright exactly where the
-            text lands, and without this the copy washes out. */}
+        {/* Two scrims: a wide tint to seat the photo in the brand, and a tight bottom one to
+            buy real contrast — the grove is bright exactly where the copy lands. */}
         <div className="absolute inset-0 bg-navy-900/25" />
         <div className="absolute inset-x-0 bottom-0 h-3/4 bg-gradient-to-t from-navy-900 via-navy-900/85 to-transparent" />
 

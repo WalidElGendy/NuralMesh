@@ -1,13 +1,27 @@
 /**
- * MeshNet client — EF's inference layer.
+ * MeshNet inference client.
  *
- * EF does NOT run its own AI. Every prompt goes through the MeshNet Smart Orchestrator's
- * 7-stage pipeline (classify → cache → prune → compress → route → verify → settle) and is
- * served by a GPU provider node. That is precisely the sovereignty claim: no foreign cloud,
- * no data egress — inference executes on Saudi GPUs inside the boundary.
+ * ─────────────────────────────────────────────────────────────────────────────────────
+ * READ THIS BEFORE MAKING ANY SOVEREIGNTY CLAIM IN THE UI.
  *
- * The `served_by` field on the `done` event names the node that served the request, so the
- * UI can *prove* residency rather than assert it.
+ * The endpoint actually deployed at api.beta.meshnet.co is `POST /api/chat` in `api.py`,
+ * and it forwards the prompt to **SiliconFlow** (api.siliconflow.com, DeepSeek-V3.1) — a
+ * foreign cloud inference provider. It does not route to MeshNet GPU provider nodes, it
+ * does not stream, and it returns no `served_by`.
+ *
+ * The sovereign path — the Smart Orchestrator's 7-stage pipeline (`classify → cache →
+ * prune → compress → route → verify → settle`) with SSE stage events and a `served_by`
+ * naming the GPU node — lives in `smart_orchestrator/` and is NOT currently deployed
+ * (Render's start command is `uvicorn api:app`).
+ *
+ * Until the orchestrator is deployed and routing to KSA-resident GPU nodes, this client
+ * MUST NOT claim residency, and the UI must not print "no egress" or "served by a Saudi
+ * GPU". Saying so while prompts egress to a Chinese API is the kind of claim that ends a
+ * government engagement — and rightly.
+ *
+ * `SOVEREIGN_INFERENCE` below is the single switch. Flip it only when the orchestrator is
+ * genuinely live, and the UI will start telling the sovereign story again.
+ * ─────────────────────────────────────────────────────────────────────────────────────
  */
 
 import { getAccessToken } from "./supabase";
@@ -16,48 +30,26 @@ import type { Aoi } from "./types";
 const MESH_BASE =
   (import.meta.env.VITE_MESH_API_BASE as string) ?? "https://api.beta.meshnet.co";
 
-/** The 7 stages the orchestrator reports as it works. */
-export type PipelineStage =
-  | "classify"
-  | "cache"
-  | "prune"
-  | "compress"
-  | "route"
-  | "verify"
-  | "settle";
+/** True only when api.beta.meshnet.co serves the Smart Orchestrator, not api.py. */
+export const SOVEREIGN_INFERENCE = false;
 
-export interface StageEvent {
-  stage: PipelineStage | string;
-  message: string;
-  data?: Record<string, unknown>;
-}
-
-export interface DoneEvent {
-  conversation_id: string;
-  message_id: string;
-  /** Which GPU provider node served this — the residency proof. */
-  served_by: string;
-  tokens: number;
-  latency_ms: number;
-  model: string;
-  mode: string;
-}
+/** What actually served the prompt, stated honestly. */
+export const INFERENCE_PROVIDER = SOVEREIGN_INFERENCE
+  ? "MeshNet GPU node · KSA"
+  : "SiliconFlow · DeepSeek-V3.1 (external)";
 
 export interface AskHandlers {
-  onConversation?: (e: { conversation_id: string; title: string }) => void;
-  onStage?: (e: StageEvent) => void;
   onToken?: (text: string) => void;
-  onDone?: (e: DoneEvent) => void;
+  onDone?: (meta: { provider: string; latency_ms: number }) => void;
   onError?: (err: Error) => void;
 }
 
 /**
  * Grounds a plain-language question in the selected AOI.
  *
- * The orchestrator is a general LLM router — it has no idea what's on the map. So we hand it
- * the spatial context explicitly: where the user is looking, how big it is, which layers are
- * lit up, and what we already know about the area. Without this the model hallucinates
- * geography; with it, answers stay anchored to the ground reference.
+ * The model has no idea what's on the map, so we hand it the spatial context explicitly:
+ * where the user is looking, how big it is, and which layers are lit. Without this it
+ * hallucinates geography; with it, answers stay anchored to the ground reference.
  */
 export function buildGeoPrompt(opts: {
   question: string;
@@ -77,7 +69,7 @@ export function buildGeoPrompt(opts: {
   const [minLng, minLat, maxLng, maxLat] = aoi.bbox;
   const [cLng, cLat] = aoi.centroid;
 
-  const context = [
+  return [
     `AREA OF INTEREST`,
     `- Centroid: ${cLat.toFixed(4)}°N, ${cLng.toFixed(4)}°E`,
     `- Bounding box: ${minLat.toFixed(3)}–${maxLat.toFixed(3)}°N, ${minLng.toFixed(3)}–${maxLng.toFixed(3)}°E`,
@@ -85,34 +77,38 @@ export function buildGeoPrompt(opts: {
     `- Active layers: ${activeLayers.length ? activeLayers.join(", ") : "none"}`,
     initiativeName ? `- Initiative: ${initiativeName}` : null,
     ``,
-    `You are the analyst inside EF, a sovereign Earth-intelligence platform operating over`,
-    `the Kingdom of Saudi Arabia. Answer strictly about the area above. Ground every claim in`,
-    `the named layers. Where you are inferring rather than measuring, say so plainly.`,
-    `If the question cannot be answered from the available layers, state what additional`,
+    `You are the analyst inside EFund, an Earth-intelligence platform operating over the`,
+    `Kingdom of Saudi Arabia. Answer strictly about the area above. Ground every claim in`,
+    `the named layers. Where you are inferring rather than measuring, say so plainly. If`,
+    `the question cannot be answered from the available layers, state what additional`,
     `capture would be required (sensor family + revisit window) instead of guessing.`,
     lang === "ar" ? `Respond in Arabic.` : `Respond in English.`,
+    ``,
+    `QUESTION`,
+    question,
   ]
     .filter(Boolean)
     .join("\n");
-
-  return `${context}\n\nQUESTION\n${question}`;
 }
 
-/** Streams a grounded answer from MeshNet. Returns an abort function. */
+/**
+ * Ask a grounded question.
+ *
+ * The deployed endpoint is non-streaming, so there are no real tokens to stream. We hand
+ * the whole answer to `onToken` once — rather than fake a typewriter effect, which would
+ * only be theatre pretending to be a pipeline that isn't running.
+ */
 export async function ask(
-  params: {
-    message: string;
-    conversationId?: string | null;
-    mode?: "auto" | "fast" | "deep";
-  },
+  params: { message: string; conversationId?: string | null },
   handlers: AskHandlers,
 ): Promise<() => void> {
   const controller = new AbortController();
   const token = await getAccessToken();
+  const started = performance.now();
 
   (async () => {
     try {
-      const res = await fetch(`${MESH_BASE}/chat`, {
+      const res = await fetch(`${MESH_BASE}/api/chat`, {
         method: "POST",
         signal: controller.signal,
         headers: {
@@ -120,67 +116,31 @@ export async function ask(
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
-          message: params.message,
-          conversation_id: params.conversationId ?? null,
-          mode: params.mode ?? "auto",
+          messages: [{ role: "user", content: params.message }],
+          stream: false,
         }),
       });
 
-      if (!res.ok || !res.body) {
-        throw new Error(`MeshNet returned ${res.status} ${res.statusText}`);
+      if (!res.ok) {
+        // 503 chat_not_configured means SILICONFLOW_API_KEY isn't set on the API.
+        const detail = await res.text().catch(() => "");
+        throw new Error(
+          res.status === 503
+            ? "Inference is not configured on the API (no provider key set)."
+            : `Inference failed (${res.status}). ${detail.slice(0, 140)}`,
+        );
       }
 
-      // Parse the SSE frames the orchestrator emits.
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
+      const data = (await res.json()) as { answer?: string };
+      if (!data.answer) throw new Error("The model returned an empty answer.");
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-
-        // Frames are separated by a blank line.
-        const frames = buffer.split("\n\n");
-        buffer = frames.pop() ?? "";
-
-        for (const frame of frames) {
-          let event = "message";
-          const dataLines: string[] = [];
-
-          for (const line of frame.split("\n")) {
-            if (line.startsWith("event:")) event = line.slice(6).trim();
-            else if (line.startsWith("data:")) dataLines.push(line.slice(5).trim());
-          }
-          if (!dataLines.length) continue;
-
-          let payload: any;
-          try {
-            payload = JSON.parse(dataLines.join("\n"));
-          } catch {
-            continue;
-          }
-
-          switch (event) {
-            case "conversation":
-              handlers.onConversation?.(payload);
-              break;
-            case "stage":
-              handlers.onStage?.(payload as StageEvent);
-              break;
-            case "token":
-              handlers.onToken?.(payload.text ?? "");
-              break;
-            case "done":
-              handlers.onDone?.(payload as DoneEvent);
-              break;
-          }
-        }
-      }
+      handlers.onToken?.(data.answer);
+      handlers.onDone?.({
+        provider: INFERENCE_PROVIDER,
+        latency_ms: Math.round(performance.now() - started),
+      });
     } catch (err) {
-      if ((err as Error).name !== "AbortError") {
-        handlers.onError?.(err as Error);
-      }
+      if ((err as Error).name !== "AbortError") handlers.onError?.(err as Error);
     }
   })();
 

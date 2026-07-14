@@ -41,8 +41,8 @@ export default function Reports({
 
     const label = KINDS.find((k) => k.key === kind)!.label;
 
-    // The analyst agent is just MeshNet with a tightly-scoped brief. Same sovereign path
-    // as the map chat — the report is drafted on a GPU node inside the Kingdom.
+    // The analyst agent is the same inference path as the map chat, with a tightly-scoped
+    // brief. Whatever provider actually serves it gets recorded on the report.
     const prompt = [
       `You are the analyst inside EFund, the Saudi Environment Fund's oversight platform.`,
       `Draft a ${label} for the initiative below. Be concise, factual and specific.`,
@@ -62,12 +62,12 @@ export default function Reports({
     ].join("\n");
 
     await ask(
-      { message: prompt, mode: "auto" },
+      { message: prompt },
       {
         onToken: (t) => setDraft((d) => d + t),
         onDone: async (meta) => {
-          setServedBy(meta.served_by);
-          // Persist with the mesh job that produced it — provenance for the audit trail.
+          setServedBy(meta.provider);
+          // Record which provider drafted it — provenance for the audit trail.
           await supabase.from("reports").insert({
             org_id: orgId,
             initiative_id: initiativeId,
@@ -76,21 +76,21 @@ export default function Reports({
             lang,
             content_md: draft,
             status: "ready",
-            mesh_job_id: meta.message_id,
-            model: meta.model,
+            mesh_job_id: null,
+            model: meta.provider,
           });
           void logAudit({
             orgId,
             action: "report.generate",
             targetType: "initiative",
             targetId: initiativeId,
-            outputs: { kind, served_by: meta.served_by, model: meta.model },
+            outputs: { kind, served_by: meta.provider },
           });
           await refresh();
           setBusy(false);
         },
         onError: (e) => {
-          setDraft(`Could not reach MeshNet: ${e.message}`);
+          setDraft(e.message);
           setBusy(false);
         },
       },
@@ -102,7 +102,7 @@ export default function Reports({
       <header>
         <h1 className="font-display text-4xl tracking-tight">Reports</h1>
         <p className="mt-1.5 text-sm text-forest-900/50">
-          Analyst-grade documents, drafted on MeshNet GPU nodes inside the Kingdom.
+          Analyst-grade documents. Every report records the provider that drafted it.
         </p>
       </header>
 
@@ -164,11 +164,11 @@ export default function Reports({
         <section className="card p-6">
           {servedBy && (
             <div className="mb-4 flex items-center gap-1.5 border-b border-line pb-3 font-mono text-[10px] uppercase tracking-wider text-forest-600">
-              <Cpu size={11} /> drafted on MeshNet node · {servedBy}
+              <Cpu size={11} /> drafted by {servedBy}
             </div>
           )}
           <article className="whitespace-pre-wrap text-sm leading-relaxed text-forest-900/80">
-            {draft || <span className="text-forest-900/35">Routing through the mesh…</span>}
+            {draft || <span className="text-forest-900/35">Drafting…</span>}
           </article>
         </section>
       )}
@@ -176,7 +176,7 @@ export default function Reports({
       <section>
         <h2 className="mb-4 font-display text-2xl">Archive</h2>
         {reports.length === 0 ? (
-          <Empty title="No reports yet" body="Generated reports are stored here with the mesh job that produced them." />
+          <Empty title="No reports yet" body="Generated reports are stored here, each stamped with the provider that drafted it." />
         ) : (
           <div className="space-y-2">
             {reports.map((r) => (

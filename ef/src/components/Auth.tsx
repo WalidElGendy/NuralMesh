@@ -29,6 +29,8 @@ export default function Auth() {
   const [busy, setBusy] = useState(false);
   /** True when we're setting a password on an account that already existed. */
   const [isReset, setIsReset] = useState(false);
+  /** Returning user who jumped straight to sign-in, bypassing the invite code. */
+  const [direct, setDirect] = useState(false);
 
   async function submitInvite(e: React.FormEvent) {
     e.preventDefault();
@@ -94,8 +96,9 @@ export default function Auth() {
       return;
     }
 
-    // Idempotent: attaches the membership if it's somehow missing, and burns the invite.
-    await claimInvite(email, code);
+    // Only when they arrived through an invite. A returning user signing in directly is
+    // already a member — there's no code to attach or burn.
+    if (code.trim()) await claimInvite(email, code);
     setBusy(false);
   }
 
@@ -104,6 +107,7 @@ export default function Auth() {
     setErr(null);
     setPw("");
     setConfirm("");
+    setDirect(false);
   };
 
   return (
@@ -165,6 +169,21 @@ export default function Auth() {
                 {busy ? "Checking…" : "Continue"}
                 {!busy && <ArrowRight size={15} />}
               </button>
+
+              <p className="mt-6 text-sm text-navy-900/55">
+                Already registered?{" "}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStep("signin");
+                    setDirect(true);
+                    setErr(null);
+                  }}
+                  className="font-medium text-navy-700 underline underline-offset-2 hover:text-navy-900"
+                >
+                  Sign in
+                </button>
+              </p>
             </form>
           )}
 
@@ -241,23 +260,46 @@ export default function Auth() {
                 Welcome back.
               </h1>
               <p className="mt-3 text-sm text-navy-900/55">
-                Sign in as <span className="font-medium text-navy-800">{email}</span>.
+                {direct ? (
+                  "Sign in with the email and password you registered."
+                ) : (
+                  <>
+                    Sign in as{" "}
+                    <span className="font-medium text-navy-800">{email}</span>.
+                  </>
+                )}
               </p>
 
-              <label className="label mt-8 block">Password</label>
+              <label className="label mt-8 block">Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoFocus={direct}
+                readOnly={!direct}
+                placeholder="name@ef.gov.sa"
+                className={`input mt-1.5 ${!direct ? "cursor-not-allowed opacity-70" : ""}`}
+              />
+
+              <label className="label mt-4 block">Password</label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPw(e.target.value)}
                 required
-                autoFocus
+                autoFocus={!direct}
                 autoComplete="current-password"
                 className="input mt-1.5"
               />
 
               {err && <p className="mt-3 text-xs leading-relaxed text-clay">{err}</p>}
 
-              <button type="submit" disabled={busy} className="btn-primary mt-5 w-full">
+              <button
+                type="submit"
+                disabled={busy || !email.trim() || !password}
+                className="btn-primary mt-5 w-full"
+              >
                 {busy ? "Signing in…" : "Sign in"}
                 {!busy && <ArrowRight size={15} />}
               </button>

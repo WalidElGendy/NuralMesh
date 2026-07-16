@@ -58,7 +58,14 @@ export default function App() {
   if (route === "/map") {
     return (
       <Shell role={role} email={email} bare>
-        <MapWorkspace layers={layers} initiatives={initiatives} pois={pois} orgId={orgId} />
+        <MapWorkspace
+          layers={layers}
+          initiatives={initiatives}
+          pois={pois}
+          orgId={orgId}
+          role={role}
+          onChanged={refresh}
+        />
       </Shell>
     );
   }

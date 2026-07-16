@@ -25,7 +25,7 @@
  */
 
 import { getAccessToken } from "./supabase";
-import type { Aoi } from "./types";
+import type { Selection } from "./types";
 
 const MESH_BASE =
   (import.meta.env.VITE_MESH_API_BASE as string) ?? "https://api.beta.meshnet.co";
@@ -53,28 +53,42 @@ export interface AskHandlers {
  */
 export function buildGeoPrompt(opts: {
   question: string;
-  aoi: Aoi | null;
+  selection: Selection | null;
   activeLayers: string[];
   initiativeName?: string | null;
   lang: "en" | "ar";
 }): string {
-  const { question, aoi, activeLayers, initiativeName, lang } = opts;
+  const { question, selection, activeLayers, initiativeName, lang } = opts;
 
-  if (!aoi) {
+  if (!selection) {
     return lang === "ar"
-      ? `${question}\n\n[السياق: لم يتم تحديد منطقة اهتمام على الخريطة بعد.]`
-      : `${question}\n\n[Context: no area of interest selected on the map yet.]`;
+      ? `${question}\n\n[السياق: لم يتم تحديد موقع على الخريطة بعد.]`
+      : `${question}\n\n[Context: nothing selected on the map yet.]`;
   }
 
-  const [minLng, minLat, maxLng, maxLat] = aoi.bbox;
-  const [cLng, cLat] = aoi.centroid;
+  const layersLine = `- Active layers: ${activeLayers.length ? activeLayers.join(", ") : "none"}`;
+
+  const header =
+    selection.kind === "area" && selection.aoi
+      ? (() => {
+          const [minLng, minLat, maxLng, maxLat] = selection.aoi!.bbox;
+          return [
+            `AREA OF INTEREST`,
+            `- Centroid: ${selection.lat.toFixed(4)}°N, ${selection.lng.toFixed(4)}°E`,
+            `- Bounding box: ${minLat.toFixed(3)}–${maxLat.toFixed(3)}°N, ${minLng.toFixed(3)}–${maxLng.toFixed(3)}°E`,
+            `- Area: ${selection.aoi!.areaKm2.toFixed(1)} km²`,
+            layersLine,
+          ];
+        })()
+      : [
+          `LOCATION OF INTEREST (dropped pin)`,
+          `- Coordinates: ${selection.lat.toFixed(4)}°N, ${selection.lng.toFixed(4)}°E`,
+          selection.existingPoi ? `- Existing POI: ${selection.existingPoi.name}` : null,
+          layersLine,
+        ];
 
   return [
-    `AREA OF INTEREST`,
-    `- Centroid: ${cLat.toFixed(4)}°N, ${cLng.toFixed(4)}°E`,
-    `- Bounding box: ${minLat.toFixed(3)}–${maxLat.toFixed(3)}°N, ${minLng.toFixed(3)}–${maxLng.toFixed(3)}°E`,
-    `- Area: ${aoi.areaKm2.toFixed(1)} km²`,
-    `- Active layers: ${activeLayers.length ? activeLayers.join(", ") : "none"}`,
+    ...header.filter(Boolean),
     initiativeName ? `- Initiative: ${initiativeName}` : null,
     ``,
     `You are the analyst inside EFund, an Earth-intelligence platform operating over the`,

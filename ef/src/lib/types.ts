@@ -199,3 +199,19 @@ export interface Aoi {
   bbox: [number, number, number, number];
   centroid: [number, number];
 }
+
+/** What the user currently has selected on the map — a dropped pin, a drawn fence, or an
+ *  existing POI they clicked. Everything the workspace does (ask, save, report, alert) hangs
+ *  off this one object. */
+export interface Selection {
+  kind: "point" | "area";
+  /** lng, lat — the point itself, or an area's centroid. */
+  lng: number;
+  lat: number;
+  /** Present for a ring-fence. */
+  aoi?: Aoi;
+  /** The mapbox-draw feature id, so the workspace can clear it after saving. */
+  drawId?: string;
+  /** Set when the selection is an existing POI clicked on the map. */
+  existingPoi?: Poi;
+}

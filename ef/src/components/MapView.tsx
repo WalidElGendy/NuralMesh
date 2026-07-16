@@ -5,7 +5,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
 
 import { KSA_CENTER, toAoi } from "../lib/geo";
-import type { Aoi, Initiative, Layer, Poi } from "../lib/types";
+import type { Initiative, Layer, Poi, Selection } from "../lib/types";
 
 const SEVERITY_COLOR: Record<string, string> = {
   critical: "#ef4444",
@@ -20,8 +20,9 @@ interface Props {
   basemapKey: string;
   initiatives: Initiative[];
   pois: Poi[];
-  onAoiChange: (aoi: Aoi | null) => void;
-  onPoiClick?: (poi: Poi) => void;
+  onSelect: (selection: Selection | null) => void;
+  /** Bump to clear any drawn pin/fence (e.g. after it's been saved). */
+  clearSignal: number;
 }
 
 export default function MapView({
@@ -30,31 +31,22 @@ export default function MapView({
   basemapKey,
   initiatives,
   pois,
-  onAoiChange,
-  onPoiClick,
+  onSelect,
+  clearSignal,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MlMap | null>(null);
+  const drawRef = useRef<MapboxDraw | null>(null);
 
-  /**
-   * Explicit readiness flag.
-   *
-   * The previous version did `isStyleLoaded() ? apply() : map.once("load", apply)`. That is a
-   * race: whichever branch you take, the *other* one silently wins, and if the style reports
-   * itself unloaded at the wrong moment nothing is ever added and the map just sits there
-   * black with no error. Tracking readiness in state makes the apply effect re-run the moment
-   * the map is genuinely usable, every time.
-   */
+  // Explicit readiness — the isStyleLoaded() race left the map black with no error.
   const [ready, setReady] = useState(false);
 
-  const onAoiChangeRef = useRef(onAoiChange);
-  onAoiChangeRef.current = onAoiChange;
-  const onPoiClickRef = useRef(onPoiClick);
-  onPoiClickRef.current = onPoiClick;
+  const onSelectRef = useRef(onSelect);
+  onSelectRef.current = onSelect;
   const poisRef = useRef(pois);
   poisRef.current = pois;
 
-  // ── Init map once ──────────────────────────────────────────────────────────
+  // ── Init once ──────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
@@ -71,31 +63,48 @@ export default function MapView({
       },
     });
 
-    // Without this, a bad tile URL or style failure is completely silent — which is exactly
-    // how the map ended up black with a clean console.
     map.on("error", (e) => console.error("[EF/map]", e?.error?.message ?? e));
 
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
     map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-right");
     map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right");
 
+    // Pin (point) + ring-fence (polygon) + trash.
     const draw = new MapboxDraw({
       displayControlsDefault: false,
-      controls: { polygon: true, trash: true },
+      controls: { point: true, polygon: true, trash: true },
       styles: drawStyles,
     });
     map.addControl(draw as unknown as maplibregl.IControl, "top-left");
+    drawRef.current = draw;
 
-    const syncAoi = () => {
-      const poly = draw.getAll().features.find((f) => f.geometry.type === "Polygon");
-      onAoiChangeRef.current(poly ? toAoi(poly.geometry as GeoJSON.Polygon) : null);
+    const syncSelection = () => {
+      const feats = draw.getAll().features;
+      const poly = feats.find((f) => f.geometry.type === "Polygon");
+      if (poly) {
+        const aoi = toAoi(poly.geometry as GeoJSON.Polygon);
+        onSelectRef.current({
+          kind: "area",
+          lng: aoi.centroid[0],
+          lat: aoi.centroid[1],
+          aoi,
+          drawId: String(poly.id),
+        });
+        return;
+      }
+      const pt = feats.find((f) => f.geometry.type === "Point");
+      if (pt) {
+        const [lng, lat] = (pt.geometry as GeoJSON.Point).coordinates;
+        onSelectRef.current({ kind: "point", lng, lat, drawId: String(pt.id) });
+        return;
+      }
+      onSelectRef.current(null);
     };
-    map.on("draw.create", syncAoi);
-    map.on("draw.update", syncAoi);
-    map.on("draw.delete", () => onAoiChangeRef.current(null));
+    map.on("draw.create", syncSelection);
+    map.on("draw.update", syncSelection);
+    map.on("draw.delete", () => onSelectRef.current(null));
 
     map.on("load", () => {
-      // Vector overlays. Rasters get inserted *beneath* these later.
       map.addSource("initiatives", { type: "geojson", data: emptyFc() });
       map.addLayer({
         id: "initiatives-fill",
@@ -129,15 +138,18 @@ export default function MapView({
         },
       });
 
+      // Clicking an existing POI selects it — so the action panel and chat can act on it.
       map.on("click", "pois-dot", (e) => {
-        const id = e.features?.[0]?.properties?.id;
+        const f = e.features?.[0];
+        if (!f) return;
+        const id = f.properties?.id;
         const poi = poisRef.current.find((p) => p.id === id);
-        if (poi) onPoiClickRef.current?.(poi);
+        const [lng, lat] = (f.geometry as GeoJSON.Point).coordinates;
+        onSelectRef.current({ kind: "point", lng, lat, existingPoi: poi });
       });
       map.on("mouseenter", "pois-dot", () => (map.getCanvas().style.cursor = "pointer"));
       map.on("mouseleave", "pois-dot", () => (map.getCanvas().style.cursor = ""));
 
-      // Only now is it safe to add sources. This is what re-runs the raster effect.
       setReady(true);
     });
 
@@ -146,21 +158,27 @@ export default function MapView({
     return () => {
       map.remove();
       mapRef.current = null;
+      drawRef.current = null;
       setReady(false);
     };
   }, []);
 
-  // ── Raster stack: basemap + active analytical overlays ─────────────────────
+  // ── Clear drawn selection on demand ────────────────────────────────────────
+  useEffect(() => {
+    if (clearSignal === 0) return;
+    drawRef.current?.deleteAll();
+    onSelectRef.current(null);
+  }, [clearSignal]);
+
+  // ── Raster stack ───────────────────────────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready || layers.length === 0) return;
 
     const instanceId = import.meta.env.VITE_SENTINEL_HUB_INSTANCE_ID as string | undefined;
-
-    // Basemap first (bottom), then each active overlay above it.
+    const gibsDate = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
     const wanted = [basemapKey, ...activeLayerKeys.filter((k) => k !== basemapKey)];
 
-    // Remove rasters that are no longer wanted.
     for (const layer of layers) {
       const id = `raster-${layer.key}`;
       if (!wanted.includes(layer.key) && map.getLayer(id)) {
@@ -173,13 +191,12 @@ export default function MapView({
       const layer = layers.find((l) => l.key === key);
       if (!layer?.tile_url) continue;
 
-      // Sentinel Hub layers need an instance ID. Skip cleanly rather than request a URL that
-      // still has a literal {INSTANCE_ID} in it.
       let url = layer.tile_url;
       if (url.includes("{INSTANCE_ID}")) {
         if (!instanceId) continue;
         url = url.replace("{INSTANCE_ID}", instanceId);
       }
+      if (url.includes("{DATE}")) url = url.replace("{DATE}", gibsDate);
 
       const id = `raster-${layer.key}`;
       if (!map.getSource(id)) {
@@ -191,7 +208,6 @@ export default function MapView({
         });
       }
       if (!map.getLayer(id)) {
-        // Keep rasters beneath the vector overlays.
         const beforeId = map.getLayer("initiatives-fill") ? "initiatives-fill" : undefined;
         map.addLayer(
           {
@@ -205,7 +221,6 @@ export default function MapView({
       }
     }
 
-    // Enforce order: basemap at the bottom of the raster stack, overlays stacked above it.
     for (const key of wanted) {
       const id = `raster-${key}`;
       if (map.getLayer(id)) {
@@ -261,7 +276,6 @@ function emptyFc(): GeoJSON.FeatureCollection {
   return { type: "FeatureCollection", features: [] };
 }
 
-/** Dark, signal-green draw styling. */
 const drawStyles = [
   {
     id: "gl-draw-polygon-fill",
@@ -275,6 +289,17 @@ const drawStyles = [
     filter: ["all", ["==", "$type", "Polygon"]],
     layout: { "line-cap": "round", "line-join": "round" },
     paint: { "line-color": "#3FD68C", "line-width": 2 },
+  },
+  {
+    id: "gl-draw-point",
+    type: "circle",
+    filter: ["all", ["==", "$type", "Point"], ["==", "meta", "feature"]],
+    paint: {
+      "circle-radius": 6,
+      "circle-color": "#3FD68C",
+      "circle-stroke-color": "#0B0F0D",
+      "circle-stroke-width": 2,
+    },
   },
   {
     id: "gl-draw-vertex",

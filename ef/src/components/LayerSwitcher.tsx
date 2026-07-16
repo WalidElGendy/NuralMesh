@@ -8,9 +8,8 @@ const FAMILY_ABBR: Record<string, string> = {
   thermal: "lst",
   hyperspectral: "hyp",
   terrain: "dsm",
+  overlay: "ref",
 };
-
-const BASEMAP_KEYS = ["osm", "esri_imagery", "s2cloudless"];
 
 interface Props {
   layers: Layer[];
@@ -27,12 +26,14 @@ export default function LayerSwitcher({
   onBasemapChange,
   onToggleLayer,
 }: Props) {
-  const basemaps = layers.filter((l) => BASEMAP_KEYS.includes(l.key));
-  const overlays = layers.filter((l) => !BASEMAP_KEYS.includes(l.key));
+  // Group by family, not a hardcoded key list — so new layers added to the DB show up in the
+  // right section automatically. `basemap` family = exclusive radio; everything else toggles.
+  const basemaps = layers.filter((l) => l.family === "basemap");
+  const overlays = layers.filter((l) => l.family !== "basemap");
   const shInstance = import.meta.env.VITE_SENTINEL_HUB_INSTANCE_ID;
 
   return (
-    <div className="w-60 rounded-xl border border-field-line bg-field-900/92 p-3 backdrop-blur-md">
+    <div className="max-h-[80vh] w-60 overflow-y-auto rounded-xl border border-field-line bg-field-900/92 p-3 backdrop-blur-md">
       <div className="mb-2.5 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-white/35">
         <Layers size={11} /> Layers
       </div>
@@ -65,12 +66,12 @@ export default function LayerSwitcher({
 
       <div>
         <div className="mb-1.5 font-mono text-[9px] uppercase tracking-wider text-white/25">
-          Analysis
+          Analysis &amp; overlays
         </div>
         <div className="space-y-0.5">
           {overlays.map((l) => {
-            // Sentinel Hub layers need an instance ID. Disable them honestly rather than
-            // lighting up a layer that will render as broken tiles.
+            // Sentinel Hub layers need an instance ID. Disable honestly rather than lighting
+            // up a layer that renders as broken tiles.
             const needsKey = !!l.tile_url?.includes("{INSTANCE_ID}") && !shInstance;
             const active = activeLayerKeys.includes(l.key);
             return (
@@ -100,7 +101,7 @@ export default function LayerSwitcher({
                   {l.name}
                 </span>
                 <span className="font-mono text-[9px] uppercase text-white/25">
-                  {needsKey ? "key" : FAMILY_ABBR[l.family]}
+                  {needsKey ? "key" : FAMILY_ABBR[l.family] ?? ""}
                 </span>
               </button>
             );

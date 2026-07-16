@@ -1,10 +1,10 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, MapPin, Send, Square } from "lucide-react";
 
 import { ask, buildGeoPrompt, INFERENCE_PROVIDER, SOVEREIGN_INFERENCE } from "../lib/mesh";
 import { logAudit } from "../lib/audit";
 import { formatArea } from "../lib/geo";
-import type { Aoi } from "../lib/types";
+import type { Selection } from "../lib/types";
 
 interface Turn {
   role: "user" | "assistant";
@@ -13,11 +13,13 @@ interface Turn {
 }
 
 interface Props {
-  aoi: Aoi | null;
+  selection: Selection | null;
   activeLayers: string[];
   initiativeName?: string | null;
   orgId: string | null;
   lang: "en" | "ar";
+  /** Bumped by the action card to auto-ask a question about the current selection. */
+  seed?: { text: string; nonce: number } | null;
 }
 
 const SUGGESTIONS = {
@@ -33,12 +35,25 @@ const SUGGESTIONS = {
   ],
 };
 
-export default function AskPanel({ aoi, activeLayers, initiativeName, orgId, lang }: Props) {
+export default function AskPanel({
+  selection,
+  activeLayers,
+  initiativeName,
+  orgId,
+  lang,
+  seed,
+}: Props) {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const abortRef = useRef<(() => void) | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Keep the latest selection available to the submit closure without re-creating it.
+  const selectionRef = useRef(selection);
+  selectionRef.current = selection;
+  const layersRef = useRef(activeLayers);
+  layersRef.current = activeLayers;
 
   const scrollDown = () =>
     requestAnimationFrame(() =>
@@ -47,20 +62,27 @@ export default function AskPanel({ aoi, activeLayers, initiativeName, orgId, lan
 
   async function submit(question: string) {
     if (!question.trim() || busy) return;
+    const sel = selectionRef.current;
 
     setTurns((t) => [...t, { role: "user", text: question }, { role: "assistant", text: "" }]);
     setInput("");
     setBusy(true);
     scrollDown();
 
-    const prompt = buildGeoPrompt({ question, aoi, activeLayers, initiativeName, lang });
+    const prompt = buildGeoPrompt({
+      question,
+      selection: sel,
+      activeLayers: layersRef.current,
+      initiativeName,
+      lang,
+    });
 
     if (orgId) {
       void logAudit({
         orgId,
         action: "ask.query",
-        aoi,
-        sourceLayers: activeLayers,
+        aoi: sel?.aoi ?? null,
+        sourceLayers: layersRef.current,
         outputs: { question, provider: INFERENCE_PROVIDER },
       });
     }
@@ -68,15 +90,13 @@ export default function AskPanel({ aoi, activeLayers, initiativeName, orgId, lan
     abortRef.current = await ask(
       { message: prompt },
       {
-        onToken: (text) => {
+        onToken: (text) =>
           setTurns((prev) => {
             const next = [...prev];
             const last = next[next.length - 1];
             if (last?.role === "assistant") last.text += text;
             return next;
-          });
-          scrollDown();
-        },
+          }),
         onDone: (meta) => {
           setTurns((prev) => {
             const next = [...prev];
@@ -100,18 +120,33 @@ export default function AskPanel({ aoi, activeLayers, initiativeName, orgId, lan
     );
   }
 
+  // Auto-ask when the action card seeds a question.
+  const lastNonce = useRef(0);
+  useEffect(() => {
+    if (seed && seed.nonce !== lastNonce.current) {
+      lastNonce.current = seed.nonce;
+      void submit(seed.text);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seed]);
+
+  const ctxLabel =
+    selection?.kind === "area"
+      ? `${selection.lat.toFixed(3)}°N, ${selection.lng.toFixed(3)}°E · ${formatArea(selection.aoi?.areaKm2 ?? 0)}`
+      : selection
+        ? `${selection.lat.toFixed(3)}°N, ${selection.lng.toFixed(3)}°E${selection.existingPoi ? ` · ${selection.existingPoi.name}` : ""}`
+        : null;
+
   return (
     <div className="flex h-full flex-col bg-field-900" dir={lang === "ar" ? "rtl" : "ltr"}>
-      {/* AOI context — makes it unambiguous what the model is reasoning about. */}
       <div className="border-b border-field-line px-4 py-3">
         <div className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-signal">
           <MapPin size={11} />
-          {lang === "ar" ? "منطقة الاهتمام" : "Area of interest"}
+          {lang === "ar" ? "التحديد" : "Selection"}
         </div>
-        {aoi ? (
+        {ctxLabel ? (
           <div className="mt-1.5 font-mono text-xs text-white/70">
-            {aoi.centroid[1].toFixed(3)}°N, {aoi.centroid[0].toFixed(3)}°E ·{" "}
-            {formatArea(aoi.areaKm2)}
+            {ctxLabel}
             <div className="mt-1 text-white/35">
               {activeLayers.length
                 ? activeLayers.join(" · ")
@@ -123,14 +158,12 @@ export default function AskPanel({ aoi, activeLayers, initiativeName, orgId, lan
         ) : (
           <div className="mt-1.5 text-xs text-white/35">
             {lang === "ar"
-              ? "ارسم منطقة على الخريطة للبدء."
-              : "Draw a region on the map to begin."}
+              ? "ضع دبوساً أو ارسم منطقة على الخريطة."
+              : "Drop a pin or draw an area on the map."}
           </div>
         )}
       </div>
 
-      {/* Residency banner. While inference leaves the Kingdom, say so — plainly, in the
-          place the analyst is actually looking. Hiding it would make the platform lie. */}
       {!SOVEREIGN_INFERENCE && (
         <div className="flex items-start gap-2 border-b border-amber-500/20 bg-amber-500/10 px-4 py-2.5">
           <AlertTriangle size={13} className="mt-0.5 shrink-0 text-amber-400" />
@@ -171,8 +204,6 @@ export default function AskPanel({ aoi, activeLayers, initiativeName, orgId, lan
                 <div className="whitespace-pre-wrap text-sm leading-relaxed text-white/80">
                   {turn.text || (busy ? <span className="text-white/25">Thinking…</span> : null)}
                 </div>
-
-                {/* Provenance, stated accurately — whatever it happens to be. */}
                 {turn.meta && (
                   <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[10px] text-white/35">
                     <span>served by {turn.meta.provider}</span>
@@ -197,7 +228,7 @@ export default function AskPanel({ aoi, activeLayers, initiativeName, orgId, lan
               }
             }}
             rows={1}
-            placeholder={lang === "ar" ? "اسأل عن هذه المنطقة…" : "Ask about this area…"}
+            placeholder={lang === "ar" ? "اسأل عن هذا الموقع…" : "Ask about this location…"}
             className="max-h-32 flex-1 resize-none rounded-lg border border-field-line bg-field-800 px-3 py-2 text-sm text-white/90 outline-none transition placeholder:text-white/25 focus:border-signal/50"
           />
           {busy ? (

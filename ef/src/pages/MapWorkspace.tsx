@@ -79,7 +79,9 @@ export default function MapWorkspace({
           clearSignal={clearSignal}
         />
 
-        <div className="absolute left-4 top-4 z-10">
+        {/* Offset below the map's draw toolbar (pin/polygon/trash live at top-left) so the
+            layer panel never covers the ring-fence tools. */}
+        <div className="absolute left-4 top-36 z-10">
           <LayerSwitcher
             layers={layers}
             basemapKey={basemapKey}

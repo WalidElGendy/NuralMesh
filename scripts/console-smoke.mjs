@@ -114,8 +114,26 @@ await page.route('**/api/**', async (route) => {
         { node_id: 'node-sgp-02', status: 'online', latency_p50_ms: 340, latency_p95_ms: 720, success_rate: 0.97,  tokens_today: 880000,  gpu: 'A100' },
         { node_id: 'node-nyc-04', status: 'offline', latency_p50_ms: null, latency_p95_ms: null, success_rate: null, tokens_today: 0, gpu: null },
       ],
-      online: 3, registered: 4, latency_p50_ms: 243, tokens_today: 4220000,
-      fallback: { provider: 'siliconflow', model: 'deepseek-ai/DeepSeek-V3.1', active: false },
+      online: 3, registered: 4, capacity: 2, latency_p50_ms: 243, tokens_today: 4220000,
+      fallback: { provider: 'siliconflow', model: 'deepseek-ai/DeepSeek-V3.1', active: false, mesh_model: 'llama3.3:70b-instruct-q4_K_M' },
+      sovereignty: {
+        available: true, day: '2026-07-25', turns: 412, mesh_turns: 262,
+        tokens: 1840000, mesh_tokens: 1220000, mesh_share: 0.663,
+        fallback_cost_usd: 0.558, provider_credits: 1.086,
+        top_fallback_reason: 'no_capacity',
+        history: [
+          { day: '2026-07-25', mesh_share: 0.663, tokens: 1840000, fallback_cost_usd: 0.558 },
+          { day: '2026-07-24', mesh_share: 0.514, tokens: 1610000, fallback_cost_usd: 0.704 },
+          { day: '2026-07-23', mesh_share: 0.402, tokens: 1490000, fallback_cost_usd: 0.802 },
+          { day: '2026-07-22', mesh_share: 0.211, tokens: 1320000, fallback_cost_usd: 0.937 },
+          { day: '2026-07-21', mesh_share: 0.0,   tokens: 1180000, fallback_cost_usd: 1.062 },
+        ],
+      },
+      fallback_reasons: [
+        { reason: 'no_capacity', turns: 98, tokens: 420000, cost_usd: 0.378 },
+        { reason: 'unclaimed',   turns: 34, tokens: 145000, cost_usd: 0.131 },
+        { reason: 'unhealthy',   turns: 18, tokens: 55000,  cost_usd: 0.049 },
+      ],
     }));
   }
 
@@ -190,6 +208,9 @@ const checks = await page.evaluate(() => ({
   notes:        document.querySelectorAll('#graphNoteList .note').length,
   pipeSteps:    document.querySelectorAll('.pipe__step').length,
   selfCheck:    document.body.textContent.includes('Self-check flagged'),
+  sovereignty:  document.body.textContent.includes('Mesh share'),
+  boughtLabel:  /sovereign ·|bought ·/.test(document.body.textContent),
+  reasonsPanel: document.body.textContent.includes('Why we bought tokens'),
   agentSidebar: /select an agent|agent list|message your agent/i.test(document.body.innerHTML),
 }));
 
@@ -205,6 +226,9 @@ if (userDir !== 'rtl')     fail.push(`Arabic message dir was "${userDir}", expec
 if (!(mobileVisible.w > 200 && mobileVisible.h > 200)) fail.push('conversation not visible at 420px: ' + JSON.stringify(mobileVisible));
 if (errors.length)         fail.push(`${errors.length} console error(s)`);
 if (checks.figures < 4)    fail.push('expected the mesh pane to render its charts');
+if (!checks.sovereignty)   fail.push('expected the sovereignty tiles');
+if (!checks.boughtLabel)   fail.push('expected each answer labelled sovereign or bought');
+if (!checks.reasonsPanel)  fail.push('expected the fallback-reason backlog');
 
 console.log('\nchecks:', JSON.stringify(checks, null, 2));
 console.log('rtl dir:', userDir, '| mobile:', JSON.stringify(mobileVisible), '| mesh probes:', meshProbes);

@@ -109,9 +109,15 @@ function paintProvenance(el, { meta, review, sources, memory, timings, onRegen, 
   const conf = review?.confidence;
   const highIssues = (review?.issues || []).filter(i => i.severity === 'high').length;
 
-  const node = meta.node || (meta.fallback ? 'groq fallback' : 'mesh');
+  // The headline distinction: did the network serve this, or did we buy it?
+  // Never imply mesh provenance that did not happen — the chip names the
+  // actual server, and bought turns are labelled as bought.
+  const sovereign = meta.sovereign === true;
+  const served = meta.node || meta.served_by || meta.model || 'unknown';
   const chips = [
-    `<span class="chip chip--mesh" title="Which node served this turn">${ICON.mesh}<b>${esc(node)}</b></span>`,
+    sovereign
+      ? `<span class="chip chip--mesh" title="Served by a MeshNet GPU provider — no outside tokens purchased">${ICON.mesh}sovereign · <b>${esc(served)}</b></span>`
+      : `<span class="chip chip--warn" title="${esc(meta.fallback_reason ? 'Mesh could not take this turn: ' + meta.fallback_reason : 'Bought from an outside provider')}">${ICON.globe}bought · <b>${esc(served)}</b>${meta.fallback_reason ? ` · ${esc(meta.fallback_reason)}` : ''}</span>`,
     meta.ttft != null ? `<span class="chip" title="Time to first token">ttft <b>${fmt(meta.ttft, { ms: true })}</b></span>` : '',
     meta.tps ? `<span class="chip" title="Generation speed"><b>${fmt(meta.tps, { dp: 0 })}</b> tok/s</span>` : '',
     `<span class="chip" title="Completion tokens"><b>${fmt(meta.tokens)}</b> tok</span>`,
@@ -490,22 +496,76 @@ async function refreshMesh() {
     : `<b>${S.mesh.online}</b> node${S.mesh.online === 1 ? '' : 's'} · ${S.mesh.p50 ? fmt(S.mesh.p50, { ms: true }) : '—'} p50`;
   $('#meshDot').style.background = onFallback ? 'var(--warn)' : 'var(--signal)';
 
-  const totalTok = status.tokens_today || 0;
-  const cost = costModel({ tokens: totalTok });
+  const sov = status.sovereignty || {};
+  const share = sov.mesh_share;
 
   const pane = document.createElement('div');
   pane.style.display = 'grid';
   pane.style.gap = '14px';
 
+  // Sovereignty leads, because it is the number the network exists to move.
+  // 1.0 means every token was served by a provider and nothing was bought.
+  const sovCard = document.createElement('div');
+  sovCard.className = 'card';
+  sovCard.innerHTML = `<div class="card__head"><span class="card__title">Sovereignty</span>
+    <span class="card__spacer"></span>
+    <span class="card__sub">${esc(sov.day || 'today')}</span></div>`;
+  sovCard.appendChild(tileRow([
+    { k: 'Mesh share', v: share == null ? '—' : fmt(share, { pct: true, dp: 1 }),
+      d: 'target 100%', dir: share >= 0.999 ? 'up' : undefined },
+    { k: 'Served by mesh', v: fmt(sov.mesh_tokens ?? 0), d: `of ${fmt(sov.tokens ?? 0)} tokens` },
+    { k: 'Bought today', v: fmt(sov.fallback_cost_usd ?? 0, { usd: true }),
+      d: 'cash out to an outside LLM', dir: (sov.fallback_cost_usd ?? 0) > 0 ? 'down' : undefined },
+    { k: 'Providers earned', v: fmt(sov.provider_credits ?? 0, { usd: true }), d: 'credits to nodes', dir: 'up' },
+  ]));
+  pane.appendChild(sovCard);
+
+  // Why the mesh was skipped — this is the recruitment backlog, priced.
+  if (status.fallback_reasons?.length) {
+    const why = document.createElement('div');
+    why.className = 'card';
+    const LABEL = {
+      no_nodes: 'Nobody online — recruit providers',
+      no_capacity: 'All nodes busy — recruit, or raise max_concurrent',
+      unhealthy: 'Online but failing health checks',
+      model_unavailable: 'No node serves the mesh model',
+      unclaimed: 'Online but too slow to pick jobs up',
+      node_error: 'Node failed mid-answer',
+      share_cap: 'Throttled by NM_MESH_MAX_SHARE',
+      disabled: 'Mesh routing switched off',
+    };
+    why.innerHTML = `<div class="card__head"><span class="card__title">Why we bought tokens</span>
+      <span class="card__spacer"></span><span class="card__sub">7 days</span></div>
+      <div class="card__body" style="display:grid;gap:7px;font-size:12.5px">
+      ${status.fallback_reasons.map(r => `
+        <div style="display:flex;gap:9px;align-items:baseline">
+          <span class="tag">${esc(r.reason || '—')}</span>
+          <span style="color:var(--ink-2);flex:1">${esc(LABEL[r.reason] || '')}</span>
+          <b style="font-family:var(--mono);font-size:11px">${esc(fmt(r.cost_usd || 0, { usd: true }))}</b>
+        </div>`).join('')}
+      </div>`;
+    pane.appendChild(why);
+  }
+
+  if (sov.history?.length > 2) {
+    const f = figure({
+      type: 'line', title: 'Mesh share', subtitle: 'share of tokens served by providers, target 1.0',
+      x: 'day', y: ['mesh share'], unit: 'pct',
+      data: [...sov.history].reverse().map(h => ({ day: h.day, 'mesh share': h.mesh_share })),
+    }, { onPin: pinFigure });
+    if (f) pane.appendChild(f);
+  }
+
+  const totalTok = status.tokens_today || 0;
   const card = document.createElement('div');
   card.className = 'card';
-  card.innerHTML = `<div class="card__head"><span class="card__title">Network</span>
+  card.innerHTML = `<div class="card__head"><span class="card__title">Capacity</span>
     <span class="card__spacer"></span><span class="card__sub">live</span></div>`;
   card.appendChild(tileRow([
     { k: 'Nodes online', v: String(S.mesh.online), d: `${status.registered || 0} registered` },
+    { k: 'Free slots', v: String(status.capacity ?? 0), d: 'concurrent jobs' },
     { k: 'Median latency', v: S.mesh.p50 ? fmt(S.mesh.p50, { ms: true }) : '—', d: 'p50 across nodes' },
     { k: 'Tokens today', v: fmt(totalTok), d: 'served by the mesh' },
-    { k: 'Saved today', v: fmt(cost.saved, { usd: true }), d: `vs ${fmt(CFG.BASELINE_USD_PER_MTOK, { usd: true })}/Mtok`, dir: 'up' },
   ]));
   pane.appendChild(card);
 
@@ -514,11 +574,12 @@ async function refreshMesh() {
     note.className = 'card';
     note.innerHTML = `<div class="card__body" style="font-size:12.5px;color:var(--ink-2);display:grid;gap:6px">
       <span class="chip chip--warn" style="justify-self:start">fallback active</span>
-      <p>No provider nodes are online, so traffic is served by
-         <b>${esc(status.fallback?.provider || 'the fallback provider')}</b>
-         (<code>${esc(status.fallback?.model || 'unknown model')}</code>).
-         Answers still carry honest provenance — the chip under each one names
-         what actually served it.</p></div>`;
+      <p>No provider nodes are online, so every token is being <b>bought</b> from
+         <b>${esc(status.fallback?.provider || 'an outside provider')}</b>
+         (<code>${esc(status.fallback?.model || 'unknown model')}</code>) instead of
+         earned by the network. Each node that comes online serving
+         <code>${esc(status.fallback?.mesh_model || 'the mesh model')}</code> moves
+         mesh share up automatically — there is no split to reconfigure.</p></div>`;
     pane.appendChild(note);
   }
 

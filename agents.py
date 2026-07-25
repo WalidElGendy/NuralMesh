@@ -32,6 +32,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from api import get_supabase_client  # reuse the same Supabase client factory
+import mesh_router
 from mesh_prompts import (
     DEFAULT_MODE,
     MODES,
@@ -582,6 +583,71 @@ def _chat_stream(
     yield ("done", full, meta)
 
 
+def _route_and_stream(
+    supabase,
+    messages: list[dict],
+    *,
+    temperature: float,
+    max_tokens: int,
+    user_id: str | None = None,
+    conversation_id: str | None = None,
+) -> Iterator[tuple[str, str, dict]]:
+    """Offer the turn to the mesh first, buy it only if the mesh cannot take it.
+
+    The mesh is given `NM_DISPATCH_DEADLINE_S` to claim the job. If nothing
+    claims it, the job is abandoned and we fall through to the paid provider —
+    before a single token has been emitted, so the user sees a slightly later
+    first token rather than a stall or an error.
+
+    Every outcome is written to routing_events with a reason code, which is
+    what makes `select * from fallback_reasons_7d` a provider-recruitment
+    backlog rather than a guess.
+    """
+    decision = mesh_router.decide(supabase)
+
+    if decision.target == "mesh":
+        job_id = None
+        try:
+            job_id = mesh_router.enqueue(
+                supabase,
+                messages=messages,
+                model=decision.model,
+                params={"temperature": temperature, "max_tokens": max_tokens, "stream": True},
+                user_id=user_id,
+                conversation_id=conversation_id,
+            )
+            for kind, payload, meta in mesh_router.stream_job(supabase, job_id):
+                if kind == "done":
+                    mesh_router.record(
+                        supabase, target="mesh", tokens=meta.get("tokens", 0),
+                        user_id=user_id, job_id=job_id, node_id=meta.get("node_id"),
+                        model=meta.get("model"), latency_ms=meta.get("latency_ms"),
+                        ttft_ms=meta.get("ttft_ms"),
+                    )
+                yield (kind, payload, meta)
+            return
+        except mesh_router.MeshUnavailable as e:
+            logger.info("mesh_unavailable reason=%s — falling back", e.reason)
+            decision = mesh_router.Decision("fallback", e.reason)
+        except Exception:
+            logger.exception("mesh_dispatch_failed — falling back")
+            decision = mesh_router.Decision("fallback", "node_error")
+
+    # Paid path. Recorded as a fallback WITH its reason, so the cost of not
+    # being sovereign is a number rather than an impression.
+    for kind, payload, meta in _chat_stream(
+        messages, temperature=temperature, max_tokens=max_tokens
+    ):
+        if kind == "done":
+            meta = {**meta, "sovereign": False, "fallback_reason": decision.reason}
+            mesh_router.record(
+                supabase, target="fallback", tokens=meta.get("tokens", 0),
+                user_id=user_id, model=meta.get("model"), reason=decision.reason,
+                latency_ms=meta.get("latency_ms"), ttft_ms=meta.get("ttft_ms"),
+            )
+        yield (kind, payload, meta)
+
+
 def _provider_label() -> str:
     """Where the tokens actually came from.
 
@@ -794,11 +860,17 @@ def agent_turn(
     messages = _build_messages(conv, history, body.content, mode, body.context)
 
     try:
-        answer, meta = _chat(
-            messages,
-            temperature=cfg["temperature"],
-            max_tokens=cfg["max_tokens"],
-        )
+        parts, meta = [], {}
+        for kind, payload, m in _route_and_stream(
+            supabase, messages,
+            temperature=cfg["temperature"], max_tokens=cfg["max_tokens"],
+            user_id=user_id, conversation_id=agent_id,
+        ):
+            if kind == "delta":
+                parts.append(payload)
+            else:
+                meta = m
+        answer = "".join(parts)
     except HTTPException:
         _set_status(supabase, agent_id, "error")
         raise
@@ -868,10 +940,12 @@ def agent_turn_stream(
         yield frame({"type": "start", "mode": mode, "model": DEFAULT_MODEL})
         answer, meta = "", {}
         try:
-            for kind, payload, m in _chat_stream(
-                messages,
+            for kind, payload, m in _route_and_stream(
+                supabase, messages,
                 temperature=cfg["temperature"],
                 max_tokens=cfg["max_tokens"],
+                user_id=user_id,
+                conversation_id=agent_id,
             ):
                 if kind == "delta":
                     yield frame({"type": "delta", "v": payload})

@@ -4,3 +4,7 @@ node_modules/
 
 # console smoke-test screenshots
 .console-shots/
+
+# local review artefacts
+console-rebuild.bundle
+console-rebuild.patch

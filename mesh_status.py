@@ -23,6 +23,7 @@ import time
 from fastapi import APIRouter
 from pydantic import BaseModel
 
+import mesh_router
 from api import get_supabase_client
 
 router = APIRouter(prefix="/api/mesh", tags=["mesh"])
@@ -42,9 +43,14 @@ class MeshStatus(BaseModel):
     providers: list[dict]
     online: int
     registered: int
+    capacity: int = 0
     latency_p50_ms: int | None = None
     tokens_today: int = 0
     fallback: dict
+    # The number the business is steered by: what share of tokens the network
+    # served itself today, and what the remainder cost in cash.
+    sovereignty: dict = {}
+    fallback_reasons: list[dict] = []
 
 
 @router.get("/status", response_model=MeshStatus)
@@ -60,8 +66,8 @@ def mesh_status():
             get_supabase_client()
             .table("providers")
             .select(
-                "node_id,status,latency_p50_ms,latency_p95_ms,"
-                "success_rate,tokens_today,gpu_info,last_seen_at"
+                "node_id,status,latency_p50_ms,latency_p95_ms,success_rate,"
+                "tokens_today,gpu_info,last_seen_at,max_concurrent,cooldown_until"
             )
             .order("tokens_today", desc=True)
             .limit(24)
@@ -84,6 +90,14 @@ def mesh_status():
         for r in rows
     ]
 
+    sb = None
+    try:
+        sb = get_supabase_client()
+    except Exception:
+        logger.warning("mesh_status_client_failed", exc_info=True)
+    sov = mesh_router.sovereignty(sb, days=14) if sb else {"available": False}
+    reasons = mesh_router.fallback_reasons(sb) if sb else []
+
     online = [p for p in providers if p["status"] == "online"]
     lat = [p["latency_p50_ms"] for p in online if p.get("latency_p50_ms")]
 
@@ -93,9 +107,14 @@ def mesh_status():
         "registered": len(providers),
         "latency_p50_ms": round(sum(lat) / len(lat)) if lat else None,
         "tokens_today": sum(p["tokens_today"] for p in providers),
+        "capacity": sum(int(r.get("max_concurrent") or 1) for r in rows
+                        if r.get("status") == "online"),
         # Honest about what is actually serving chat right now.
         "fallback": {"provider": FALLBACK_LABEL, "model": FALLBACK_MODEL,
-                     "active": len(online) == 0},
+                     "active": len(online) == 0,
+                     "mesh_model": mesh_router.MESH_MODEL},
+        "sovereignty": sov,
+        "fallback_reasons": reasons,
     }
     _cache = (now, payload)
     return MeshStatus(**payload)

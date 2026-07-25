@@ -1357,3 +1357,14 @@ app.mount("/dashboard", StaticFiles(directory="dashboard", html=True), name="das
 # Wire in /api/agents endpoints
 from agents import router as _agents_router
 app.include_router(_agents_router)
+
+# Wire in /api/search — web grounding proxy for Research mode.
+# Keeps the search provider key server-side; returns an empty result set
+# (never an error) when no provider is configured.
+from mesh_search import router as _search_router
+app.include_router(_search_router)
+
+# Wire in /api/mesh/status — aggregate node telemetry for the console's
+# provenance chips. Read-only and non-identifying.
+from mesh_status import router as _mesh_router
+app.include_router(_mesh_router)

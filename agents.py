@@ -1,27 +1,65 @@
-"""Multi-agent (conversations) endpoints — v0.3 (robust + agent personas).
+"""Conversation endpoints — v0.4 (streaming, telemetry, no personas).
 
 Wired into the FastAPI app via `from agents import router` + `app.include_router(router)` in api.py.
+
+CHANGES FROM v0.3
+-----------------
+* Personas removed. `resolve_persona()` picked a system prompt by substring-
+  matching the conversation *title*, and `list_agents()` seeded every user with
+  seven threads named "Design Agent", "Sales Agent" and so on. The result was
+  that a thread's title silently dictated the assistant's behaviour for every
+  question in it. See mesh_prompts.py for the full account.
+* Streaming. v0.3 called SiliconFlow with `stream: False`, so a reply appeared
+  as one block after a long silence. `/turn/stream` emits SSE.
+* Telemetry. v0.3 stored `served_by` NULL and `tokens`/`latency_ms` 0 on every
+  message row, making the inference network invisible in its own product.
+* `/complete` — a stateless completion used by the client's reasoning pipeline
+  (route, plan, verify) without polluting the conversation history.
+* History is trimmed to a character budget instead of a flat 50 messages.
 """
 
 import json
 import logging
 import os
+import time
 import urllib.request as _urlreq
 import urllib.error as _urlerr
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Iterator
 
 from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from api import get_supabase_client  # reuse the same Supabase client factory
+from mesh_prompts import (
+    DEFAULT_MODE,
+    MODES,
+    PLANNER,
+    ROUTER,
+    TITLER,
+    VERIFIER,
+    build_system,
+    mode_config,
+)
 
 
 router = APIRouter(prefix="/api/agents", tags=["agents"])
 logger = logging.getLogger(__name__)
 
-# ---------------- Canonical seeded agent set ----------------
-NAMED_AGENTS = [
+# ---------------- Conversation defaults ----------------
+#
+# v0.3 kept a NAMED_AGENTS list here and auto-seeded seven persona threads for
+# every user, then read the persona back off the thread title. Both are gone.
+# A conversation is a conversation; behaviour comes from the mode the user
+# picks on the composer, not from what the thread happens to be called.
+
+DEFAULT_TITLE = "New thread"
+
+# Conversations are never seeded. Set NM_SEED_NAMED_AGENTS=1 only if some other
+# client still depends on the old seven rows existing.
+SEED_NAMED_AGENTS = os.environ.get("NM_SEED_NAMED_AGENTS", "").strip() == "1"
+LEGACY_NAMED_AGENTS = [
     "Design Agent",
     "Content Agent",
     "Cowork Agent",
@@ -30,64 +68,6 @@ NAMED_AGENTS = [
     "Marketing Agent",
     "Personal Assistant Agent",
 ]
-
-
-
-# ---------------- Agent persona system prompts ----------------
-AGENT_PERSONAS = {
-    "design": (
-        "You are Design Agent — a senior product / UI / UX / visual designer for NeuralMesh. "
-        "You help with wireframes, design systems, color palettes, typography, layout, accessibility, "
-        "Figma workflows, and turning ideas into concrete design specs. Be specific, give concrete "
-        "values (hex codes, font sizes, spacing scales), and structure complex answers with short sections."
-    ),
-    "content": (
-        "You are Content Agent — a senior content strategist and copywriter. You produce blog posts, "
-        "landing-page copy, social posts, scripts, outlines and SEO drafts. You always ask for the target "
-        "audience and goal if it's unclear, then deliver in the requested tone. Provide multiple variants "
-        "when useful (short / medium / long)."
-    ),
-    "cowork": (
-        "You are Cowork Agent — a collaboration and project-operations partner. You help with meeting "
-        "agendas, async standup notes, decision logs, RACI charts, retro structures, and turning chat "
-        "threads into actionable tasks. Be crisp and action-oriented."
-    ),
-    "email": (
-        "You are Email Agent — a professional email assistant. You draft, summarize, and reply to emails "
-        "in the requested tone (formal, friendly, firm, apologetic, etc.). Always produce a subject line "
-        "and a body. Keep emails short by default and offer a longer version on request."
-    ),
-    "sales": (
-        "You are Sales Agent — a B2B/B2C sales co-pilot. You write cold outreach, follow-ups, discovery "
-        "questions, objection-handling scripts, and proposal sections. You always tie the message to "
-        "buyer pain and a clear next step (CTA). Provide concise variants (email / LinkedIn / SMS)."
-    ),
-    "marketing": (
-        "You are Marketing Agent — a full-funnel growth marketer. You help with positioning, ICPs, "
-        "campaign briefs, ad copy (Google / Meta / X / LinkedIn), landing-page hero copy, A/B test ideas, "
-        "and KPI plans. Be data-aware: mention which metric a recommendation moves."
-    ),
-    "personal assistant": (
-        "You are Personal Assistant Agent — a calm, organized executive assistant. You help plan days, "
-        "summarize documents, draft quick replies, set reminders (as text), build checklists, and turn "
-        "vague intents into a concrete next action. Default to being concise."
-    ),
-}
-
-DEFAULT_PERSONA = (
-    "You are a helpful NeuralMesh AI assistant. Be concise, accurate and helpful. "
-    "If you don't know something, say so."
-)
-
-
-def resolve_persona(title):
-    t = (title or "").strip().lower()
-    if not t:
-        return DEFAULT_PERSONA
-    for key, prompt in AGENT_PERSONAS.items():
-        if key in t:
-            return prompt
-    return DEFAULT_PERSONA
 
 
 # ---------------- Auth ----------------
@@ -153,6 +133,12 @@ class AgentMessagesResponse(BaseModel):
 
 class AgentTurnRequest(BaseModel):
     content: str = Field(..., min_length=1, max_length=20000)
+    # v0.4: the answer mode is chosen on the composer, not inferred from the
+    # thread title. `context` carries client-side retrieval (recalled passages,
+    # web sources, the plan) so the server can ground the prompt without
+    # owning the search stack.
+    mode: str = Field(default="ask")
+    context: dict | None = None
 
 
 class AgentTurnResponse(BaseModel):
@@ -187,26 +173,30 @@ def list_agents(user_id: str = Depends(get_current_user_id)):
             .execute()
         )
         rows = res.data or []
-        # Auto-seed: ensure this user has a row for each canonical NAMED_AGENT
-        existing_titles = {(r.get("title") or "").strip() for r in rows}
-        missing = [t for t in NAMED_AGENTS if t not in existing_titles]
-        if missing:
-            try:
-                payload = [{"user_id": user_id, "title": t} for t in missing]
-                supabase.table("conversations").insert(payload).execute()
-                # Re-fetch so the response includes the freshly seeded rows
-                res = (
-                    supabase.table("conversations")
-                    .select("*")
-                    .eq("user_id", user_id)
-                    .is_("deleted_at", "null")
-                    .order("updated_at", desc=True)
-                    .limit(200)
-                    .execute()
-                )
-                rows = res.data or []
-            except Exception:
-                logger.exception("seed_named_agents_failed")
+        # No auto-seeding. v0.3 created seven persona-named threads on first
+        # load, which is where the persona bug entered: the thread title then
+        # decided how every answer in it was written. A new user now starts
+        # with an empty list and one composer.
+        if SEED_NAMED_AGENTS:
+            existing_titles = {(r.get("title") or "").strip() for r in rows}
+            missing = [t for t in LEGACY_NAMED_AGENTS if t not in existing_titles]
+            if missing:
+                try:
+                    supabase.table("conversations").insert(
+                        [{"user_id": user_id, "title": t} for t in missing]
+                    ).execute()
+                    res = (
+                        supabase.table("conversations")
+                        .select("*")
+                        .eq("user_id", user_id)
+                        .is_("deleted_at", "null")
+                        .order("updated_at", desc=True)
+                        .limit(200)
+                        .execute()
+                    )
+                    rows = res.data or []
+                except Exception:
+                    logger.exception("seed_named_agents_failed")
     except Exception as e:
         logger.exception("list_agents_failed")
         raise HTTPException(status_code=500, detail=f"list_agents_failed: {e}")
@@ -228,6 +218,94 @@ def create_agent(body: AgentCreateRequest, user_id: str = Depends(get_current_us
     if not res.data:
         raise HTTPException(status_code=500, detail="agent_create_failed")
     return _row_to_agent_summary(res.data[0])
+
+
+# NOTE: literal paths must be declared before "/{agent_id}", because
+# FastAPI matches routes in declaration order — otherwise GET /_modes is
+# captured by get_agent() with agent_id="_modes".
+# ---------------- Stateless completion for the reasoning pipeline ----------
+class CompleteRequest(BaseModel):
+    task: str = Field(..., pattern="^(route|plan|verify|title|free)$")
+    content: str = Field(..., min_length=1, max_length=24000)
+    draft: str | None = Field(None, max_length=24000)
+    sources: list[dict] | None = None
+
+
+class CompleteResponse(BaseModel):
+    task: str
+    result: Any
+    meta: dict
+
+
+@router.post("/complete", response_model=CompleteResponse)
+def complete(body: CompleteRequest, user_id: str = Depends(get_current_user_id)):
+    """Run one pipeline step without writing to a conversation.
+
+    The client's pipeline (route -> recall -> plan/ground -> draft -> verify)
+    needs completions that are not turns. Keeping them here means the prompts
+    stay server-side and never reach the browser.
+    """
+    if body.task == "route":
+        text, meta = _chat(
+            [{"role": "system", "content": ROUTER}, {"role": "user", "content": body.content[:2000]}],
+            model=FAST_MODEL, temperature=0.0, max_tokens=200, json_mode=True,
+        )
+        return CompleteResponse(task=body.task, result=_parse_json(text, {}), meta=meta)
+
+    if body.task == "plan":
+        text, meta = _chat(
+            [{"role": "system", "content": PLANNER}, {"role": "user", "content": body.content}],
+            temperature=0.2, max_tokens=500, json_mode=True,
+        )
+        return CompleteResponse(task=body.task, result=_parse_json(text, None), meta=meta)
+
+    if body.task == "verify":
+        ctx = (
+            "\n\nSUPPLIED CONTEXT:\n"
+            + "\n".join(
+                f"[{s.get('n', i + 1)}] {s.get('title')} — {str(s.get('snippet', ''))[:300]}"
+                for i, s in enumerate(body.sources or [])
+            )
+            if body.sources
+            else "\n\n(No sources supplied — treat every specific figure as unsupported.)"
+        )
+        text, meta = _chat(
+            [
+                {"role": "system", "content": VERIFIER},
+                {
+                    "role": "user",
+                    "content": f"QUESTION:\n{body.content}\n\nDRAFT:\n{(body.draft or '')[:8000]}{ctx}",
+                },
+            ],
+            temperature=0.0, max_tokens=700, json_mode=True,
+        )
+        return CompleteResponse(
+            task=body.task,
+            result=_parse_json(text, {"ok": True, "issues": [], "confidence": None}),
+            meta=meta,
+        )
+
+    if body.task == "title":
+        return CompleteResponse(
+            task=body.task, result=_auto_title(body.content), meta={"model": FAST_MODEL}
+        )
+
+    text, meta = _chat(
+        [{"role": "user", "content": body.content}], temperature=0.4, max_tokens=1200
+    )
+    return CompleteResponse(task=body.task, result=text, meta=meta)
+
+
+# ---------------- Modes (so the client never hardcodes them) ----------------
+@router.get("/_modes")
+def list_modes():
+    return {
+        "default": DEFAULT_MODE,
+        "modes": [
+            {"id": k, "label": v["label"], "temperature": v["temperature"]}
+            for k, v in MODES.items()
+        ],
+    }
 
 
 def _load_conv(supabase, agent_id, user_id):
@@ -352,132 +430,398 @@ def delete_agent(agent_id: str, user_id: str = Depends(get_current_user_id)):
     return {"ok": True}
 
 
-# ---------------- LLM helper ----------------
-def _siliconflow_chat(messages):
-    sf_key = os.environ.get("SILICONFLOW_API_KEY")
-    model = os.environ.get("SILICONFLOW_MODEL", "deepseek-ai/DeepSeek-V3.1")
-    if not sf_key:
+# ---------------- LLM layer ----------------
+#
+# One upstream, two shapes: buffered and streamed. Both return telemetry, so a
+# message row can finally record which model answered, how many tokens it cost
+# and how long it took. v0.3 stored NULL / 0 / 0 for all three.
+
+UPSTREAM_URL = os.environ.get(
+    "NM_UPSTREAM_URL", "https://api.siliconflow.com/v1/chat/completions"
+)
+UPSTREAM_KEY_ENV = "SILICONFLOW_API_KEY"
+DEFAULT_MODEL = os.environ.get("SILICONFLOW_MODEL", "deepseek-ai/DeepSeek-V3.1")
+FAST_MODEL = os.environ.get("NM_FAST_MODEL", DEFAULT_MODEL)
+
+# Upper bound on history sent upstream. v0.3 sent a flat 50 messages, which on
+# a long analytical thread is tens of thousands of tokens of mostly stale text.
+HISTORY_CHAR_BUDGET = int(os.environ.get("NM_HISTORY_CHARS", "24000"))
+
+
+def _upstream_key() -> str:
+    key = os.environ.get(UPSTREAM_KEY_ENV)
+    if not key:
         raise HTTPException(status_code=503, detail="chat_not_configured")
-    payload = json.dumps(
-        {"model": model, "messages": messages, "stream": False}
-    ).encode("utf-8")
+    return key
+
+
+def _request(payload: dict, stream: bool):
     req = _urlreq.Request(
-        "https://api.siliconflow.com/v1/chat/completions",
-        data=payload,
-        headers={"Authorization": f"Bearer {sf_key}", "Content-Type": "application/json"},
+        UPSTREAM_URL,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {_upstream_key()}",
+            "Content-Type": "application/json",
+            "Accept": "text/event-stream" if stream else "application/json",
+        },
         method="POST",
     )
     try:
-        with _urlreq.urlopen(req, timeout=60) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
+        return _urlreq.urlopen(req, timeout=180 if stream else 90)
     except _urlerr.HTTPError as e:
         body_text = ""
         try:
             body_text = e.read().decode("utf-8", errors="ignore")[:300]
         except Exception:
             pass
-        logger.error("siliconflow_http_error status=%s body=%s", e.code, body_text)
+        logger.error("upstream_http_error status=%s body=%s", e.code, body_text)
         raise HTTPException(status_code=502, detail=f"upstream_error_{e.code}")
     except Exception as e:
-        logger.exception("siliconflow_request_failed")
+        logger.exception("upstream_request_failed")
         raise HTTPException(status_code=502, detail=f"upstream_error: {e}")
+
+
+def _chat(
+    messages: list[dict],
+    *,
+    model: str | None = None,
+    temperature: float = 0.4,
+    max_tokens: int = 2048,
+    json_mode: bool = False,
+) -> tuple[str, dict]:
+    """Buffered completion. Returns (text, telemetry)."""
+    payload: dict[str, Any] = {
+        "model": model or DEFAULT_MODEL,
+        "messages": messages,
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+        "stream": False,
+    }
+    if json_mode:
+        payload["response_format"] = {"type": "json_object"}
+
+    t0 = time.perf_counter()
+    with _request(payload, stream=False) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+    elapsed_ms = int((time.perf_counter() - t0) * 1000)
+
     try:
-        return data["choices"][0]["message"]["content"]
+        text = data["choices"][0]["message"]["content"]
     except Exception:
-        logger.error("siliconflow_bad_response data=%s", str(data)[:300])
+        logger.error("upstream_bad_response data=%s", str(data)[:300])
         raise HTTPException(status_code=502, detail="upstream_bad_response")
 
+    usage = data.get("usage") or {}
+    meta = {
+        "model": payload["model"],
+        "served_by": data.get("served_by") or _provider_label(),
+        "tokens": int(usage.get("completion_tokens") or _estimate_tokens(text)),
+        "prompt_tokens": int(usage.get("prompt_tokens") or 0),
+        "latency_ms": elapsed_ms,
+    }
+    return text, meta
 
-def _auto_title(first_user_message):
+
+def _chat_stream(
+    messages: list[dict],
+    *,
+    model: str | None = None,
+    temperature: float = 0.4,
+    max_tokens: int = 2048,
+) -> Iterator[tuple[str, str, dict]]:
+    """Streamed completion.
+
+    Yields ("delta", chunk, {}) for each token and finally ("done", full, meta).
+    """
+    payload = {
+        "model": model or DEFAULT_MODEL,
+        "messages": messages,
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+        "stream": True,
+    }
+
+    t0 = time.perf_counter()
+    ttft_ms: int | None = None
+    parts: list[str] = []
+    tokens = 0
+
+    with _request(payload, stream=True) as resp:
+        for raw in resp:
+            line = raw.decode("utf-8", errors="ignore").strip()
+            if not line or not line.startswith("data:"):
+                continue
+            body = line[5:].strip()
+            if body == "[DONE]":
+                break
+            try:
+                frame = json.loads(body)
+            except Exception:
+                continue
+            choices = frame.get("choices") or []
+            if choices:
+                delta = (choices[0].get("delta") or {}).get("content") or ""
+                if delta:
+                    if ttft_ms is None:
+                        ttft_ms = int((time.perf_counter() - t0) * 1000)
+                    parts.append(delta)
+                    yield ("delta", delta, {})
+            usage = frame.get("usage") or {}
+            if usage.get("completion_tokens"):
+                tokens = int(usage["completion_tokens"])
+
+    full = "".join(parts)
+    elapsed_ms = int((time.perf_counter() - t0) * 1000)
+    meta = {
+        "model": payload["model"],
+        "served_by": _provider_label(),
+        "tokens": tokens or _estimate_tokens(full),
+        "latency_ms": elapsed_ms,
+        "ttft_ms": ttft_ms,
+    }
+    yield ("done", full, meta)
+
+
+def _provider_label() -> str:
+    """Where the tokens actually came from.
+
+    The beta markets 'Llama 3.3 70B on the sovereign GPU mesh' while this
+    endpoint calls SiliconFlow. Record the truth on the row rather than
+    implying mesh provenance that did not happen.
+    """
+    host = UPSTREAM_URL.split("/")[2] if "//" in UPSTREAM_URL else UPSTREAM_URL
+    return os.environ.get("NM_PROVIDER_LABEL") or host
+
+
+def _estimate_tokens(text: str) -> int:
+    return max(1, len(text) // 4)
+
+
+def _parse_json(text: str, fallback=None):
+    """Models wrap JSON in prose or a fence often enough to be worth handling."""
+    if not text:
+        return fallback
+    body = text
+    if "```" in body:
+        chunks = body.split("```")
+        for c in chunks:
+            c = c.strip()
+            if c.startswith("json"):
+                c = c[4:].strip()
+            if c.startswith("{"):
+                body = c
+                break
+    start, end = body.find("{"), body.rfind("}")
+    if start < 0 or end < 0:
+        return fallback
     try:
-        title = _siliconflow_chat([
-            {"role": "system", "content": "Return a 2-5 word title for this chat. No quotes, no punctuation at the end."},
-            {"role": "user", "content": first_user_message[:500]},
-        ]).strip().strip('"').strip("'")
-        return title[:60] if title else ""
+        return json.loads(body[start : end + 1])
     except Exception:
+        return fallback
+
+
+def _trim_history(history: list[dict], budget: int = HISTORY_CHAR_BUDGET) -> list[dict]:
+    """Keep the most recent turns that fit the budget, oldest first."""
+    kept: list[dict] = []
+    used = 0
+    for m in reversed(history):
+        c = m.get("content") or ""
+        if used + len(c) > budget and kept:
+            break
+        kept.append(m)
+        used += len(c)
+    return list(reversed(kept))
+
+
+def _auto_title(first_user_message: str) -> str:
+    try:
+        title, _ = _chat(
+            [
+                {"role": "system", "content": TITLER},
+                {"role": "user", "content": first_user_message[:500]},
+            ],
+            model=FAST_MODEL,
+            temperature=0.3,
+            max_tokens=24,
+        )
+        title = title.strip().strip('"').strip("'").rstrip(".")
+        return title[:60]
+    except Exception:
+        logger.warning("auto_title_failed", exc_info=True)
         return ""
 
 
-# ---------------- Turn ----------------
-@router.post("/{agent_id}/turn", response_model=AgentTurnResponse)
-def agent_turn(agent_id: str, body: AgentTurnRequest, user_id: str = Depends(get_current_user_id)):
-    supabase = get_supabase_client()
-    conv = _load_conv(supabase, agent_id, user_id)
+# ---------------- Turn plumbing ----------------
 
-    try:
-        supabase.table("messages").insert({
-            "conversation_id": agent_id,
-            "role": "user",
-            "content": body.content,
-        }).execute()
-    except Exception as e:
-        logger.exception("insert_user_message_failed")
-        raise HTTPException(status_code=500, detail=f"insert_user_message_failed: {e}")
 
-    try:
-        supabase.table("conversations").update({
-            "status": "running",
-            "last_preview": body.content[:60],
-        }).eq("id", agent_id).execute()
-    except Exception:
-        logger.exception("conv_mark_running_failed")
-
+def _load_history(supabase, agent_id: str) -> list[dict]:
     try:
         hist = (
             supabase.table("messages")
             .select("role,content")
             .eq("conversation_id", agent_id)
             .order("created_at", desc=False)
-            .limit(50)
+            .limit(200)
             .execute()
         )
-        history = [{"role": m["role"], "content": m["content"]} for m in (hist.data or [])]
     except Exception as e:
         logger.exception("load_history_failed")
         raise HTTPException(status_code=500, detail=f"load_history_failed: {e}")
+    return _trim_history(
+        [
+            {"role": m["role"], "content": m["content"]}
+            for m in (hist.data or [])
+            if m.get("role") in ("user", "assistant") and m.get("content")
+        ]
+    )
 
-    persona = resolve_persona(conv.get("title"))
-    messages_for_llm = [{"role": "system", "content": persona}] + history
+
+def _set_status(supabase, agent_id: str, status: str, **extra) -> None:
+    """Update conversation state.
+
+    v0.3 wrapped this in a bare `except Exception: logger.exception(...)`, and
+    because the columns did not exist yet, every call failed silently — which
+    is why no beta conversation has ever had updated_at move off created_at.
+    Migration 026 adds the columns; this logs loudly enough to notice if they
+    go missing again.
+    """
+    payload = {"status": status, **{k: v for k, v in extra.items() if v is not None}}
+    try:
+        supabase.table("conversations").update(payload).eq("id", agent_id).execute()
+    except Exception:
+        logger.warning(
+            "conversation_state_update_failed id=%s payload=%s "
+            "(is migration 026 applied?)",
+            agent_id,
+            list(payload),
+            exc_info=True,
+        )
+
+
+def _insert_message(supabase, agent_id: str, role: str, content: str,
+                    meta: dict | None = None, mode: str | None = None):
+    row: dict[str, Any] = {
+        "conversation_id": agent_id,
+        "role": role,
+        "content": content,
+    }
+    if meta:
+        row["served_by"] = meta.get("served_by")
+        row["tokens"] = int(meta.get("tokens") or 0)
+        row["latency_ms"] = int(meta.get("latency_ms") or 0)
+    if mode:
+        row["mode"] = mode
+    if meta:
+        row["meta"] = meta
 
     try:
-        answer = _siliconflow_chat(messages_for_llm)
-    except HTTPException:
+        ins = supabase.table("messages").insert(row).execute()
+    except Exception:
+        # Retry without the v0.4 columns so a missing migration degrades to the
+        # v0.3 behaviour instead of losing the user's message entirely.
+        logger.warning("insert_message_full_failed, retrying minimal", exc_info=True)
+        minimal = {"conversation_id": agent_id, "role": role, "content": content}
         try:
-            supabase.table("conversations").update({"status": "error"}).eq("id", agent_id).execute()
-        except Exception:
-            logger.exception("conv_mark_error_failed")
+            ins = supabase.table("messages").insert(minimal).execute()
+        except Exception as e:
+            logger.exception("insert_message_failed")
+            raise HTTPException(status_code=500, detail=f"insert_message_failed: {e}")
+    if not ins.data:
+        raise HTTPException(status_code=500, detail="insert_message_empty")
+    return ins.data[0]
+
+
+def _build_messages(conv, history, content, mode, context):
+    """Assemble the upstream message list for one turn."""
+    ctx = context or {}
+    sources = ctx.get("sources") or []
+    memory = ctx.get("memory") or []
+    plan = ctx.get("plan")
+
+    system = build_system(
+        mode,
+        grounded=bool(sources),
+        quantitative=bool(ctx.get("quantitative")) or mode == "analyze",
+        has_memory=bool(memory),
+    )
+
+    blocks = []
+    if memory:
+        blocks.append(
+            "WORKSPACE MEMORY\n"
+            + "\n".join(f"- {str(m)[:600]}" for m in memory[:8])
+        )
+    if plan and plan.get("steps"):
+        blocks.append(
+            "YOUR PLAN (follow it, do not restate it)\n"
+            + "\n".join(
+                f"{i + 1}. {s.get('q')} — needs: {s.get('needs')}"
+                for i, s in enumerate(plan["steps"])
+            )
+        )
+    if sources:
+        blocks.append(
+            "RETRIEVED SOURCES\n"
+            + "\n\n".join(
+                f"[{s.get('n', i + 1)}] {s.get('title')} ({s.get('site', '')})\n"
+                f"{s.get('url', '')}\n{str(s.get('snippet', ''))[:700]}"
+                for i, s in enumerate(sources[:8])
+            )
+        )
+
+    user_content = ("\n\n".join(blocks) + "\n\n---\n\n" + content) if blocks else content
+    return [{"role": "system", "content": system}] + history + [
+        {"role": "user", "content": user_content}
+    ]
+
+
+# ---------------- Turn (buffered, back-compatible) ----------------
+@router.post("/{agent_id}/turn", response_model=AgentTurnResponse)
+def agent_turn(
+    agent_id: str,
+    body: AgentTurnRequest,
+    user_id: str = Depends(get_current_user_id),
+):
+    supabase = get_supabase_client()
+    conv = _load_conv(supabase, agent_id, user_id)
+    mode = body.mode if body.mode in MODES else DEFAULT_MODE
+    cfg = mode_config(mode)
+
+    _insert_message(supabase, agent_id, "user", body.content, mode=mode)
+    _set_status(supabase, agent_id, "running", last_preview=body.content[:120])
+
+    history = _load_history(supabase, agent_id)[:-1] or []
+    messages = _build_messages(conv, history, body.content, mode, body.context)
+
+    try:
+        answer, meta = _chat(
+            messages,
+            temperature=cfg["temperature"],
+            max_tokens=cfg["max_tokens"],
+        )
+    except HTTPException:
+        _set_status(supabase, agent_id, "error")
         raise
 
-    try:
-        ins = supabase.table("messages").insert({
-            "conversation_id": agent_id,
-            "role": "assistant",
-            "content": answer,
-        }).execute()
-    except Exception as e:
-        logger.exception("insert_assistant_message_failed")
-        raise HTTPException(status_code=500, detail=f"insert_assistant_message_failed: {e}")
-    if not ins.data:
-        raise HTTPException(status_code=500, detail="insert_assistant_message_empty")
-    asst_row = ins.data[0]
+    asst_row = _insert_message(supabase, agent_id, "assistant", answer, meta=meta, mode=mode)
 
-    title_update = {"status": "idle", "last_preview": answer[:60]}
-    if not conv.get("title"):
+    title = conv.get("title")
+    if not title or title in ("New chat", "Untitled", DEFAULT_TITLE):
         auto = _auto_title(body.content)
         if auto:
-            title_update["title"] = auto
-    try:
-        upd = (
-            supabase.table("conversations")
-            .update(title_update)
-            .eq("id", agent_id)
-            .execute()
-        )
-        latest_conv = upd.data[0] if upd.data else conv
-    except Exception:
-        logger.exception("conv_finalize_failed")
-        latest_conv = conv
+            title = auto
+            # Isolated from the status write: a failure here must not also lose
+            # the status update, which is exactly how v0.3 lost every title.
+            try:
+                supabase.table("conversations").update({"title": auto}).eq(
+                    "id", agent_id
+                ).execute()
+                conv["title"] = auto
+            except Exception:
+                logger.warning("title_update_failed id=%s", agent_id, exc_info=True)
+
+    _set_status(supabase, agent_id, "idle", last_preview=answer[:120], mode=mode)
+    latest = {**conv, "status": "idle", "last_preview": answer[:120]}
 
     return AgentTurnResponse(
         assistant_message=AgentMessageOut(
@@ -486,5 +830,106 @@ def agent_turn(agent_id: str, body: AgentTurnRequest, user_id: str = Depends(get
             content=answer,
             created_at=asst_row["created_at"],
         ),
-        agent=_row_to_agent_summary(latest_conv),
+        agent=_row_to_agent_summary(latest),
+    )
+
+
+# ---------------- Turn (streamed) ----------------
+@router.post("/{agent_id}/turn/stream")
+def agent_turn_stream(
+    agent_id: str,
+    body: AgentTurnRequest,
+    user_id: str = Depends(get_current_user_id),
+):
+    """Server-sent events.
+
+    Frames:
+      data: {"type":"start","mode":"analyze"}
+      data: {"type":"delta","v":"…"}
+      data: {"type":"done","message_id":"…","meta":{…},"agent":{…}}
+      data: {"type":"error","detail":"…"}
+      data: [DONE]
+    """
+    supabase = get_supabase_client()
+    conv = _load_conv(supabase, agent_id, user_id)
+    mode = body.mode if body.mode in MODES else DEFAULT_MODE
+    cfg = mode_config(mode)
+
+    _insert_message(supabase, agent_id, "user", body.content, mode=mode)
+    _set_status(supabase, agent_id, "running", last_preview=body.content[:120])
+
+    history = _load_history(supabase, agent_id)[:-1] or []
+    messages = _build_messages(conv, history, body.content, mode, body.context)
+
+    def events() -> Iterator[str]:
+        def frame(obj) -> str:
+            return f"data: {json.dumps(obj, ensure_ascii=False)}\n\n"
+
+        yield frame({"type": "start", "mode": mode, "model": DEFAULT_MODEL})
+        answer, meta = "", {}
+        try:
+            for kind, payload, m in _chat_stream(
+                messages,
+                temperature=cfg["temperature"],
+                max_tokens=cfg["max_tokens"],
+            ):
+                if kind == "delta":
+                    yield frame({"type": "delta", "v": payload})
+                else:
+                    answer, meta = payload, m
+        except HTTPException as e:
+            _set_status(supabase, agent_id, "error")
+            yield frame({"type": "error", "detail": str(e.detail)})
+            yield "data: [DONE]\n\n"
+            return
+        except Exception as e:
+            logger.exception("stream_failed")
+            _set_status(supabase, agent_id, "error")
+            yield frame({"type": "error", "detail": f"stream_failed: {e}"})
+            yield "data: [DONE]\n\n"
+            return
+
+        try:
+            asst_row = _insert_message(
+                supabase, agent_id, "assistant", answer, meta=meta, mode=mode
+            )
+        except HTTPException as e:
+            yield frame({"type": "error", "detail": str(e.detail)})
+            yield "data: [DONE]\n\n"
+            return
+
+        title = conv.get("title")
+        if not title or title in ("New chat", "Untitled", DEFAULT_TITLE):
+            auto = _auto_title(body.content)
+            if auto:
+                try:
+                    supabase.table("conversations").update({"title": auto}).eq(
+                        "id", agent_id
+                    ).execute()
+                    conv["title"] = auto
+                except Exception:
+                    logger.warning("title_update_failed id=%s", agent_id, exc_info=True)
+
+        _set_status(supabase, agent_id, "idle", last_preview=answer[:120], mode=mode)
+        latest = {**conv, "status": "idle", "last_preview": answer[:120]}
+
+        yield frame(
+            {
+                "type": "done",
+                "message_id": str(asst_row["id"]),
+                "created_at": asst_row["created_at"],
+                "meta": meta,
+                "agent": json.loads(_row_to_agent_summary(latest).model_dump_json()),
+            }
+        )
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-transform",
+            "X-Accel-Buffering": "no",   # nginx must not buffer an SSE body
+            "Connection": "keep-alive",
+        },
     )

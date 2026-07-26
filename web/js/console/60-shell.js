@@ -8,12 +8,27 @@
    vault bridge.
    ========================================================================== */
 
-import { $, $$, S, ICON, esc, relTime, emit } from './00-core.js';
+import { $, $, S, CFG, ICON, esc, relTime, emit } from './00-core.js';
 import { MODES } from './30-modes.js';
 import { graphLegend } from './50-graph.js';
 
 export function renderShell() {
   $('#app').innerHTML = `
+  <!-- ------------------------------ appbar ---------------------------- -->
+  <header class="appbar">
+    <a class="appbar__brand" href="/" title="NeuralMesh">
+      <span class="appbar__logo" role="img" aria-label="neo."></span>
+    </a>
+    <span class="appbar__tag">Console</span>
+    <span class="appbar__spacer"></span>
+    <div class="appbar__user" id="authUser" hidden>
+      <span class="appbar__avatar" id="authAvatar" aria-hidden="true"></span>
+      <span class="appbar__name" id="authName"></span>
+    </div>
+    <button class="authbtn" id="signOutBtn" type="button" hidden>Sign out</button>
+    <a class="authbtn authbtn--primary" id="signInBtn" href="${CFG.LOGIN_URL}" hidden>Sign in</a>
+  </header>
+
   <!-- ------------------------------ rail ------------------------------ -->
   <nav class="rail" aria-label="Sections">
     <a class="rail__mark" href="/" title="NeuralMesh" style="color:var(--signal)">${ICON.logo}</a>
@@ -94,9 +109,32 @@ export function renderShell() {
     </div>
   </aside>`;
 
+  paintAuth();
   paintAnalysis();
   paintGraphPane();
   paintVaultPane();
+}
+
+/* ---------------------------------- auth ---------------------------------- */
+
+/** The app bar identity block. S.email is filled in by requireAuth(). */
+export function paintAuth() {
+  const email = S.email || '';
+  const on = !!email;
+  $('#authUser').hidden = !on;
+  $('#signOutBtn').hidden = !on;
+  $('#signInBtn').hidden = on;
+  if (!on) return;
+  $('#authName').textContent = email;
+  $('#authName').title = email;
+  $('#authAvatar').textContent = email.slice(0, 1);
+}
+
+/** Same contract as account.html: drop the server session, then the bearer. */
+export async function signOut() {
+  try { await fetch(CFG.API + '/auth/logout', { method: 'POST' }); } catch {}
+  try { localStorage.removeItem(CFG.TOKEN_KEY); } catch {}
+  location.href = CFG.LOGIN_URL;
 }
 
 /* ------------------------------ empty states ----------------------------- */

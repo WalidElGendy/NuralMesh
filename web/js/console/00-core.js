@@ -117,14 +117,11 @@ export const ICON = {
   globe:   I('<circle cx="12" cy="12" r="9"/><path d="M3.5 9h17M3.5 15h17"/><path d="M12 3c-4 5-4 13 0 18 4-5 4-13 0-18Z"/>'),
   brain:   I('<path d="M9.5 4A2.5 2.5 0 0 0 7 6.5 2.5 2.5 0 0 0 5 9a2.5 2.5 0 0 0 1 2 2.5 2.5 0 0 0 1.5 4.5H9.5V4Z"/><path d="M14.5 4A2.5 2.5 0 0 1 17 6.5 2.5 2.5 0 0 1 19 9a2.5 2.5 0 0 1-1 2 2.5 2.5 0 0 1-1.5 4.5H14.5V4Z"/><path d="M12 20v-4"/>'),
   trash:   I('<path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12"/>'),
-  logo:    `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="m6 6 6 3 6-3M6 18l6-3 6 3M12 9v6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              <circle cx="12" cy="4.2" r="2" fill="currentColor"/>
-              <circle cx="4.6" cy="8.4" r="1.7" fill="currentColor" opacity=".75"/>
-              <circle cx="19.4" cy="8.4" r="1.7" fill="currentColor" opacity=".75"/>
-              <circle cx="4.6" cy="16.4" r="1.7" fill="currentColor" opacity=".55"/>
-              <circle cx="19.4" cy="16.4" r="1.7" fill="currentColor" opacity=".55"/>
-              <circle cx="12" cy="20.4" r="2" fill="currentColor" opacity=".9"/>
+  logo:    `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <rect x="9" y="3.9" width="12" height="10.9" rx="2.4" stroke="currentColor" stroke-width="1.6"/>
+              <path d="M11.7 7.2h6.6M11.7 9.35h6.6M11.7 11.5h6.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+              <path d="M10.5 14.9 6.4 19" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+              <circle cx="4.7" cy="20.7" r="2.3" fill="currentColor"/>
             </svg>`,
 };
 

@@ -12,7 +12,7 @@ import { MODES } from './30-modes.js';
 import { runTurn, meshStatus, costModel, titleFor, threads as threadsApi } from './40-engine.js';
 import {
   renderShell, paintThreads, paintAnalysis, paintGraphPane, paintNoteList,
-  paintVaultPane, showCanvasTab, emptyState, paintAuth, signOut,
+  paintVaultPane, showCanvasTab, emptyState, paintAuth, signOut, hasHistory,
 } from './60-shell.js';
 import {
   GraphView, ingestTurn, upsertNote, backlinks, forwardlinks,
@@ -832,7 +832,8 @@ export async function boot() {
   try {
     const r = await threadsApi.list();
     const list = Array.isArray(r) ? r : (r?.agents || r?.items || []);
-    S.threads = list.map(t => ({ ...t, tags: [], n: 0 }));
+    // Legacy v0.3 persona rows never had a turn: not history, not listed.
+    S.threads = list.map(t => ({ ...t, tags: [], n: 0 })).filter(hasHistory);
   } catch (e) {
     toast('Could not load threads: ' + e.message, 'err');
     S.threads = [];

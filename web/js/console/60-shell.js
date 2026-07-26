@@ -145,14 +145,25 @@ export const emptyState = (icon, title, note) => `
 
 /* --------------------------------- threads ------------------------------- */
 
+/** v0.3 seeded seven persona rows per user — "Sales Agent", "Email Agent" and
+    friends — and they are still sitting in the conversations table. A thread
+    that never produced a turn has no last_preview, so it is not chat history
+    and has no business in the list. */
+export const hasHistory = (t) => !!(t && (t.last_preview || t.n || t.status === 'running'));
+
 export function paintThreads(filter = '') {
   const list = $('#threadList');
   const f = filter.trim().toLowerCase();
-  const items = S.threads.filter(t => !f || (t.title || '').toLowerCase().includes(f));
-  $('#threadCount').textContent = String(S.threads.length || '');
+  // Chat history only: placeholders stay out, but a thread the user just
+  // opened or created stays put until it earns its first turn.
+  const chats = S.threads.filter(t => hasHistory(t) || t.id === S.activeId);
+  const items = chats.filter(t => !f
+    || (t.title || '').toLowerCase().includes(f)
+    || (t.last_preview || '').toLowerCase().includes(f));
+  $('#threadCount').textContent = String(chats.length || '');
 
   if (!items.length) {
-    list.innerHTML = emptyState('chat', f ? 'No match' : 'No threads yet',
+    list.innerHTML = emptyState('chat', f ? 'No match' : 'No chats yet',
       f ? 'Try a different filter.' : 'Ask something to start one.');
     return;
   }
@@ -169,6 +180,7 @@ export function paintThreads(filter = '') {
     ${v.map(t => `
       <button class="thread" data-thread="${esc(t.id)}" aria-current="${t.id === S.activeId}">
         <span class="thread__t">${esc(t.title || 'Untitled')}</span>
+        ${t.last_preview ? `<span class="thread__p">${esc(t.last_preview)}</span>` : ''}
         <span class="thread__m">
           <span>${relTime(t.updated_at || t.created_at)}</span>
           ${t.n ? `<span>· ${t.n} turns</span>` : ''}

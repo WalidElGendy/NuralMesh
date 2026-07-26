@@ -827,21 +827,102 @@ def node_meets_requirements(gpu_info: Any) -> bool:
 
 @app.get("/api/node/jobs/next")
 def next_node_job(provider=Depends(verify_node_credentials)):
+    """Claim one job, atomically.
+
+    The previous implementation did select-then-update with no locking, no
+    model filter, no concurrency limit and no lease — two pollers could claim
+    the same row, and a node that died mid-job stranded it in 'processing'
+    forever. `claim_next_job` (migration 027) does it in one statement with
+    SKIP LOCKED and hands back a lease.
+    """
     if not node_meets_requirements(provider.get("gpu_info")):
-        return {"job": None}
+        return {"job": None, "reason": "gpu_below_minimum"}
+
     supabase = get_supabase_client()
-    result = supabase.table("jobs").select("*").eq("status", "pending").limit(1).execute()
-    if not result.data:
+    models = provider.get("models")
+    if isinstance(models, str):
+        try:
+            models = json.loads(models)
+        except Exception:
+            models = [models]
+    if not isinstance(models, list) or not models:
+        models = None
+
+    try:
+        res = supabase.rpc("claim_next_job", {
+            "p_node_id": provider["node_id"],
+            "p_models": models,
+            "p_lease_s": int(os.environ.get("NM_LEASE_SECONDS", "120")),
+        }).execute()
+        rows = res.data or []
+    except Exception:
+        logger.exception("claim_next_job_failed node=%s", provider.get("node_id"))
+        raise HTTPException(status_code=503, detail="claim_unavailable")
+
+    if not rows:
         return {"job": None}
-    job = result.data[0]
-    claimed = (
-        supabase.table("jobs")
-        .update({"status": "processing", "node_id": provider["node_id"], "served_by": provider["node_id"]})
-        .eq("id", job["id"])
-        .eq("status", "pending")
-        .execute()
-    )
-    return {"job": claimed.data[0] if claimed.data else None}
+
+    job = rows[0]
+    return {
+        "job": {
+            "id": job["id"],
+            "model": job["model"],
+            "messages": job["messages"],
+            "params": job.get("params") or {},
+            "lease_expires_at": job.get("lease_expires_at"),
+        }
+    }
+
+
+class JobChunkRequest(BaseModel):
+    seq: int = Field(..., ge=0)
+    content: str = Field(..., max_length=8000)
+
+
+@app.post("/api/node/jobs/{job_id}/chunk")
+def append_node_job_chunk(
+    job_id: str,
+    body: JobChunkRequest,
+    provider=Depends(verify_node_credentials),
+):
+    """Post one piece of streamed output, and renew the lease.
+
+    Nodes sit behind home NAT with no inbound ports, so the API cannot pull
+    from them. They push chunks here and the API relays them to the browser
+    over SSE. Each chunk is also a liveness signal: it extends the lease, so a
+    node that is genuinely working is never reaped mid-answer.
+    """
+    supabase = get_supabase_client()
+    lease_s = int(os.environ.get("NM_LEASE_SECONDS", "120"))
+    now = utc_now()
+
+    try:
+        upd = (
+            supabase.table("jobs")
+            .update({
+                "status": "streaming",
+                "lease_expires_at": isoformat(now + timedelta(seconds=lease_s)),
+                **({"first_chunk_at": isoformat(now)} if body.seq == 0 else {}),
+            })
+            .eq("id", job_id)
+            .eq("node_id", provider["node_id"])
+            .in_("status", ["claimed", "streaming"])
+            .execute()
+        )
+        if not upd.data:
+            raise HTTPException(status_code=409, detail="job_not_leased_by_this_node")
+
+        supabase.table("job_chunks").upsert(
+            {"job_id": job_id, "seq": body.seq, "content": body.content},
+            on_conflict="job_id,seq",
+        ).execute()
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("job_chunk_failed job=%s", job_id)
+        raise HTTPException(status_code=500, detail="chunk_write_failed")
+
+    return {"status": "ok", "seq": body.seq}
 
 
 @app.post("/api/node/jobs/{job_id}/complete")
@@ -1357,3 +1438,14 @@ app.mount("/dashboard", StaticFiles(directory="dashboard", html=True), name="das
 # Wire in /api/agents endpoints
 from agents import router as _agents_router
 app.include_router(_agents_router)
+
+# Wire in /api/search — web grounding proxy for Research mode.
+# Keeps the search provider key server-side; returns an empty result set
+# (never an error) when no provider is configured.
+from mesh_search import router as _search_router
+app.include_router(_search_router)
+
+# Wire in /api/mesh/status — aggregate node telemetry for the console's
+# provenance chips. Read-only and non-identifying.
+from mesh_status import router as _mesh_router
+app.include_router(_mesh_router)

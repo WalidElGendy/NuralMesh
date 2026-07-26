@@ -12,7 +12,7 @@ import { MODES } from './30-modes.js';
 import { runTurn, meshStatus, costModel, titleFor, threads as threadsApi } from './40-engine.js';
 import {
   renderShell, paintThreads, paintAnalysis, paintGraphPane, paintNoteList,
-  paintVaultPane, showCanvasTab, emptyState,
+  paintVaultPane, showCanvasTab, emptyState, paintAuth, signOut,
 } from './60-shell.js';
 import {
   GraphView, ingestTurn, upsertNote, backlinks, forwardlinks,
@@ -738,6 +738,9 @@ function wire() {
   $('#exportBtn').onclick = exportThread;
   $('#threadSearch').oninput = (e) => paintThreads(e.target.value);
 
+  // app bar
+  $('#signOutBtn').addEventListener('click', signOut);
+
   // vault pane (delegated because the pane re-renders)
   $('#paneVault').addEventListener('click', async (e) => {
     const id = e.target.closest('button')?.id;
@@ -824,6 +827,7 @@ export async function boot() {
   setMode('ask');
 
   if (!requireAuth()) return;
+  paintAuth();
 
   try {
     const r = await threadsApi.list();

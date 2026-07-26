@@ -573,6 +573,19 @@ kbd {
 @media (forced-colors: active) {
   .chip, .card, .figure, .composer { border: 1px solid CanvasText; }
 }
+
+/* --- scroll containers --------------------------------------------------
+   A flex/grid item's min-height defaults to auto (its content height), so
+   overflow-y:auto never engages: the box grows to fit the content instead of
+   scrolling, .stage outgrows its grid row, #app outgrows the viewport and the
+   topbar/rail scroll off-screen. Vertical twin of the min-width:0 guards.
+   ---------------------------------------------------------------------- */
+.stage,
+.stream,
+.threads,
+.threads__list,
+.canvas,
+.canvas__body { min-height: 0; }
 </style>
 </head>
 <body>

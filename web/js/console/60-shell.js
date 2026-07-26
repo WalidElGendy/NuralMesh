@@ -32,7 +32,7 @@ export function renderShell() {
     <div class="threads__head">
       <div class="threads__title"><span>Threads</span><span id="threadCount"></span></div>
       <button class="newbtn" id="newBtn">${ICON.plus}<span>New thread</span><kbd>⌘⇧O</kbd></button>
-      <label class="search">${ICON.search}<input id="threadSearch" placeholder="Filter threads" aria-label="Filter threads" /></label>
+      <label class="search">${ICON.search}<input id="threadSearch" type="search" autocomplete="off" placeholder="Filter threads" aria-label="Filter threads" /></label>
     </div>
     <div class="threads__list" id="threadList"></div>
   </aside>

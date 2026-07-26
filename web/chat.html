@@ -68,6 +68,7 @@
 
   --r-sm: 4px; --r-md: 8px; --r-lg: 12px;
   --rail: 52px; --threads: 252px; --canvas: 396px;
+  --appbar: 48px; /* global header row */
 }
 
 /* Light mode is a *selected* set, not an inverted one. */
@@ -105,11 +106,53 @@ button { background: none; border: 0; cursor: pointer; }
 #app {
   display: grid; height: 100dvh;
   grid-template-columns: var(--rail) var(--threads) minmax(0,1fr) var(--canvas);
+  grid-template-rows: var(--appbar) minmax(0,1fr);
   transition: grid-template-columns .22s cubic-bezier(.4,0,.2,1);
 }
 #app[data-threads="off"] { grid-template-columns: var(--rail) 0 minmax(0,1fr) var(--canvas); }
 #app[data-canvas="off"]  { grid-template-columns: var(--rail) var(--threads) minmax(0,1fr) 0; }
 #app[data-threads="off"][data-canvas="off"] { grid-template-columns: var(--rail) 0 minmax(0,1fr) 0; }
+
+/* --------------------------- APPBAR ---------------------------------- */
+.appbar {
+  grid-column: 1 / -1; height: var(--appbar); display: flex; align-items: center;
+  gap: 10px; padding: 0 12px; background: var(--s-1);
+  border-bottom: 1px solid var(--line); z-index: 40;
+}
+.appbar__brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+/* neo-logo.png is a 2000px transparent sheet with the mark boxed in the middle,
+   so window onto the artwork instead of scaling the whole square down. */
+.appbar__logo {
+  width: 62px; height: 22px; flex: none;
+  background: url("/static/neo-logo.png") no-repeat -43px -43px;
+  background-size: 133px 133px;
+}
+:root[data-theme="dark"] .appbar__logo { filter: invert(1); }
+.appbar__tag {
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: .10em; text-transform: uppercase;
+  color: var(--ink-3); padding: 2px 7px; border: 1px solid var(--line); border-radius: 20px;
+}
+.appbar__spacer { flex: 1; }
+.appbar__user { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.appbar__avatar {
+  width: 26px; height: 26px; border-radius: 50%; flex: none; display: grid; place-items: center;
+  background: var(--accent-dim); color: var(--accent); border: 1px solid var(--ring);
+  font-family: var(--mono); font-size: 11px; font-weight: 650; text-transform: uppercase;
+}
+.appbar__name {
+  font-size: 13px; color: var(--ink-2); max-width: 220px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.authbtn {
+  height: 28px; padding: 0 12px; display: inline-flex; align-items: center; gap: 6px;
+  border-radius: var(--r-sm); border: 1px solid var(--line-2); color: var(--ink-2);
+  font-size: 12.5px; text-decoration: none; white-space: nowrap;
+}
+.authbtn:hover { background: var(--s-3); color: var(--ink-1); }
+.authbtn--primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.authbtn--primary:hover { background: color-mix(in srgb, var(--accent) 85%, #fff); color: #fff; }
+/* [hidden] has to beat the flex/inline-flex display rules above. */
+.appbar [hidden] { display: none; }
 
 /* ---------------------------- RAIL ---------------------------------- */
 .rail {
@@ -555,7 +598,7 @@ kbd {
     grid-template-columns: var(--rail) minmax(0,1fr);
   }
   .threads, .canvas {
-    position: fixed; top: 0; bottom: 0; z-index: 30;
+    position: fixed; top: var(--appbar); bottom: 0; z-index: 30;
     width: min(340px, calc(100vw - var(--rail)));
     box-shadow: 0 0 46px rgba(0,0,0,.55);
     transition: transform .22s cubic-bezier(.4,0,.2,1);
@@ -568,6 +611,8 @@ kbd {
   .composer-wrap { padding: 0 12px 12px; }
   .topbar { padding: 0 8px; gap: 6px; }
   .meshpill { display: none; }
+  .appbar { padding: 0 8px; gap: 8px; }
+  .appbar__tag, .appbar__name { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { * { animation-duration:.01ms !important; transition-duration:.01ms !important; } }
 @media (forced-colors: active) {

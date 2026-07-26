@@ -227,6 +227,12 @@ kbd {
 .thread:hover { background: var(--s-2); color: var(--ink-1); }
 .thread[aria-current="true"] { background: var(--s-3); color: var(--ink-1); border-color: var(--ring); }
 .thread__t { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* last message of the conversation — the list is chat history, so show some. */
+.thread__p {
+  display: block; margin-top: 2px; font-size: 12px; color: var(--ink-4);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.thread:hover .thread__p, .thread[aria-current="true"] .thread__p { color: var(--ink-3); }
 .thread__m {
   display: flex; gap: 8px; align-items: center; margin-top: 3px;
   font-family: var(--mono); font-size: 10px; color: var(--ink-4);

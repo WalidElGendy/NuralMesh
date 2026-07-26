@@ -8,7 +8,7 @@
    vault bridge.
    ========================================================================== */
 
-import { $, $, S, CFG, ICON, esc, relTime, emit } from './00-core.js';
+import { $, $$, S, CFG, ICON, esc, relTime, emit } from './00-core.js';
 import { MODES } from './30-modes.js';
 import { graphLegend } from './50-graph.js';
 

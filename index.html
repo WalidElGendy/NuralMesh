@@ -8,36 +8,35 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@300;400;500;600&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><circle cx='32' cy='32' r='30' fill='%230D1B2A'/><path d='M20 44 L32 16 L44 44' stroke='%23E8C15A' stroke-width='5' fill='none' stroke-linecap='round' stroke-linejoin='round'/><circle cx='32' cy='38' r='4' fill='%23269988'/></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%2304100E'/><rect x='22' y='22' width='20' height='20' fill='%2335E0B2' transform='rotate(45 32 32)'/></svg>">
 <style>
 :root{
-  --bg0:#04080F; --bg1:#071120; --bg2:#0B1A2E;
-  --card:rgba(13,27,46,.55); --card-solid:#0E1E33;
-  --ink:#EDF3FA; --ink2:#A9BBD1; --muted:#68809C;
-  --gold:#E8C15A; --gold-deep:#BE8926;
-  --teal:#269988; --teal-bright:#39C4AE;
-  --blue:#5B85DE; --rose:#C05C8D;
-  --good:#3FA96F; --line:rgba(120,150,190,.16); --line2:rgba(120,150,190,.30);
-  --r:18px; --shadow:0 18px 50px rgba(2,8,20,.55);
-  --font-en:'Outfit',system-ui,sans-serif; --font-ar:'IBM Plex Sans Arabic',system-ui,sans-serif;
+  --bg0:#04100E; --bg1:#061513; --bg2:#0A1F1A;
+  --card:rgba(6,26,22,.55); --card-solid:#0A1F1A;
+  --ink:#E8F2EF; --ink2:#A9BFB9; --muted:#7D968F;
+  --gold:#35E0B2; --gold-deep:#21B58C;
+  --teal:#0F8A68; --teal-bright:#35E0B2;
+  --blue:#4CC9F0; --rose:#C05C8D;
+  --good:#35E0B2; --line:rgba(143,168,162,.14); --line2:rgba(143,168,162,.28);
+  --r:16px; --shadow:0 18px 50px rgba(1,8,6,.55);
+  --font-en:'Space Grotesk',system-ui,sans-serif; --font-ar:'IBM Plex Sans Arabic',system-ui,sans-serif;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html{scroll-behavior:smooth}
 body{
   background:
-    radial-gradient(1200px 800px at 72% 8%, rgba(57,196,174,.10), transparent 60%),
-    radial-gradient(1000px 700px at 12% 92%, rgba(91,133,222,.08), transparent 58%),
-    radial-gradient(700px 500px at 92% 88%, rgba(232,193,90,.05), transparent 55%),
-    linear-gradient(165deg,var(--bg0) 0%,var(--bg1) 48%,#050D1A 100%);
+    radial-gradient(1100px 760px at 72% 4%, rgba(53,224,178,.08), transparent 60%),
+    radial-gradient(900px 640px at 8% 96%, rgba(76,201,240,.05), transparent 58%),
+    linear-gradient(170deg,var(--bg0) 0%,#051311 52%,#030c0a 100%);
   color:var(--ink); font-family:var(--font-en); min-height:100vh; overflow-x:hidden;
 }
 html[lang="ar"] body{font-family:var(--font-ar)}
 body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:1;
-  background:radial-gradient(120% 90% at 50% 0%, transparent 55%, rgba(2,6,14,.55) 100%);}
+  background:radial-gradient(120% 90% at 50% 0%, transparent 55%, rgba(1,7,6,.55) 100%);}
 #plexus{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.9}
 header,main,footer,#chat,#chat-fab{position:relative;z-index:2}
 header{position:sticky!important}
-::selection{background:rgba(232,193,90,.3)}
+::selection{background:rgba(53,224,178,.3)}
 button{font-family:inherit;color:inherit;cursor:pointer;border:none;background:none}
 input,select,textarea{font-family:inherit}
 
@@ -45,14 +44,15 @@ input,select,textarea{font-family:inherit}
 header{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
   padding:16px 30px;background:rgba(4,8,15,.6);backdrop-filter:blur(22px);border-bottom:1px solid rgba(130,160,200,.10)}
 .logo{display:flex;align-items:center;gap:12px;user-select:none}
-.logo-word{font-weight:800;font-size:25px;letter-spacing:-.035em;line-height:1;color:var(--ink)}
-.logo-word .ar{font-family:var(--font-ar);font-weight:500;font-size:15px;color:var(--muted);letter-spacing:0;margin-inline-start:8px}
-.logo-sub{font-size:9.5px;color:var(--ink2);letter-spacing:.34em;text-transform:uppercase;margin-top:4px;opacity:.85}
+.logo-diamond{width:11px;height:11px;background:#35E0B2;transform:rotate(45deg);box-shadow:0 0 14px rgba(53,224,178,.8);flex:0 0 auto}
+.logo-word{font-weight:500;font-size:19px;letter-spacing:.02em;line-height:1;color:var(--ink)}
+.logo-word .ar{font-family:var(--font-ar);font-weight:400;font-size:16px;color:#8FA8A2;letter-spacing:0;margin-inline-start:8px}
+.logo-sub{padding:4px 12px;border:1px solid var(--line2);border-radius:999px;font-size:10.5px;color:#8FA8A2;letter-spacing:.14em;text-transform:uppercase;margin-inline-start:6px}
 header .spacer{flex:1}
 .hbtn{display:inline-flex;align-items:center;gap:8px;padding:9px 15px;border-radius:999px;font-size:13.5px;font-weight:600;
   border:1px solid var(--line2);color:var(--ink2);transition:.2s}
 .hbtn:hover{border-color:var(--gold);color:var(--ink)}
-.hbtn.active{background:rgba(232,193,90,.12);border-color:rgba(232,193,90,.5);color:var(--gold)}
+.hbtn.active{background:rgba(53,224,178,.12);border-color:rgba(53,224,178,.5);color:var(--gold)}
 .hbtn svg{flex:0 0 auto}
 
 /* ---------- layout ---------- */
@@ -60,9 +60,11 @@ header .spacer{flex:1}
 .screen.on{display:block}
 @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
 @keyframes pulse{0%,100%{opacity:.55}50%{opacity:1}}
-h1{font-size:clamp(36px,5.8vw,64px);font-weight:800;line-height:1.08;letter-spacing:-.025em;
-  background:linear-gradient(150deg,#F5F9FF 30%,#9FB6D4 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+h1{font-size:clamp(38px,6vw,72px);font-weight:400;line-height:1.06;letter-spacing:-.02em;
+  background:linear-gradient(180deg,#F0F7F4 20%,#CFE0DB 55%,#5C7A73 105%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 h1 .gold,h1 em.gold{-webkit-text-fill-color:var(--gold)}
+h2{font-weight:400;letter-spacing:-.015em}
+h2 .dim{color:#5C7A73}
 h2{font-size:clamp(24px,3.4vw,34px);font-weight:700;line-height:1.2}
 .kicker{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;letter-spacing:.22em;
   text-transform:uppercase;color:var(--teal-bright);margin-bottom:16px}
@@ -79,8 +81,8 @@ h2{font-size:clamp(24px,3.4vw,34px);font-weight:700;line-height:1.2}
 .stat b{display:block;font-size:27px;font-weight:800;color:var(--gold);letter-spacing:-.01em}
 .stat span{font-size:12.5px;color:var(--muted);letter-spacing:.04em}
 .cta{display:inline-flex;align-items:center;gap:12px;padding:17px 34px;border-radius:999px;font-size:17px;font-weight:700;
-  background:linear-gradient(120deg,var(--gold),#D9AE3F);color:#14213A;box-shadow:0 12px 34px rgba(232,193,90,.28);transition:.25s}
-.cta:hover{transform:translateY(-2px);box-shadow:0 18px 44px rgba(232,193,90,.38)}
+  background:linear-gradient(120deg,var(--gold),#21B58C);color:#04100E;box-shadow:0 12px 34px rgba(53,224,178,.28);transition:.25s}
+.cta:hover{transform:translateY(-2px);box-shadow:0 18px 44px rgba(53,224,178,.38)}
 .cta.ghost{background:transparent;color:var(--ink2);border:1px solid var(--line2);box-shadow:none;font-weight:600;font-size:15px}
 .cta.ghost:hover{border-color:var(--gold);color:var(--gold)}
 .hero-actions{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
@@ -90,15 +92,15 @@ h2{font-size:clamp(24px,3.4vw,34px);font-weight:700;line-height:1.2}
 .pstep{flex:1 1 90px;min-width:90px;padding:9px 6px 11px;border-radius:12px;border:1px solid var(--line);
   background:rgba(13,27,42,.6);text-align:center;font-size:11.5px;color:var(--muted);position:relative;transition:.25s;cursor:pointer}
 .pstep b{display:block;font-size:14px;margin-bottom:2px;color:var(--ink2);font-weight:700}
-.pstep.done{border-color:rgba(38,153,136,.55)} .pstep.done b{color:var(--teal-bright)}
-.pstep.now{border-color:rgba(232,193,90,.65);background:rgba(232,193,90,.08)} .pstep.now b{color:var(--gold)}
+.pstep.done{border-color:rgba(15,138,104,.55)} .pstep.done b{color:var(--teal-bright)}
+.pstep.now{border-color:rgba(53,224,178,.65);background:rgba(53,224,178,.08)} .pstep.now b{color:var(--gold)}
 .chapter-head{display:flex;align-items:flex-start;gap:18px;margin-bottom:22px}
-.chapter-num{font-size:56px;font-weight:800;color:transparent;-webkit-text-stroke:1.5px rgba(232,193,90,.5);line-height:1;flex:0 0 auto}
+.chapter-num{font-size:56px;font-weight:800;color:transparent;-webkit-text-stroke:1.5px rgba(53,224,178,.5);line-height:1;flex:0 0 auto}
 .daleel-says{display:flex;gap:14px;align-items:flex-start;background:var(--card);border:1px solid var(--line);
   border-radius:var(--r);padding:18px 20px;margin:18px 0 26px;backdrop-filter:blur(8px)}
 .avatar{width:44px;height:44px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;
-  background:radial-gradient(circle at 32% 28%,#1E4A44,#0F2A33);border:1px solid rgba(57,196,174,.45);position:relative}
-.avatar::after{content:"";position:absolute;inset:-5px;border-radius:50%;border:1px solid rgba(57,196,174,.35);animation:pulse 2.6s infinite}
+  background:radial-gradient(circle at 32% 28%,#0B3B2F,#07211C);border:1px solid rgba(53,224,178,.45);position:relative}
+.avatar::after{content:"";position:absolute;inset:-5px;border-radius:50%;border:1px solid rgba(53,224,178,.35);animation:pulse 2.6s infinite}
 .daleel-says p{color:var(--ink);line-height:1.7;font-size:15.5px}
 .daleel-says .who{font-size:11px;font-weight:700;letter-spacing:.18em;color:var(--teal-bright);text-transform:uppercase;margin-bottom:5px}
 .navrow{display:flex;justify-content:space-between;gap:14px;margin-top:34px;flex-wrap:wrap}
@@ -115,19 +117,19 @@ h2{font-size:clamp(24px,3.4vw,34px);font-weight:700;line-height:1.2}
 .card .sub{font-size:13px;color:var(--muted);line-height:1.6}
 .pick{cursor:pointer;text-align:start;width:100%}
 .pick:hover{border-color:var(--line2);transform:translateY(-2px)}
-.pick.sel{border-color:rgba(232,193,90,.6);background:rgba(232,193,90,.07)}
+.pick.sel{border-color:rgba(53,224,178,.6);background:rgba(53,224,178,.07)}
 .pick.sel h3{color:var(--gold)}
 .pick .ico{font-size:26px;margin-bottom:10px;display:block;filter:grayscale(.15)}
 .chip{display:inline-flex;align-items:center;gap:7px;padding:8px 15px;border-radius:999px;border:1px solid var(--line2);
   font-size:13.5px;color:var(--ink2);cursor:pointer;transition:.18s;user-select:none}
 .chip:hover{border-color:var(--teal-bright)}
-.chip.sel{background:rgba(38,153,136,.16);border-color:rgba(57,196,174,.6);color:var(--teal-bright);font-weight:600}
+.chip.sel{background:rgba(15,138,104,.16);border-color:rgba(53,224,178,.6);color:var(--teal-bright);font-weight:600}
 .chiprow{display:flex;flex-wrap:wrap;gap:9px;margin-top:12px}
 .f-label{font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink2);margin:26px 0 4px}
 .f-hint{font-size:12.5px;color:var(--muted)}
 input[type=text],input[type=email],input[type=tel]{width:100%;padding:13px 16px;border-radius:12px;border:1px solid var(--line2);
   background:rgba(8,17,32,.6);color:var(--ink);font-size:15px;outline:none;transition:.2s}
-input:focus{border-color:rgba(232,193,90,.55)}
+input:focus{border-color:rgba(53,224,178,.55)}
 
 /* ---------- map ---------- */
 .mapwrap{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:10px;backdrop-filter:blur(8px);box-shadow:var(--shadow)}
@@ -141,8 +143,8 @@ svg text{font-family:inherit}
 @keyframes laneIn{to{opacity:.95}}
 .corridor{fill:none;stroke:var(--teal-bright);stroke-width:2.4;stroke-dasharray:3 6;stroke-linecap:round;opacity:0;animation:laneIn .8s .3s ease forwards,dash 1.8s linear infinite}
 .city-dot{fill:#8FB4DE;opacity:.8}
-.city-dot.rec{fill:var(--gold);r:6;filter:drop-shadow(0 0 6px rgba(232,193,90,.8))}
-.port-dot{fill:var(--teal-bright);filter:drop-shadow(0 0 5px rgba(57,196,174,.7))}
+.city-dot.rec{fill:var(--gold);r:6;filter:drop-shadow(0 0 6px rgba(53,224,178,.8))}
+.port-dot{fill:var(--teal-bright);filter:drop-shadow(0 0 5px rgba(53,224,178,.7))}
 .maplab{fill:#B9CADF;font-size:10.5px;font-weight:600}
 .maplab.big{fill:#EAF1F8;font-size:12px}
 .maplab.dim{fill:#5F7690;font-weight:400}
@@ -161,9 +163,9 @@ svg text{font-family:inherit}
 html[dir=rtl] .bar .tk{border-radius:4px 0 0 4px}
 .bar .nm{color:var(--ink2)} .bar .vl{color:var(--ink);font-weight:700;font-variant-numeric:tabular-nums}
 .badge{display:inline-flex;align-items:center;gap:7px;padding:5px 13px;border-radius:999px;font-size:12px;font-weight:700;letter-spacing:.04em}
-.badge.eligible{background:rgba(63,169,111,.15);color:#5CC98D;border:1px solid rgba(63,169,111,.4)}
-.badge.likely{background:rgba(232,193,90,.13);color:var(--gold);border:1px solid rgba(232,193,90,.4)}
-.badge.info{background:rgba(91,133,222,.14);color:#8FAAEA;border:1px solid rgba(91,133,222,.4)}
+.badge.eligible{background:rgba(53,224,178,.15);color:#35E0B2;border:1px solid rgba(53,224,178,.4)}
+.badge.likely{background:rgba(53,224,178,.13);color:var(--gold);border:1px solid rgba(53,224,178,.4)}
+.badge.info{background:rgba(76,201,240,.14);color:#4CC9F0;border:1px solid rgba(76,201,240,.4)}
 
 /* ---------- timeline ---------- */
 .timeline{position:relative;margin:26px 0 6px;padding-inline-start:26px}
@@ -240,12 +242,106 @@ html[dir=rtl] .csend svg{transform:scaleX(-1)}
 #report-sheet{background:#fff;color:#15202E;border-radius:16px;max-width:820px;margin:0 auto;padding:46px 52px;box-shadow:var(--shadow)}
 #report-sheet h2{color:#0E1F33} #report-sheet h3{font-size:15px;letter-spacing:.12em;text-transform:uppercase;color:#0E7C6E;margin:26px 0 10px}
 #report-sheet p,#report-sheet li{font-size:14px;line-height:1.7;color:#33455C}
-#report-sheet .rep-head{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;border-bottom:3px solid #E8C15A;padding-bottom:18px}
+#report-sheet .rep-head{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;border-bottom:3px solid #35E0B2;padding-bottom:18px}
 #report-sheet .rep-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 26px;margin-top:8px}
 #report-sheet .rep-grid div{font-size:13.5px;padding:7px 0;border-bottom:1px solid #E8EDF4}
 #report-sheet .rep-grid b{color:#0E1F33}
 #report-sheet .foot{margin-top:30px;padding-top:14px;border-top:1px solid #E1E8F0;font-size:11.5px;color:#7C8AA0;line-height:1.6}
 .report-actions{display:flex;gap:12px;justify-content:center;margin:24px 0;flex-wrap:wrap}
+
+/* ---------- landing (Daleel Landing design) ---------- */
+#s-attract{max-width:none;padding:0}
+main:has(#s-attract.on)~footer{display:none}
+@keyframes drift{0%{transform:translate(0,0) scale(1)}100%{transform:translate(4%,-3%) scale(1.08)}}
+@keyframes scrollPulse{0%,100%{opacity:.25;transform:scaleY(.6)}50%{opacity:.9;transform:scaleY(1)}}
+.lhero{position:relative;min-height:calc(100vh - 73px);overflow:hidden}
+#hero-globe{position:absolute;inset:0;width:100%;height:100%;display:block}
+.lhero-glow{position:absolute;pointer-events:none}
+.lhero-glow.g1{top:-30%;right:-15%;width:70%;height:90%;background:radial-gradient(ellipse at center,rgba(53,224,178,.10) 0%,rgba(53,224,178,0) 60%);animation:drift 22s ease-in-out infinite alternate}
+.lhero-glow.g2{bottom:-40%;left:-20%;width:80%;height:100%;background:radial-gradient(ellipse at center,rgba(76,201,240,.06) 0%,rgba(76,201,240,0) 60%);animation:drift 28s ease-in-out infinite alternate-reverse}
+.lhero-fade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(4,16,14,.25) 0%,rgba(4,16,14,0) 30%,rgba(4,16,14,.55) 100%);pointer-events:none}
+.lhero-inner{position:relative;z-index:5;max-width:880px;margin:0 auto;padding:14vh 32px 120px;text-align:center}
+.lkick{display:inline-flex;align-items:center;gap:12px;font-size:12px;letter-spacing:.28em;color:#8FA8A2;text-transform:uppercase;animation:fadeUp .9s ease both}
+.lkick i{width:28px;height:1px;background:rgba(143,168,162,.4)}
+.lh1{margin:26px 0 0;animation:fadeUp .9s ease .1s both}
+.lh1 span{display:block}
+.lsub{margin:26px auto 0;max-width:560px;font-size:17px;line-height:1.6;color:#9DB3AD;font-weight:300;animation:fadeUp .9s ease .2s both}
+.lalt{margin:10px auto 0;font-family:var(--font-ar);font-size:15px;color:#7D968F;font-weight:300;animation:fadeUp .9s ease .26s both}
+html[lang="ar"] .lalt{font-family:var(--font-en)}
+#ask-bar{margin:44px auto 0;max-width:640px;display:flex;align-items:center;gap:10px;padding:8px 8px 8px 10px;
+  border:1px solid var(--line2);border-radius:999px;background:rgba(6,26,22,.55);backdrop-filter:blur(14px);
+  box-shadow:0 0 60px rgba(53,224,178,.10),inset 0 1px 0 rgba(255,255,255,.04);animation:fadeUp .9s ease .34s both}
+#ask-bar .vb{display:flex;align-items:flex-end;justify-content:center;gap:3px;width:40px;height:40px;border:1px solid rgba(143,168,162,.25);border-radius:999px;flex:0 0 auto;padding-bottom:13px;box-sizing:border-box}
+#ask-bar .vb i{width:3px;background:#35E0B2;border-radius:2px;display:block}
+#ask-bar .vb i:nth-child(1){height:7px;animation:vbar 1.3s ease-in-out infinite}
+#ask-bar .vb i:nth-child(2){height:12px;animation:vbar 1.3s ease-in-out .2s infinite}
+#ask-bar .vb i:nth-child(3){height:8px;animation:vbar 1.3s ease-in-out .4s infinite}
+#ask-bar input{flex:1;background:transparent;border:none!important;outline:none;color:var(--ink);font-size:15px;font-weight:300;min-width:0;padding:10px 4px}
+.lchips{margin-top:20px;display:flex;flex-wrap:wrap;justify-content:center;gap:10px;animation:fadeUp .9s ease .44s both}
+.lchips button{padding:9px 18px;border:1px solid rgba(143,168,162,.2);border-radius:999px;font-size:13px;color:#9DB3AD;font-weight:300;transition:.2s}
+.lchips button:hover{border-color:rgba(53,224,178,.6);color:#35E0B2}
+.lscroll{position:absolute;bottom:26px;left:50%;transform:translateX(-50%);z-index:5;display:flex;flex-direction:column;align-items:center;gap:10px}
+.lscroll span{font-size:10px;letter-spacing:.32em;color:#6D8781}
+.lscroll i{width:1px;height:34px;background:linear-gradient(180deg,#35E0B2,transparent);transform-origin:top;animation:scrollPulse 2.2s ease-in-out infinite}
+.lstats{border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:#050F0D}
+.lstats-in{max-width:1160px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
+.lstat{padding:52px 32px;text-align:center;border-inline-end:1px solid var(--line)}
+.lstat:last-child{border-inline-end:none}
+.lstat b{font-size:42px;font-weight:300;color:#F0F7F4}
+.lstat b em{font-style:normal;color:#35E0B2}
+.lstat .l1{margin-top:8px;font-size:12px;letter-spacing:.18em;color:#8FA8A2;text-transform:uppercase}
+.lstat .l2{margin-top:4px;font-family:var(--font-ar);font-size:12px;color:#5C7A73}
+html[lang="ar"] .lstat .l2{font-family:var(--font-en);letter-spacing:.08em}
+.lsect{max-width:1160px;margin:0 auto;padding:120px 48px 100px}
+.lsk{font-size:12px;letter-spacing:.28em;color:#35E0B2;text-transform:uppercase}
+.lsk span{color:#5C7A73;font-family:var(--font-ar);letter-spacing:0;text-transform:none}
+.lsect h2{margin:18px 0 0;font-size:clamp(30px,3.8vw,44px);color:#F0F7F4;line-height:1.15}
+.lhow-head{display:flex;align-items:baseline;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.lhow-head p{max-width:340px;font-size:15px;line-height:1.65;color:#8FA8A2;font-weight:300}
+.lhow-grid{margin-top:64px;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:48px}
+.lnum{width:58px;height:58px;border:1px solid rgba(53,224,178,.4);border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:15px;letter-spacing:.1em;color:#35E0B2;box-shadow:0 0 30px rgba(53,224,178,.12) inset}
+.lhow-grid h3{margin:26px 0 0;font-size:21px;font-weight:500;color:var(--ink)}
+.lhow-grid p{margin:12px 0 0;font-size:14.5px;line-height:1.7;color:#8FA8A2;font-weight:300}
+.lwhy{background:#061513;border-top:1px solid var(--line)}
+.lwhy .lsect{padding:104px 48px}
+.lwhy-grid{margin-top:60px;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:22px}
+.lwhy-card{padding:36px 32px;border:1px solid rgba(143,168,162,.16);border-radius:14px;background:rgba(8,26,22,.5);transition:border-color .25s,transform .25s;text-align:start;cursor:pointer}
+.lwhy-card:hover{border-color:rgba(53,224,178,.55);transform:translateY(-4px)}
+.lwhy-card .glyph{width:12px;height:12px;display:inline-block}
+.lwhy-card h3{margin:24px 0 0;font-size:20px;font-weight:500;color:var(--ink)}
+.lwhy-card p{margin:12px 0 0;font-size:14.5px;line-height:1.7;color:#8FA8A2;font-weight:300}
+.lwhy-card .ask{display:inline-block;margin-top:22px;font-size:13px;letter-spacing:.08em;color:#35E0B2}
+.lcta{position:relative;overflow:hidden;padding:140px 48px;text-align:center;background:var(--bg0)}
+.lcta::before{content:"";position:absolute;inset:0;background:repeating-radial-gradient(circle at 8% 110%,transparent 0px,transparent 78px,rgba(53,224,178,.05) 79px,transparent 80px);pointer-events:none}
+.lcta .glow{position:absolute;bottom:-50%;left:-10%;width:70%;height:120%;background:radial-gradient(ellipse at center,rgba(53,224,178,.12) 0%,transparent 60%);animation:drift 24s ease-in-out infinite alternate;pointer-events:none}
+.lcta-in{position:relative;z-index:2}
+.lcta h2{margin:0;font-size:clamp(36px,5vw,60px);line-height:1.08;color:#F0F7F4}
+.lcta h2 span{display:block}
+.lcta p{margin:24px auto 0;max-width:460px;font-size:16px;line-height:1.6;color:#9DB3AD;font-weight:300}
+.lcta-btns{margin-top:40px;display:flex;justify-content:center;gap:14px;flex-wrap:wrap}
+.lbtn{padding:14px 34px;border-radius:999px;font-size:15px;font-weight:500;transition:.2s}
+.lbtn.solid{background:#F0F7F4;color:#04100E}
+.lbtn.solid:hover{transform:scale(1.04)}
+.lbtn.line{border:1px solid rgba(143,168,162,.35);color:var(--ink);font-weight:400}
+.lbtn.line:hover{border-color:#35E0B2;color:#35E0B2}
+.lfoot{background:#EDF2F0;color:#12241F}
+.lfoot a{color:#5B6F69}.lfoot a:hover{color:#0F8A68}
+.lfoot-grid{max-width:1160px;margin:0 auto;padding:68px 48px 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:44px}
+.lfoot .fbrand{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:500}
+.lfoot .fbrand i{width:11px;height:11px;background:#0F8A68;transform:rotate(45deg)}
+.lfoot .fbrand .ar{font-family:var(--font-ar);font-size:16px;color:#5B6F69;font-weight:400}
+.lfoot p{font-size:13.5px;line-height:1.7;color:#5B6F69}
+.lfoot .fh{font-size:13px;font-weight:500;letter-spacing:.04em;color:#12241F}
+.lfoot .fcol{margin-top:18px;display:flex;flex-direction:column;gap:12px;font-size:13px}
+.lfoot .fcol a{background:none;border:none;text-align:start;cursor:pointer;font-size:13px;padding:0}
+#nl-form{margin-top:16px;display:flex;align-items:center;gap:8px;padding:5px 5px 5px 16px;border:1px solid rgba(18,36,31,.18);border-radius:999px;background:#fff}
+#nl-form input{flex:1;border:none;outline:none;background:transparent;font-size:13px;color:#12241F;min-width:0;padding:8px 0}
+#nl-form button{width:34px;height:34px;border-radius:999px;background:#12241F;color:#EDF2F0;font-size:15px;flex:0 0 auto;transition:background .2s;display:flex;align-items:center;justify-content:center}
+#nl-form button:hover{background:#0F8A68}
+.lfoot-disc{max-width:1160px;margin:0 auto;padding:34px 48px 14px;font-size:11.5px;line-height:1.6;color:#8A9A94}
+.lfoot-bar{border-top:1px solid rgba(18,36,31,.12)}
+.lfoot-bar-in{max-width:1160px;margin:0 auto;padding:20px 48px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;font-size:12px;color:#5B6F69}
+@media(max-width:900px){.lstats-in{grid-template-columns:1fr 1fr}.lstat{border-bottom:1px solid var(--line)}.lsect{padding:80px 26px 70px}.lwhy .lsect{padding:80px 26px}.lcta{padding:100px 26px}.lfoot-grid{padding:52px 26px 0}.lhero-inner{padding-top:10vh}}
 
 /* ---------- misc ---------- */
 .attract-ticker{margin-top:40px;border-top:1px solid var(--line);padding-top:20px;font-size:13px;color:var(--muted);line-height:1.8}
@@ -265,10 +361,9 @@ footer a{color:var(--ink2)}
 
 <header>
   <div class="logo">
-    <div>
-      <div class="logo-word">Daleel<span class="ar">دليل</span></div>
-      <div class="logo-sub" data-i18n="tagline">AI Investment Guide</div>
-    </div>
+    <span class="logo-diamond"></span>
+    <span class="logo-word">Daleel<span class="ar">دليل</span></span>
+    <span class="logo-sub" data-i18n="tagline">AI Investment Guide</span>
   </div>
   <div class="spacer"></div>
   <button class="hbtn" id="btn-voice" title="Voice">
@@ -287,7 +382,7 @@ footer a{color:var(--ink2)}
 </main>
 
 <button id="chat-fab" title="Ask DALEEL" aria-label="Ask DALEEL">
-  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#7FE7D4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#35E0B2" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
 </button>
 <div id="chat" role="dialog" aria-label="DALEEL assistant">
   <canvas id="chat-orb" aria-hidden="true"></canvas>
@@ -342,6 +437,30 @@ en: {
   chatClose:"Close ✕", chipCost:"Full cost breakdown", chipCompare:"Compare industrial cities", chipElig:"Check my eligibility",
   footNote:"DALEEL presents indicative figures from published MODON and national sources. Eligibility snapshots are informational, not legal or financial advice.",
   footBy:"An AI investment experience for MODON",
+  heroKicker2:"MODON — AI Investment Guide", heroT1:"Invest in Saudi Arabia", heroT2:"with total clarity",
+  heroSub:"See what moving your business to MODON's industrial cities means for your markets, costs, and growth — in minutes.",
+  heroAlt:"دليلك الذكي للاستثمار في المدن الصناعية السعودية",
+  hchip1:"What would relocating my factory to Riyadh cost?", hchip2:"Compare Jeddah vs Dammam for exports", hchip3:"هل أنا مؤهل لأرض صناعية؟",
+  scrollLbl:"Scroll", statAI:"AI guidance, EN · AR", statAI2:"إرشاد ذكي على مدار الساعة",
+  statCities2:"مدينة صناعية", statFactories2:"مصنع ومنشأة", statInvest2:"ريال استثمارات مستقطبة",
+  howKick:"How it works", howKickAr:"· كيف يعمل", howT1:"From question to", howT2:"decision in minutes.",
+  howP:"Daleel understands your sector, then maps MODON's cities, costs, and incentives to your plan — by voice or text, in Arabic or English.",
+  step1t:"Ask", step1p:"Speak or type in Arabic or English. Describe your business, sector, and where you sell today.",
+  step2t:"Analyze", step2p:"Daleel models land, energy, labor, and logistics across 36+ industrial cities against your markets.",
+  step3t:"Decide", step3p:"Get an eligibility snapshot, indicative costs, and clear next steps toward your MODON application.",
+  whyKick:"Why MODON", whyKickAr:"· لماذا مدن", whyT1:"Three answers every", whyT2:"investor needs.",
+  why1t:"Costs", why1p:"Land, energy, and labor modeled for your sector — with indicative figures from published MODON sources.",
+  why2t:"Markets", why2p:"Reach GCC and global corridors through cities integrated with ports, rail, and logistics zones.",
+  why3t:"Growth", why3p:"Incentives and Vision 2030 demand signals, quantified for your expansion plan.",
+  askDaleel:"Ask DALEEL →",
+  ctaT1:"Start your investment", ctaT2:"journey with Daleel",
+  ctaSub:"Start your digital transformation journey with an adaptive, bilingual AI investment guide.",
+  getStarted:"Get Started", talkTo:"Talk to Daleel",
+  fBlurb:"An AI investment experience for MODON — helping businesses see their future in Saudi Arabia's industrial cities.",
+  fExplore:"Explore", fLink1:"Industrial Cities", fLink2:"Eligibility Check", fLink3:"Incentives", fLink4:"Logistics",
+  fStay:"Stay informed", fStayP:"Get the latest MODON incentives and investment updates straight to your email.",
+  fEmailPh:"Enter your email…", fThanks:"Thank you — you're on the list.",
+  fTerms:"Terms & Conditions", fPrivacy:"Privacy Policy",
   heroKicker:"Marhaba — I am DALEEL", heroTitle:"See what Saudi Arabia means for <span class='gold'>your business</span>.",
   heroLead:"I am MODON's AI investment guide. In five minutes I will analyze your business, map the ports and corridors that would carry your goods to new markets, size the demand you could reach, and show the incentives and fast-track pathway you may qualify for.",
   statCities:"industrial cities", statFactories:"factories & facilities", statInvest:"SAR attracted investment", statMinutes:"minutes to your analysis",
@@ -384,6 +503,30 @@ ar: {
   chatClose:"إغلاق ✕", chipCost:"تفاصيل التكاليف كاملة", chipCompare:"قارن المدن الصناعية", chipElig:"تحقق من أهليتي",
   footNote:"يعرض «دليل» أرقامًا استرشادية من مصادر مدن والمصادر الوطنية المنشورة. لقطات الأهلية معلوماتية وليست استشارة قانونية أو مالية.",
   footBy:"تجربة استثمارية بالذكاء الاصطناعي لمدن",
+  heroKicker2:"مدن — دليل الاستثمار بالذكاء الاصطناعي", heroT1:"استثمر في السعودية", heroT2:"بوضوح تام",
+  heroSub:"اكتشف ماذا يعني نقل نشاطك إلى مدن الصناعية لأسواقك وتكاليفك ونموك — في دقائق.",
+  heroAlt:"Your smart guide to investing in Saudi industrial cities",
+  hchip1:"كم ستكلفني إعادة توطين مصنعي في الرياض؟", hchip2:"قارن بين جدة والدمام للتصدير", hchip3:"Am I eligible for industrial land?",
+  scrollLbl:"مرر للأسفل", statAI:"إرشاد ذكي، عربي · إنجليزي", statAI2:"Round-the-clock AI guidance",
+  statCities2:"industrial cities", statFactories2:"factories & facilities", statInvest2:"SAR attracted investment",
+  howKick:"كيف يعمل", howKickAr:"· How it works", howT1:"من السؤال إلى", howT2:"القرار في دقائق.",
+  howP:"يفهم دليل قطاعك، ثم يطابق مدن ومزاياها وتكاليفها مع خطتك — صوتًا أو كتابة، بالعربية أو الإنجليزية.",
+  step1t:"اسأل", step1p:"تحدث أو اكتب بالعربية أو الإنجليزية. صف نشاطك وقطاعك وأين تبيع اليوم.",
+  step2t:"حلّل", step2p:"يحسب دليل الأرض والطاقة والعمالة والخدمات اللوجستية عبر أكثر من 36 مدينة صناعية مقابل أسواقك.",
+  step3t:"قرّر", step3p:"احصل على لمحة الأهلية والتكاليف الاسترشادية وخطوات واضحة نحو طلبك لدى مدن.",
+  whyKick:"لماذا مدن", whyKickAr:"· Why MODON", whyT1:"ثلاث إجابات يحتاجها", whyT2:"كل مستثمر.",
+  why1t:"التكاليف", why1p:"الأرض والطاقة والعمالة محسوبة لقطاعك — بأرقام استرشادية من مصادر مدن المنشورة.",
+  why2t:"الأسواق", why2p:"اوصل إلى الخليج والممرات العالمية عبر مدن متكاملة مع الموانئ والسكك والمناطق اللوجستية.",
+  why3t:"النمو", why3p:"الحوافز ومؤشرات الطلب في رؤية 2030، مقاسة لخطة توسعك.",
+  askDaleel:"اسأل دليل ←",
+  ctaT1:"ابدأ رحلتك الاستثمارية", ctaT2:"مع دليل",
+  ctaSub:"ابدأ رحلة التحول الرقمي مع مرشد استثماري ذكي ثنائي اللغة يتكيف معك.",
+  getStarted:"ابدأ الآن", talkTo:"تحدث مع دليل",
+  fBlurb:"تجربة استثمارية بالذكاء الاصطناعي لمدن — تساعد الشركات على رؤية مستقبلها في المدن الصناعية السعودية.",
+  fExplore:"استكشف", fLink1:"المدن الصناعية", fLink2:"فحص الأهلية", fLink3:"الحوافز", fLink4:"الخدمات اللوجستية",
+  fStay:"ابقَ على اطلاع", fStayP:"احصل على أحدث حوافز مدن ومستجدات الاستثمار مباشرة إلى بريدك.",
+  fEmailPh:"أدخل بريدك الإلكتروني…", fThanks:"شكرًا — تمت إضافتك إلى القائمة.",
+  fTerms:"الشروط والأحكام", fPrivacy:"سياسة الخصوصية",
   heroKicker:"مرحبًا — أنا دليل", heroTitle:"اكتشف ماذا تعني السعودية <span class='gold'>لأعمالك</span>.",
   heroLead:"أنا المرشد الاستثماري الذكي لمدن. خلال خمس دقائق أحلّل نشاطك، وأرسم الموانئ والممرات التي ستنقل منتجاتك إلى أسواق جديدة، وأقيس حجم الطلب الذي يمكنك الوصول إليه، وأعرض الحوافز ومسار التأسيس السريع الذي قد تتأهل له.",
   statCities:"مدينة صناعية", statFactories:"مصنع ومنشأة", statInvest:"ريال استثمارات مستقطبة", statMinutes:"دقائق حتى تحليلك",
@@ -595,9 +738,9 @@ function renderMap(opts){
   s += `<text class="maplab dim" x="${PX(44.5)}" y="${PY(23.3)}" text-anchor="middle" font-size="15" letter-spacing="3" opacity=".55">${L==="ar"?"السعودية":"SAUDI ARABIA"}</text>`;
   if(rings){
     const cx=PX(46.7), cy=PY(24.7);
-    s += `<circle class="ring" cx="${cx}" cy="${cy}" r="60" stroke="#BE8926" style="animation-delay:.2s"/>
-          <circle class="ring" cx="${cx}" cy="${cy}" r="150" stroke="#39C4AE" style="animation-delay:.6s"/>
-          <circle class="ring" cx="${cx}" cy="${cy}" r="265" stroke="#5B85DE" style="animation-delay:1s"/>`;
+    s += `<circle class="ring" cx="${cx}" cy="${cy}" r="60" stroke="#21B58C" style="animation-delay:.2s"/>
+          <circle class="ring" cx="${cx}" cy="${cy}" r="150" stroke="#35E0B2" style="animation-delay:.6s"/>
+          <circle class="ring" cx="${cx}" cy="${cy}" r="265" stroke="#4CC9F0" style="animation-delay:1s"/>`;
   }
   // corridors from recommended cities to their ports
   if(corridors){
@@ -634,11 +777,11 @@ function renderMap(opts){
   });
   s += `</svg>`;
   const legend = `<div class="map-caption">
-      <i><span class="dotk" style="background:#39C4AE"></span>${t("legPort")}</i>
+      <i><span class="dotk" style="background:#35E0B2"></span>${t("legPort")}</i>
       <i><span class="dotk" style="background:#8FB4DE"></span>${t("legCity")}</i>
-      ${recCities.length?`<i><span class="dotk" style="background:#E8C15A"></span>${t("legRec")}</i>`:""}
-      ${lanes?`<i><span class="dotk" style="background:#E8C15A;border-radius:2px;height:3px;width:16px"></span>${t("legLane")}</i>`:""}
-      ${corridors?`<i><span class="dotk" style="background:#39C4AE;border-radius:2px;height:3px;width:16px"></span>${t("legCorr")}</i>`:""}
+      ${recCities.length?`<i><span class="dotk" style="background:#35E0B2"></span>${t("legRec")}</i>`:""}
+      ${lanes?`<i><span class="dotk" style="background:#35E0B2;border-radius:2px;height:3px;width:16px"></span>${t("legLane")}</i>`:""}
+      ${corridors?`<i><span class="dotk" style="background:#35E0B2;border-radius:2px;height:3px;width:16px"></span>${t("legCorr")}</i>`:""}
     </div>`;
   return `<div class="mapwrap">${s}${legend}</div>`;
 }
@@ -648,32 +791,194 @@ function renderMap(opts){
 function show(id){ document.querySelectorAll(".screen").forEach(s=>s.classList.remove("on")); $(id).classList.add("on"); window.scrollTo({top:0,behavior:"smooth"}); }
 
 function renderAttract(){
+  const arrow = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="${state.lang==="ar"?"transform:scaleX(-1)":""}"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`;
   $("#s-attract").innerHTML = `
-  <div class="hero">
-    <div>
-      <div class="kicker">${t("heroKicker")}</div>
-      <h1>${t("heroTitle")}</h1>
-      <p class="lead" style="margin-top:18px">${t("heroLead")}</p>
-      <div class="stats">
-        <div class="stat"><b>36+</b><span>${t("statCities")}</span></div>
-        <div class="stat"><b>7,000+</b><span>${t("statFactories")}</span></div>
-        <div class="stat"><b>370B+</b><span>${t("statInvest")}</span></div>
-        <div class="stat"><b>5</b><span>${t("statMinutes")}</span></div>
+  <section class="lhero">
+    <canvas id="hero-globe" aria-hidden="true"></canvas>
+    <div class="lhero-glow g1"></div><div class="lhero-glow g2"></div><div class="lhero-fade"></div>
+    <div class="lhero-inner">
+      <div class="lkick"><i></i>${t("heroKicker2")}<i></i></div>
+      <h1 class="lh1"><span>${t("heroT1")}</span><span>${t("heroT2")}</span></h1>
+      <p class="lsub">${t("heroSub")}</p>
+      <p class="lalt" dir="${state.lang==="ar"?"ltr":"rtl"}">${t("heroAlt")}</p>
+      <form id="ask-bar">
+        <span class="vb"><i></i><i></i><i></i></span>
+        <input id="ask-in" placeholder="${t("chatPh")}" autocomplete="off">
+        <button type="submit" class="csend" title="Ask">${arrow}</button>
+      </form>
+      <div class="lchips">
+        <button type="button" data-ask>${t("hchip1")}</button>
+        <button type="button" data-ask>${t("hchip2")}</button>
+        <button type="button" data-ask dir="${state.lang==="ar"?"ltr":"rtl"}" style="font-family:var(--font-${state.lang==="ar"?"en":"ar"})">${t("hchip3")}</button>
       </div>
-      <div class="hero-actions">
-        <button class="cta" id="btn-start">${t("startBtn")}
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="${state.lang==="ar"?"transform:scaleX(-1)":""}"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-        </button>
-        <button class="cta ghost" id="btn-explore">${t("exploreBtn")}</button>
-      </div>
-      <p class="attract-ticker">${t("attractLine")}</p>
+      <div class="lscroll"><span>${t("scrollLbl")}</span><i></i></div>
     </div>
-    <div class="hero-map">${renderMap({ports:["jeddah","kap","yanbu","dammam","jubail","jazan","neom"]})}</div>
-  </div>`;
+  </section>
+  <section class="lstats"><div class="lstats-in">
+    <div class="lstat"><b>36<em>+</em></b><div class="l1">${t("statCities")}</div><div class="l2">${t("statCities2")}</div></div>
+    <div class="lstat"><b>7,000<em>+</em></b><div class="l1">${t("statFactories")}</div><div class="l2">${t("statFactories2")}</div></div>
+    <div class="lstat"><b>370B<em>+</em></b><div class="l1">${t("statInvest")}</div><div class="l2">${t("statInvest2")}</div></div>
+    <div class="lstat"><b>24/7</b><div class="l1">${t("statAI")}</div><div class="l2">${t("statAI2")}</div></div>
+  </div></section>
+  <section class="lsect" id="how">
+    <div class="lhow-head">
+      <div>
+        <div class="lsk">${t("howKick")} <span>${t("howKickAr")}</span></div>
+        <h2>${t("howT1")}<br><span class="dim">${t("howT2")}</span></h2>
+      </div>
+      <p>${t("howP")}</p>
+    </div>
+    <div class="lhow-grid">
+      <div><div class="lnum">01</div><h3>${t("step1t")}</h3><p>${t("step1p")}</p></div>
+      <div><div class="lnum">02</div><h3>${t("step2t")}</h3><p>${t("step2p")}</p></div>
+      <div><div class="lnum">03</div><h3>${t("step3t")}</h3><p>${t("step3p")}</p></div>
+    </div>
+  </section>
+  <section class="lwhy" id="why"><div class="lsect" style="padding-top:104px">
+    <div style="text-align:center">
+      <div class="lsk">${t("whyKick")} <span>${t("whyKickAr")}</span></div>
+      <h2>${t("whyT1")}<br><span class="dim">${t("whyT2")}</span></h2>
+    </div>
+    <div class="lwhy-grid">
+      <button class="lwhy-card" data-ask-card="${esc(t("why1t"))}">
+        <span class="glyph" style="background:#35E0B2;transform:rotate(45deg);box-shadow:0 0 12px rgba(53,224,178,.6)"></span>
+        <h3>${t("why1t")}</h3><p>${t("why1p")}</p><span class="ask">${t("askDaleel")}</span>
+      </button>
+      <button class="lwhy-card" data-ask-card="${esc(t("why2t"))}">
+        <span class="glyph" style="border:1px solid #35E0B2;border-radius:999px;box-shadow:0 0 12px rgba(53,224,178,.4)"></span>
+        <h3>${t("why2t")}</h3><p>${t("why2p")}</p><span class="ask">${t("askDaleel")}</span>
+      </button>
+      <button class="lwhy-card" data-ask-card="${esc(t("why3t"))}">
+        <span class="glyph" style="background:linear-gradient(135deg,#35E0B2,#4CC9F0);box-shadow:0 0 12px rgba(76,201,240,.5)"></span>
+        <h3>${t("why3t")}</h3><p>${t("why3p")}</p><span class="ask">${t("askDaleel")}</span>
+      </button>
+    </div>
+  </div></section>
+  <section class="lcta" id="cta">
+    <div class="glow"></div>
+    <div class="lcta-in">
+      <h2><span>${t("ctaT1")}</span><span class="dim">${t("ctaT2")}</span></h2>
+      <p>${t("ctaSub")}</p>
+      <div class="lcta-btns">
+        <button class="lbtn solid" id="btn-start">${t("getStarted")}</button>
+        <button class="lbtn line" id="btn-explore">${t("talkTo")}</button>
+      </div>
+    </div>
+  </section>
+  <section class="lfoot">
+    <div class="lfoot-grid">
+      <div>
+        <div class="fbrand"><i></i>Daleel<span class="ar">دليل</span></div>
+        <p style="margin:18px 0 0;max-width:260px">${t("fBlurb")}</p>
+      </div>
+      <div>
+        <div class="fh">${t("fExplore")}</div>
+        <div class="fcol">
+          <a data-ask>${t("fLink1")}</a>
+          <a id="f-elig">${t("fLink2")}</a>
+          <a data-ask>${t("fLink3")}</a>
+          <a data-ask>${t("fLink4")}</a>
+        </div>
+      </div>
+      <div>
+        <div class="fh">${t("fStay")}</div>
+        <p style="margin:18px 0 0">${t("fStayP")}</p>
+        <form id="nl-form">
+          <input type="email" required placeholder="${t("fEmailPh")}">
+          <button type="submit">${state.lang==="ar"?"←":"→"}</button>
+        </form>
+      </div>
+    </div>
+    <div class="lfoot-disc">${t("footNote")}</div>
+    <div class="lfoot-bar"><div class="lfoot-bar-in">
+      <span>© 2026 Daleel · daleel.meshnet.co · ${t("footBy")}</span>
+      <span style="display:flex;gap:28px"><a>${t("fTerms")}</a><a>${t("fPrivacy")}</a></span>
+    </div></div>
+  </section>`;
+  const askDaleel = q=>{ openChat(true); initOrb(); if(q){ addMsg("user",q); botReply(q); } };
+  $("#ask-bar").onsubmit = e=>{ e.preventDefault(); const v=$("#ask-in").value.trim(); askDaleel(v||null); $("#ask-in").value=""; };
+  document.querySelectorAll("#s-attract [data-ask]").forEach(b=>{ b.onclick=()=>askDaleel(b.textContent.trim()); });
+  document.querySelectorAll("#s-attract [data-ask-card]").forEach(b=>{ b.onclick=()=>askDaleel(b.getAttribute("data-ask-card")); });
   $("#btn-start").onclick = ()=>{ state.step=1; renderJourney(); show("#s-journey"); };
-  $("#btn-explore").onclick = ()=>{ openChat(true); };
+  $("#btn-explore").onclick = ()=>{ openChat(true); initOrb(); };
+  $("#f-elig").onclick = ()=>{ state.step=1; renderJourney(); show("#s-journey"); };
+  $("#nl-form").onsubmit = e=>{ e.preventDefault();
+    const em=$("#nl-form input").value.trim(); if(!em) return;
+    if(CONFIG.LEAD_WEBHOOK){ fetch(CONFIG.LEAD_WEBHOOK,{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({name:"Newsletter subscriber",email:em,lang:state.lang,submitted_at:new Date().toISOString(),source:"newsletter"})}).catch(()=>{}); }
+    $("#nl-form").outerHTML = `<p style="margin-top:16px;font-size:13px;color:#0F8A68;font-weight:500">${t("fThanks")}</p>`;
+  };
   show("#s-attract");
   $("#btn-restart").style.display="none";
+  initGlobe();
+}
+
+/* rotating globe with orbit rings (Daleel Landing design) */
+function initGlobe(){
+  const canvas=$("#hero-globe"); if(!canvas) return;
+  const ctx=canvas.getContext("2d"), rgb=[53,224,178];
+  const sp=document.createElement("canvas"); sp.width=sp.height=32;
+  const sctx=sp.getContext("2d"), g=sctx.createRadialGradient(16,16,0,16,16,16);
+  g.addColorStop(0,`rgba(${rgb},1)`); g.addColorStop(.35,`rgba(${rgb},.5)`); g.addColorStop(1,`rgba(${rgb},0)`);
+  sctx.fillStyle=g; sctx.fillRect(0,0,32,32);
+  let w,h,cx,cy,R,dots=[],orbits=[];
+  const N=360, tilt=-0.32;
+  const build=()=>{
+    if(!canvas.isConnected) return;
+    const dpr=Math.min(devicePixelRatio||1,1.5);
+    w=canvas.clientWidth; h=canvas.clientHeight;
+    canvas.width=w*dpr; canvas.height=h*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+    cx=w*0.5; cy=h*0.62; R=Math.min(w,h)*0.46; dots=[]; orbits=[];
+    const ga=Math.PI*(3-Math.sqrt(5));
+    for(let i=0;i<N;i++){ const y=1-(i/(N-1))*2, rr=Math.sqrt(1-y*y), th=ga*i;
+      dots.push({x:Math.cos(th)*rr,y,z:Math.sin(th)*rr,sz:0.5+Math.random()*1.5,tw:0.5+Math.random()*2,ph:Math.random()*Math.PI*2}); }
+    for(let i=0;i<3;i++) orbits.push({r:R*(1.18+i*0.16),a:Math.random()*Math.PI*2,sp:0.00012+i*0.00006});
+  };
+  addEventListener("resize",build,{passive:true}); build();
+  const project=(p,rot)=>{
+    const x1=p.x*Math.cos(rot)+p.z*Math.sin(rot), z1=-p.x*Math.sin(rot)+p.z*Math.cos(rot);
+    const y1=p.y*Math.cos(tilt)-z1*Math.sin(tilt), z2=p.y*Math.sin(tilt)+z1*Math.cos(tilt);
+    return [cx+x1*R, cy+y1*R, z2];
+  };
+  const frame=tm=>{
+    if(!canvas.isConnected) return;
+    if(!$("#s-attract").classList.contains("on")){ requestAnimationFrame(frame); return; }
+    ctx.clearRect(0,0,w,h);
+    const rot=tm*0.00006;
+    const ag=ctx.createRadialGradient(cx,cy,R*0.55,cx,cy,R*1.45);
+    ag.addColorStop(0,`rgba(${rgb},0.10)`); ag.addColorStop(0.7,`rgba(${rgb},0.03)`); ag.addColorStop(1,`rgba(${rgb},0)`);
+    ctx.fillStyle=ag; ctx.beginPath(); ctx.arc(cx,cy,R*1.45,0,Math.PI*2); ctx.fill();
+    ctx.lineWidth=1;
+    for(const o of orbits){
+      o.a+=o.sp*16;
+      ctx.strokeStyle=`rgba(${rgb},0.06)`;
+      ctx.beginPath(); ctx.ellipse(cx,cy,o.r,o.r*Math.abs(Math.sin(tilt))*1.6,0,0,Math.PI*2); ctx.stroke();
+      const sx=cx+Math.cos(o.a)*o.r, sy=cy+Math.sin(o.a)*o.r*Math.abs(Math.sin(tilt))*1.6;
+      ctx.globalAlpha=0.8; ctx.drawImage(sp,sx-5,sy-5,10,10); ctx.globalAlpha=1;
+    }
+    ctx.strokeStyle=`rgba(${rgb},0.12)`;
+    ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2); ctx.stroke();
+    const pos=[]; for(const p of dots) pos.push(project(p,rot));
+    ctx.strokeStyle=`rgba(${rgb},0.05)`;
+    const lim=(R*0.28)*(R*0.28);
+    for(let i=0;i<pos.length;i+=3){
+      if(pos[i][2]<0.15) continue;
+      for(let j=i+3;j<Math.min(i+36,pos.length);j+=3){
+        if(pos[j][2]<0.15) continue;
+        const dx=pos[i][0]-pos[j][0], dy=pos[i][1]-pos[j][1];
+        if(dx*dx+dy*dy<lim){ ctx.beginPath(); ctx.moveTo(pos[i][0],pos[i][1]); ctx.lineTo(pos[j][0],pos[j][1]); ctx.stroke(); }
+      }
+    }
+    for(let i=0;i<dots.length;i++){
+      const p=dots[i],[x,y,z]=pos[i], depth=(z+1)/2;
+      const tw=0.6+0.4*Math.sin(tm*0.001*p.tw+p.ph);
+      ctx.globalAlpha=(0.06+depth*0.6)*tw;
+      const s=p.sz*(3.5+depth*4.5);
+      ctx.drawImage(sp,x-s/2,y-s/2,s,s);
+    }
+    ctx.globalAlpha=1; requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
 }
 
 function progressBar(){
@@ -688,7 +993,7 @@ function chapterChrome(num,title,say){
     <div class="chapter-num">0${num}</div>
     <div><div class="kicker" style="margin-bottom:6px">${esc(t("chapters")[num-1])}</div><h2>${title}</h2></div>
   </div>
-  <div class="daleel-says"><div class="avatar"><svg width="22" height="22" viewBox="0 0 64 64"><path d="M20 46 L32 14 L44 46" stroke="#E8C15A" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+  <div class="daleel-says"><div class="avatar"><svg width="22" height="22" viewBox="0 0 64 64"><path d="M20 46 L32 14 L44 46" stroke="#35E0B2" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
     <div><div class="who">DALEEL</div><p>${say}</p></div></div>`;
 }
 function navRow(backLabel,nextLabel,canNext){
@@ -752,7 +1057,7 @@ function renderJourney(){
     <div class="tilerow">
       <div class="tile"><div class="v gold">+${N(R.newRegions.length)}</div><div class="l">${t("newMarkets")}</div></div>
       <div class="tile"><div class="v" style="color:var(--teal-bright)">${N(R.newConsumers)}M+</div><div class="l">${t("newConsumers")}</div></div>
-      <div class="tile"><div class="v" style="color:#8FAAEA">${N(R.continents)}</div><div class="l">${t("contTitle")}</div></div>
+      <div class="tile"><div class="v" style="color:#4CC9F0">${N(R.continents)}</div><div class="l">${t("contTitle")}</div></div>
     </div>
     ${renderMap({lanes:true,ports:R.ports,recCities:R.recCities,targets:["sa","gcc",...p.target].filter((r,i,a)=>a.indexOf(r)===i)})}
     <p class="f-hint" style="margin-top:12px">${t("laneNote")}</p>
@@ -784,9 +1089,9 @@ function renderJourney(){
     <div class="grid g2" style="align-items:stretch">
       <div>${renderMap({rings:true,ports:[],recCities:R.recCities})}
         <div class="map-caption" style="justify-content:center">
-          <i><span class="dotk" style="background:#BE8926"></span>${t("ringDom")}</i>
-          <i><span class="dotk" style="background:#39C4AE"></span>${t("ringGcc")}</i>
-          <i><span class="dotk" style="background:#5B85DE"></span>${t("ringGlobal")}</i>
+          <i><span class="dotk" style="background:#21B58C"></span>${t("ringDom")}</i>
+          <i><span class="dotk" style="background:#35E0B2"></span>${t("ringGcc")}</i>
+          <i><span class="dotk" style="background:#4CC9F0"></span>${t("ringGlobal")}</i>
         </div>
       </div>
       <div class="card">
@@ -1090,10 +1395,10 @@ applyLang();
       for(let j=i+1;j<pts.length;j++){
         const b=pts[j],dx=a.x-b.x,dy=a.y-b.y,d=Math.hypot(dx,dy);
         if(d<LINK){const o=(1-d/LINK)*.16;
-          x.strokeStyle=`rgba(96,170,190,${o})`;x.lineWidth=devicePixelRatio*.7;
+          x.strokeStyle=`rgba(53,224,178,${o*0.9})`;x.lineWidth=devicePixelRatio*.7;
           x.beginPath();x.moveTo(a.x,a.y);x.lineTo(b.x,b.y);x.stroke();}
       }
-      x.fillStyle="rgba(140,200,215,.5)";
+      x.fillStyle="rgba(53,224,178,.45)";
       x.beginPath();x.arc(a.x,a.y,a.r,0,7);x.fill();
     }
     if(!reduced) raf=requestAnimationFrame(tick);

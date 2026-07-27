@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>DALEEL دليل — The AI Investment Guide | MODON</title>
+<title>Daleel دليل — AI Investment Guide</title>
 <meta name="description" content="DALEEL — MODON's AI investment guide. See what moving your business to Saudi Arabia's industrial cities means for your markets, costs, and growth — in minutes.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11,9 +11,9 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><circle cx='32' cy='32' r='30' fill='%230D1B2A'/><path d='M20 44 L32 16 L44 44' stroke='%23E8C15A' stroke-width='5' fill='none' stroke-linecap='round' stroke-linejoin='round'/><circle cx='32' cy='38' r='4' fill='%23269988'/></svg>">
 <style>
 :root{
-  --bg0:#081120; --bg1:#0D1B2A; --bg2:#10213A;
-  --card:rgba(18,35,58,.72); --card-solid:#12233A;
-  --ink:#EAF1F8; --ink2:#ADBDD0; --muted:#7186A0;
+  --bg0:#04080F; --bg1:#071120; --bg2:#0B1A2E;
+  --card:rgba(13,27,46,.55); --card-solid:#0E1E33;
+  --ink:#EDF3FA; --ink2:#A9BBD1; --muted:#68809C;
   --gold:#E8C15A; --gold-deep:#BE8926;
   --teal:#269988; --teal-bright:#39C4AE;
   --blue:#5B85DE; --rose:#C05C8D;
@@ -25,28 +25,29 @@
 html{scroll-behavior:smooth}
 body{
   background:
-    radial-gradient(1100px 700px at 85% -10%, rgba(38,153,136,.14), transparent 60%),
-    radial-gradient(900px 600px at -10% 110%, rgba(232,193,90,.08), transparent 55%),
-    linear-gradient(160deg,var(--bg0),var(--bg1) 55%,#0A1626);
+    radial-gradient(1200px 800px at 72% 8%, rgba(57,196,174,.10), transparent 60%),
+    radial-gradient(1000px 700px at 12% 92%, rgba(91,133,222,.08), transparent 58%),
+    radial-gradient(700px 500px at 92% 88%, rgba(232,193,90,.05), transparent 55%),
+    linear-gradient(165deg,var(--bg0) 0%,var(--bg1) 48%,#050D1A 100%);
   color:var(--ink); font-family:var(--font-en); min-height:100vh; overflow-x:hidden;
 }
 html[lang="ar"] body{font-family:var(--font-ar)}
-body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.05;
-  background-image:linear-gradient(rgba(140,170,210,.5) 1px,transparent 1px),linear-gradient(90deg,rgba(140,170,210,.5) 1px,transparent 1px);
-  background-size:56px 56px;}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:1;
+  background:radial-gradient(120% 90% at 50% 0%, transparent 55%, rgba(2,6,14,.55) 100%);}
+#plexus{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.9}
+header,main,footer,#chat,#chat-fab{position:relative;z-index:2}
+header{position:sticky!important}
 ::selection{background:rgba(232,193,90,.3)}
 button{font-family:inherit;color:inherit;cursor:pointer;border:none;background:none}
 input,select,textarea{font-family:inherit}
 
 /* ---------- header ---------- */
 header{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
-  padding:14px 26px;background:rgba(8,17,32,.75);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+  padding:16px 30px;background:rgba(4,8,15,.6);backdrop-filter:blur(22px);border-bottom:1px solid rgba(130,160,200,.10)}
 .logo{display:flex;align-items:center;gap:12px;user-select:none}
-.logo-mark{width:40px;height:40px;border-radius:12px;background:linear-gradient(140deg,#13293F,#0C1B2D);
-  border:1px solid var(--line2);display:grid;place-items:center;flex:0 0 auto}
-.logo-name{font-weight:700;font-size:19px;letter-spacing:.06em}
-.logo-name em{font-style:normal;color:var(--gold)}
-.logo-sub{font-size:11px;color:var(--muted);letter-spacing:.14em;text-transform:uppercase}
+.logo-word{font-weight:800;font-size:25px;letter-spacing:-.035em;line-height:1;color:var(--ink)}
+.logo-word .ar{font-family:var(--font-ar);font-weight:500;font-size:15px;color:var(--muted);letter-spacing:0;margin-inline-start:8px}
+.logo-sub{font-size:9.5px;color:var(--ink2);letter-spacing:.34em;text-transform:uppercase;margin-top:4px;opacity:.85}
 header .spacer{flex:1}
 .hbtn{display:inline-flex;align-items:center;gap:8px;padding:9px 15px;border-radius:999px;font-size:13.5px;font-weight:600;
   border:1px solid var(--line2);color:var(--ink2);transition:.2s}
@@ -59,7 +60,9 @@ header .spacer{flex:1}
 .screen.on{display:block}
 @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
 @keyframes pulse{0%,100%{opacity:.55}50%{opacity:1}}
-h1{font-size:clamp(34px,5.4vw,58px);font-weight:800;line-height:1.12;letter-spacing:-.01em}
+h1{font-size:clamp(36px,5.8vw,64px);font-weight:800;line-height:1.08;letter-spacing:-.025em;
+  background:linear-gradient(150deg,#F5F9FF 30%,#9FB6D4 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+h1 .gold,h1 em.gold{-webkit-text-fill-color:var(--gold)}
 h2{font-size:clamp(24px,3.4vw,34px);font-weight:700;line-height:1.2}
 .kicker{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;letter-spacing:.22em;
   text-transform:uppercase;color:var(--teal-bright);margin-bottom:16px}
@@ -71,7 +74,8 @@ h2{font-size:clamp(24px,3.4vw,34px);font-weight:700;line-height:1.2}
 .hero{display:grid;grid-template-columns:1.05fr .95fr;gap:44px;align-items:center;min-height:66vh}
 .hero-map{position:relative}
 .stats{display:flex;gap:14px;flex-wrap:wrap;margin:34px 0 30px}
-.stat{flex:1 1 150px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px 20px;backdrop-filter:blur(8px)}
+.stat{flex:1 1 150px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px 20px;backdrop-filter:blur(16px);
+  box-shadow:inset 0 1px 0 rgba(180,205,235,.06)}
 .stat b{display:block;font-size:27px;font-weight:800;color:var(--gold);letter-spacing:-.01em}
 .stat span{font-size:12.5px;color:var(--muted);letter-spacing:.04em}
 .cta{display:inline-flex;align-items:center;gap:12px;padding:17px 34px;border-radius:999px;font-size:17px;font-weight:700;
@@ -104,7 +108,9 @@ h2{font-size:clamp(24px,3.4vw,34px);font-weight:700;line-height:1.2}
 .g2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
 .g3{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
 .g4{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
-.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:20px 22px;backdrop-filter:blur(8px);transition:.2s}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:20px 22px;backdrop-filter:blur(16px);transition:.25s;
+  box-shadow:inset 0 1px 0 rgba(180,205,235,.06)}
+.card:hover{box-shadow:inset 0 1px 0 rgba(180,205,235,.06),0 14px 40px rgba(2,8,20,.45)}
 .card h3{font-size:16.5px;font-weight:700;margin-bottom:8px}
 .card .sub{font-size:13px;color:var(--muted);line-height:1.6}
 .pick{cursor:pointer;text-align:start;width:100%}
@@ -219,12 +225,9 @@ footer a{color:var(--ink2)}
 
 <header>
   <div class="logo">
-    <div class="logo-mark">
-      <svg width="24" height="24" viewBox="0 0 64 64"><path d="M20 46 L32 14 L44 46" stroke="#E8C15A" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="32" cy="40" r="5" fill="#39C4AE"/></svg>
-    </div>
     <div>
-      <div class="logo-name"><em>DALEEL</em> <span style="font-weight:400;color:var(--ink2)">دليل</span></div>
-      <div class="logo-sub" data-i18n="tagline">MODON AI Investment Guide</div>
+      <div class="logo-word">Daleel<span class="ar">دليل</span></div>
+      <div class="logo-sub" data-i18n="tagline">AI Investment Guide</div>
     </div>
   </div>
   <div class="spacer"></div>
@@ -281,7 +284,7 @@ const CONFIG = {
 /* ================= I18N ================= */
 const I18N = {
 en: {
-  tagline:"MODON AI Investment Guide", voiceOn:"Voice on", voiceOff:"Voice off", restart:"Restart",
+  tagline:"AI Investment Guide", voiceOn:"Voice on", voiceOff:"Voice off", restart:"Restart",
   chatSub:"Ask me anything about investing with MODON", chatPh:"Type your question…",
   footNote:"DALEEL presents indicative figures from published MODON and national sources. Eligibility snapshots are informational, not legal or financial advice.",
   footBy:"An AI investment experience for MODON",
@@ -322,7 +325,7 @@ en: {
   regions:{sa:"Saudi Arabia",gcc:"GCC",mena:"Wider MENA",africa:"Africa",europe:"Europe",sasia:"South Asia",easia:"East Asia",amer:"Americas"}
 },
 ar: {
-  tagline:"دليل مدن للاستثمار بالذكاء الاصطناعي", voiceOn:"الصوت مفعّل", voiceOff:"الصوت متوقف", restart:"البدء من جديد",
+  tagline:"دليل الاستثمار بالذكاء الاصطناعي", voiceOn:"الصوت مفعّل", voiceOff:"الصوت متوقف", restart:"البدء من جديد",
   chatSub:"اسألني عن أي شيء يخص الاستثمار مع مدن", chatPh:"اكتب سؤالك…",
   footNote:"يعرض «دليل» أرقامًا استرشادية من مصادر مدن والمصادر الوطنية المنشورة. لقطات الأهلية معلوماتية وليست استشارة قانونية أو مالية.",
   footBy:"تجربة استثمارية بالذكاء الاصطناعي لمدن",
@@ -934,7 +937,7 @@ function applyLang(){
   document.querySelectorAll("[data-i18n]").forEach(el=>el.innerHTML=t(el.dataset.i18n));
   document.querySelectorAll("[data-i18n-ph]").forEach(el=>el.placeholder=t(el.dataset.i18nPh));
   $("#voice-state").textContent = state.voice?t("voiceOn"):t("voiceOff");
-  document.title = state.lang==="ar" ? "دليل DALEEL — المرشد الاستثماري الذكي | مدن" : "DALEEL دليل — The AI Investment Guide | MODON";
+  document.title = state.lang==="ar" ? "دليل Daleel — دليل الاستثمار بالذكاء الاصطناعي" : "Daleel دليل — AI Investment Guide";
   if(state.step===0) renderAttract();
   else if(state.step===7) renderReport();
   else renderJourney();
@@ -963,6 +966,42 @@ if(new URLSearchParams(location.search).get("admin")==="1"){
 
 $("#btn-voice").classList.add("active");
 applyLang();
+</script>
+<canvas id="plexus" aria-hidden="true"></canvas>
+<script>
+/* ---- ambient network backdrop (plexus) ---- */
+(function(){
+  const c=document.getElementById("plexus"); if(!c) return;
+  const x=c.getContext("2d"); let W,H,pts=[],raf;
+  const reduced=matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function size(){W=c.width=innerWidth*devicePixelRatio;H=c.height=innerHeight*devicePixelRatio;c.style.width=innerWidth+"px";c.style.height=innerHeight+"px";seed();}
+  function seed(){
+    const n=Math.min(90,Math.floor(innerWidth*innerHeight/16000));
+    pts=Array.from({length:n},()=>({x:Math.random()*W,y:Math.random()*H,
+      vx:(Math.random()-.5)*.12*devicePixelRatio,vy:(Math.random()-.5)*.12*devicePixelRatio,
+      r:(Math.random()*1.4+.6)*devicePixelRatio}));
+  }
+  const LINK=150*devicePixelRatio;
+  function tick(){
+    x.clearRect(0,0,W,H);
+    for(const p of pts){p.x+=p.vx;p.y+=p.vy;
+      if(p.x<0||p.x>W)p.vx*=-1; if(p.y<0||p.y>H)p.vy*=-1;}
+    for(let i=0;i<pts.length;i++){
+      const a=pts[i];
+      for(let j=i+1;j<pts.length;j++){
+        const b=pts[j],dx=a.x-b.x,dy=a.y-b.y,d=Math.hypot(dx,dy);
+        if(d<LINK){const o=(1-d/LINK)*.16;
+          x.strokeStyle=`rgba(96,170,190,${o})`;x.lineWidth=devicePixelRatio*.7;
+          x.beginPath();x.moveTo(a.x,a.y);x.lineTo(b.x,b.y);x.stroke();}
+      }
+      x.fillStyle="rgba(140,200,215,.5)";
+      x.beginPath();x.arc(a.x,a.y,a.r,0,7);x.fill();
+    }
+    if(!reduced) raf=requestAnimationFrame(tick);
+  }
+  addEventListener("resize",()=>{cancelAnimationFrame(raf);size();tick();},{passive:true});
+  size();tick();
+})();
 </script>
 </body>
 </html>

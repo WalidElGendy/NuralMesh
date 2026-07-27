@@ -423,7 +423,7 @@ footer a{color:var(--ink2)}
 /* ================= CONFIG =================
    Fill these when backend pieces are ready — the app works fully without them. */
 const CONFIG = {
-  LLM_ENDPOINT: "",   // e.g. "https://YOURPROJECT.functions.supabase.co/daleel-chat" — enables free-form AI Q&A
+  LLM_ENDPOINT: "https://ounatbpmsmhnvoalfoiz.supabase.co/functions/v1/daleel-chat",   // live AI Q&A once ANTHROPIC_API_KEY is set in Supabase; falls back to built-in rules otherwise
   LEAD_WEBHOOK: "https://ounatbpmsmhnvoalfoiz.supabase.co/functions/v1/daleel-lead",   // Supabase 'daleel' project — leads land in the daleel_leads table
   CONTACT_EMAIL: "invest@modon.gov.sa" // shown as the human handoff
 };
@@ -1281,8 +1281,8 @@ async function botReply(q){
       const res = await fetch(CONFIG.LLM_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},
         body:JSON.stringify({messages:chatHistory.slice(-10), profile:state.profile, lang:state.lang})});
       const j = await res.json(); thinking.remove();
-      addMsg("bot", j.reply || j.message || fmt(t("chatFallback"),{email:CONFIG.CONTACT_EMAIL}));
-      return;
+      if(j.reply || j.message){ addMsg("bot", j.reply || j.message); return; }
+      /* endpoint not configured or empty reply — fall through to rules */
     }catch(e){ thinking.remove(); /* fall through to rules */ }
   }
   const rule = KB_RULES.find(r=>r.k.test(q));

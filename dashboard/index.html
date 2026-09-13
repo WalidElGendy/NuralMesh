@@ -1,422 +1,605 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NeuralMesh Dashboard</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ["Space Grotesk", "sans-serif"],
-                    },
-                    colors: {
-                        mesh: {
-                            bg: "#07070F",
-                            card: "#0E0E18",
-                            elevated: "#141421",
-                            border: "#242436",
-                            muted: "#8E8EA0",
-                            primary: "#7C3AED",
-                        },
-                    },
-                    boxShadow: {
-                        glow: "0 0 80px rgba(124, 58, 237, 0.18)",
-                    },
-                },
-            },
-        };
-    </script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard - Meshnet</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background: radial-gradient(circle at 20% 0%, rgba(139,92,246,.22), transparent 32rem), radial-gradient(circle at 85% 12%, rgba(34,211,238,.13), transparent 28rem), #05050a; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; letter-spacing: -.005em; }
+    .brand .dot { color: #8b5cf6; }
+    .grad-btn { background: linear-gradient(135deg,#8b5cf6,#22d3ee); color: #020617; }
+    .grad-btn:hover { filter: brightness(1.1); }
+    .tab-btn.active { background: rgba(139,92,246,0.18); color: #fff; }
+    .nav-btn.active { background: rgba(139,92,246,0.18); color:#fff; border-color: rgba(139,92,246,0.5); }
+    .dot-online { box-shadow: 0 0 0 3px rgba(16,185,129,.15); }
+    @keyframes pulse-live { 0%,100%{opacity:1;} 50%{opacity:.35;} }
+    .live-dot { animation: pulse-live 1.6s ease-in-out infinite; }
+  </style>
 </head>
-<body class="min-h-screen bg-mesh-bg font-sans text-white antialiased">
-    <div class="pointer-events-none fixed inset-0">
-        <div class="absolute left-1/2 top-[-180px] h-[420px] w-[620px] -translate-x-1/2 rounded-full bg-mesh-primary/20 blur-3xl"></div>
-        <div class="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_32rem)]"></div>
-    </div>
+<body class="min-h-screen text-white">
+  <main class="mx-auto max-w-6xl px-6 py-10">
+    <header class="flex items-center justify-between">
+      <a class="brand inline-flex items-center gap-3" href="https://meshnet.co/" aria-label="MeshNet home"><img src="https://meshnet.co/logo-new.png?v=2" alt="MeshNet" style="height:32px;width:auto;display:block"><span class="text-base font-semibold text-zinc-400">dashboard</span></a>
+      <div class="flex items-center gap-4">
+        <span id="live-status" class="hidden items-center gap-2 text-xs text-zinc-400"><span class="live-dot inline-block h-2 w-2 rounded-full bg-emerald-400"></span><span id="live-text">live</span></span>
+        <button id="logout" class="hidden text-sm text-zinc-400 hover:text-white">Sign out</button>
+      </div>
+    </header>
 
-    <div class="relative mx-auto min-h-screen max-w-7xl px-6 py-6 lg:px-8">
-        <nav class="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4 shadow-glow backdrop-blur-xl">
-            <a href="index.html" class="flex items-center gap-3">
-                <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-mesh-primary text-sm font-bold shadow-lg shadow-purple-950/50">NM</div>
-                <span class="text-lg font-semibold tracking-tight">NeuralMesh</span>
-            </a>
-            <div class="flex items-center gap-1 rounded-full border border-white/10 bg-black/20 p-1 text-sm">
-                <a href="index.html" class="rounded-full bg-mesh-primary px-4 py-2 font-medium text-white shadow-lg shadow-purple-950/40">Dashboard</a>
-                <a href="nodes.html" class="rounded-full px-4 py-2 font-medium text-mesh-muted transition hover:text-white">Nodes</a>
-                <a href="billing.html" class="rounded-full px-4 py-2 font-medium text-mesh-muted transition hover:text-white">Billing</a>
-                <a id="nav-admin" href="https://beta.meshnet.co/admin" class="rounded-full border border-violet-400/30 bg-violet-500/10 px-4 py-2 font-medium text-violet-200 transition hover:bg-violet-500/20 hover:text-white">Admin</a>
+    <!-- ==================== SIGN IN GATE ==================== -->
+    <section id="gate" class="mt-10 rounded-3xl border border-white/10 bg-white/[0.04] p-8 max-w-md mx-auto">
+      <h2 class="text-2xl font-bold tracking-tight">Sign in</h2>
+      <p class="mt-2 text-sm text-zinc-400">Use your Meshnet account. Only allow-listed emails can access the operator dashboard.</p>
+      <label class="mt-6 block text-xs uppercase tracking-wide text-zinc-400">Email</label>
+      <input id="email" type="email" autocomplete="username" placeholder="you@example.com" class="mt-2 w-full rounded-xl bg-black/40 px-4 py-3 outline-none focus:ring-2 focus:ring-violet-500">
+      <label class="mt-4 block text-xs uppercase tracking-wide text-zinc-400">Password</label>
+      <input id="password" type="password" autocomplete="current-password" placeholder="••••••••" class="mt-2 w-full rounded-xl bg-black/40 px-4 py-3 outline-none focus:ring-2 focus:ring-violet-500">
+      <button id="unlock" class="grad-btn mt-6 w-full rounded-xl px-4 py-3 font-bold">Sign in</button>
+      <p id="gate-error" class="mt-3 min-h-5 text-sm text-red-300"></p>
+      <details class="mt-6 text-xs text-zinc-500">
+        <summary class="cursor-pointer hover:text-zinc-300">Use admin API key instead</summary>
+        <input id="api-key" type="password" placeholder="ADMIN_API_KEY" class="mt-2 w-full rounded-xl bg-black/40 px-4 py-2 outline-none focus:ring-2 focus:ring-violet-500">
+        <button id="unlock-key" class="mt-2 w-full rounded-xl bg-zinc-800 hover:bg-zinc-700 px-4 py-2 text-sm">Use key</button>
+      </details>
+    </section>
+
+    <!-- ==================== DASHBOARD PANEL ==================== -->
+    <section id="panel" class="mt-8 hidden">
+      <!-- nav -->
+      <nav class="flex flex-wrap gap-2">
+        <button data-view="overview" class="nav-btn active rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-zinc-300 hover:text-white">Overview</button>
+        <button data-view="nodes" class="nav-btn rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-zinc-300 hover:text-white">Nodes</button>
+        <button data-view="invites" class="nav-btn rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-zinc-300 hover:text-white">Invites</button>
+        <button data-view="waitlist" class="nav-btn rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-zinc-300 hover:text-white">Waitlist</button>
+      </nav>
+
+      <!-- ---------- OVERVIEW ---------- -->
+      <div id="view-overview" class="view mt-6">
+        <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
+          <div class="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
+            <div class="text-xs uppercase tracking-wide text-zinc-400">Users</div>
+            <div id="m-users" class="mt-2 text-3xl font-bold tracking-tight">-</div>
+          </div>
+          <div class="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
+            <div class="text-xs uppercase tracking-wide text-zinc-400">Nodes online</div>
+            <div id="m-nodes-online" class="mt-2 text-3xl font-bold tracking-tight text-emerald-300">-</div>
+            <div id="m-nodes-total" class="text-xs text-zinc-500">of - total</div>
+          </div>
+          <div class="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
+            <div class="text-xs uppercase tracking-wide text-zinc-400">Tokens served</div>
+            <div id="m-tokens" class="mt-2 text-3xl font-bold tracking-tight">-</div>
+            <div id="m-tokens-today" class="text-xs text-zinc-500">- today</div>
+          </div>
+          <div class="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
+            <div class="text-xs uppercase tracking-wide text-zinc-400">Invites claimed</div>
+            <div id="m-invites-claimed" class="mt-2 text-3xl font-bold tracking-tight">-</div>
+            <div id="m-invites-total" class="text-xs text-zinc-500">of - issued</div>
+          </div>
+        </div>
+
+        <!-- network health -->
+        <div class="mt-6 grid gap-4 lg:grid-cols-3">
+          <div class="rounded-3xl border border-white/10 bg-white/[0.04] p-6 lg:col-span-2">
+            <div class="flex items-center justify-between">
+              <h2 class="text-lg font-semibold tracking-tight">Network health</h2>
+              <span class="text-xs text-zinc-500">live from the mesh</span>
             </div>
-        </nav>
+            <div class="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <div><div class="text-xs uppercase tracking-wide text-zinc-400">Registered</div><div id="net-registered" class="mt-1 text-2xl font-bold">-</div></div>
+              <div><div class="text-xs uppercase tracking-wide text-zinc-400">Capacity</div><div id="net-capacity" class="mt-1 text-2xl font-bold">-</div><div class="text-xs text-zinc-500">concurrent slots</div></div>
+              <div><div class="text-xs uppercase tracking-wide text-zinc-400">Latency p50</div><div id="net-latency" class="mt-1 text-2xl font-bold">-</div></div>
+              <div><div class="text-xs uppercase tracking-wide text-zinc-400">Tokens today</div><div id="net-tokens-today" class="mt-1 text-2xl font-bold">-</div></div>
+            </div>
+            <div class="mt-6">
+              <div class="flex items-center justify-between text-xs text-zinc-400"><span>Sovereignty — share served on the mesh vs. fallback</span><span id="sov-share-label">-</span></div>
+              <div class="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-white/10">
+                <div id="sov-bar" class="h-full rounded-full" style="width:0%;background:linear-gradient(90deg,#8b5cf6,#22d3ee)"></div>
+              </div>
+              <div class="mt-2 grid grid-cols-3 gap-2 text-xs text-zinc-500">
+                <span>Mesh turns: <span id="sov-turns" class="text-zinc-300">-</span></span>
+                <span>Provider credits: <span id="sov-credits" class="text-zinc-300">-</span></span>
+                <span>Fallback cost: <span id="sov-cost" class="text-zinc-300">-</span></span>
+              </div>
+            </div>
+          </div>
 
-        <header class="mt-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div class="rounded-3xl border border-white/10 bg-white/[0.04] p-6">
+            <h2 class="text-lg font-semibold tracking-tight">Routing</h2>
+            <div class="mt-4 space-y-3 text-sm">
+              <div class="flex items-center justify-between">
+                <span class="text-zinc-400">Fallback</span>
+                <span id="fb-active" class="rounded-md px-2 py-0.5 text-xs font-semibold">-</span>
+              </div>
+              <div class="flex items-center justify-between"><span class="text-zinc-400">Mesh model</span><span id="fb-mesh-model" class="text-zinc-200 text-right">-</span></div>
+              <div class="flex items-center justify-between"><span class="text-zinc-400">Fallback model</span><span id="fb-model" class="text-zinc-200 text-right">-</span></div>
+              <div class="flex items-center justify-between"><span class="text-zinc-400">Fallback provider</span><span id="fb-provider" class="text-zinc-200 text-right">-</span></div>
+              <div class="flex items-center justify-between"><span class="text-zinc-400">Top fallback reason</span><span id="fb-reason" class="text-zinc-200 text-right">-</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ---------- NODES ---------- -->
+      <div id="view-nodes" class="view mt-6 hidden">
+        <div class="rounded-3xl border border-white/10 bg-white/[0.04] p-6">
+          <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
-                <p class="text-sm font-medium uppercase tracking-[0.24em] text-purple-300">Production overview</p>
-                <h1 class="mt-3 text-4xl font-semibold tracking-[-0.04em] text-white md:text-5xl">Inference dashboard</h1>
+              <h2 class="text-lg font-semibold tracking-tight">Mesh nodes</h2>
+              <p class="mt-1 text-sm text-zinc-400"><span id="nodes-online-inline" class="text-emerald-300 font-semibold">-</span> online of <span id="nodes-total-inline">-</span> registered · auto-refreshing</p>
             </div>
-            <p class="max-w-xl text-sm leading-6 text-mesh-muted">Monitor API usage, latency, and recent model calls across your distributed NeuralMesh nodes.</p>
-        </header>
+            <button id="nodes-refresh" class="text-sm text-zinc-400 hover:text-white">Refresh</button>
+          </div>
+          <div class="mt-4 overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="text-left text-zinc-400"><tr>
+                <th class="py-2 pr-4">Node</th>
+                <th class="py-2 pr-4">Status</th>
+                <th class="py-2 pr-4">GPU</th>
+                <th class="py-2 pr-4">Latency p50</th>
+                <th class="py-2 pr-4">Latency p95</th>
+                <th class="py-2 pr-4">Success rate</th>
+                <th class="py-2 pr-4">Tokens today</th>
+              </tr></thead>
+              <tbody id="node-rows"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
 
-        <main class="mt-8 space-y-6">
-            <section class="grid gap-4 lg:grid-cols-[1.35fr_1fr_1fr_1fr]">
-                <article class="rounded-3xl border border-white/10 bg-mesh-card p-6 shadow-2xl shadow-black/30">
-                    <div class="flex items-center justify-between">
-                        <p class="text-sm font-medium text-mesh-muted">API Key</p>
-                        <span class="rounded-full border border-purple-400/20 bg-purple-400/10 px-3 py-1 text-xs font-medium text-purple-200">Live</span>
-                    </div>
-                    <div class="mt-5 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/30 px-4 py-3">
-                        <code id="api-key" class="truncate text-sm text-slate-200">Loading key...</code>
-                        <button id="copy-key" class="rounded-full border border-mesh-primary px-4 py-2 text-sm font-semibold text-purple-200 transition hover:bg-mesh-primary hover:text-white">Copy</button>
-                    </div>
-                </article>
+      <!-- ---------- INVITES ---------- -->
+      <div id="view-invites" class="view mt-6 hidden">
+        <div class="rounded-3xl border border-white/10 bg-white/[0.04] p-6">
+          <h2 class="text-lg font-semibold tracking-tight">Generate invitation codes</h2>
+          <p class="mt-1 text-sm text-zinc-400">Each code can be claimed once. Choose which platform it unlocks.</p>
+          <div class="mt-4 flex flex-wrap items-end gap-3">
+            <div class="flex-1 min-w-[190px]">
+              <label class="block text-xs uppercase tracking-wide text-zinc-400">Platform</label>
+              <select id="gen-intent" class="mt-2 w-full rounded-xl bg-black/40 px-4 py-2 outline-none focus:ring-2 focus:ring-violet-500">
+                <option value="user">MeshNet — AI user (NMESH-)</option>
+                <option value="provider">MeshNet — GPU provider (NMPRO-)</option>
+                <option value="ef">EFund — Environment Fund (EF-)</option>
+              </select>
+            </div>
+            <div class="w-28">
+              <label class="block text-xs uppercase tracking-wide text-zinc-400">How many</label>
+              <input id="gen-count" type="number" min="1" max="50" value="5" class="mt-2 w-full rounded-xl bg-black/40 px-4 py-2">
+            </div>
+            <div class="flex-1 min-w-[220px]">
+              <label class="block text-xs uppercase tracking-wide text-zinc-400">Issue to email (optional)</label>
+              <input id="gen-email" type="email" placeholder="name@ef.gov.sa" class="mt-2 w-full rounded-xl bg-black/40 px-4 py-2 outline-none focus:ring-2 focus:ring-violet-500">
+            </div>
+            <div class="flex-1 min-w-[200px]">
+              <label class="block text-xs uppercase tracking-wide text-zinc-400">Notes (optional)</label>
+              <input id="gen-notes" type="text" placeholder="Board members" class="mt-2 w-full rounded-xl bg-black/40 px-4 py-2">
+            </div>
+            <button id="gen" class="grad-btn rounded-xl px-5 py-2 font-bold">Generate</button>
+          </div>
+          <p id="gen-hint" class="mt-3 hidden text-xs text-amber-300"></p>
+          <div id="gen-result" class="mt-4 hidden">
+            <div class="flex items-center justify-between">
+              <span class="text-sm text-zinc-400" id="gen-summary"></span>
+              <button id="gen-copy" class="text-xs text-violet-300 hover:text-violet-200">Copy all</button>
+            </div>
+            <pre id="gen-output" class="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-xl bg-black/50 p-4 text-sm text-emerald-300 font-mono"></pre>
+          </div>
+        </div>
 
-                <article class="rounded-3xl border border-white/10 bg-mesh-card p-6">
-                    <p class="text-sm font-medium text-mesh-muted">Usage Today</p>
-                    <p class="mt-5 text-3xl font-semibold tracking-[-0.04em]"><span id="usage-today">Loading</span> <span class="text-lg text-slate-400">requests</span></p>
-                    <p id="usage-limit" class="mt-3 text-sm font-medium text-emerald-400">Checking plan limit...</p>
-                </article>
+        <div class="mt-6 rounded-3xl border border-white/10 bg-white/[0.04] p-6">
+          <div class="flex items-center justify-between">
+            <h2 class="text-lg font-semibold tracking-tight">Recent invites</h2>
+            <button id="refresh" class="text-sm text-zinc-400 hover:text-white">Refresh</button>
+          </div>
+          <div class="mt-4 overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="text-left text-zinc-400"><tr><th class="py-2 pr-4">Code</th><th class="py-2 pr-4">Platform</th><th class="py-2 pr-4">Issued to</th><th class="py-2 pr-4">Status</th><th class="py-2 pr-4">Claimed at</th><th class="py-2 pr-4">Notes</th></tr></thead>
+              <tbody id="invite-rows"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
 
-                <article class="rounded-3xl border border-white/10 bg-mesh-card p-6">
-                    <p class="text-sm font-medium text-mesh-muted">Avg Response Time</p>
-                    <p class="mt-5 text-3xl font-semibold tracking-[-0.04em]">312ms</p>
-                    <p class="mt-3 text-sm text-slate-500">p95 across all models</p>
-                </article>
+      <!-- ---------- WAITLIST ---------- -->
+      <div id="view-waitlist" class="view mt-6 hidden">
+        <div class="rounded-3xl border border-white/10 bg-white/[0.04] p-6">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 class="text-lg font-semibold tracking-tight">Waitlist registrations</h2>
+              <p class="mt-1 text-sm text-zinc-400">Submissions from <code class="text-violet-300">meshnet.co</code> &amp; the beta site.</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="flex rounded-xl bg-black/40 p-1 text-sm">
+                <button data-tab="users" class="tab-btn active rounded-lg px-3 py-1.5 text-zinc-300">
+                  AI Users <span id="wl-users-count" class="ml-1 rounded-md bg-white/10 px-1.5 py-0.5 text-xs text-zinc-300">0</span>
+                </button>
+                <button data-tab="providers" class="tab-btn rounded-lg px-3 py-1.5 text-zinc-300">
+                  Providers <span id="wl-providers-count" class="ml-1 rounded-md bg-white/10 px-1.5 py-0.5 text-xs text-zinc-300">0</span>
+                </button>
+              </div>
+              <input id="wl-search" type="text" placeholder="Filter by name / email / company…" class="w-56 rounded-xl bg-black/40 px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-violet-500">
+              <button id="wl-export" class="rounded-xl bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 text-sm">Export CSV</button>
+              <button id="wl-refresh" class="text-sm text-zinc-400 hover:text-white">Refresh</button>
+            </div>
+          </div>
 
-                <article class="rounded-3xl border border-white/10 bg-mesh-card p-6">
-                    <p class="text-sm font-medium text-mesh-muted">Active Nodes</p>
-                    <p class="mt-5 text-3xl font-semibold tracking-[-0.04em]">3 nodes</p>
-                    <p class="mt-3 text-sm text-slate-500">GPU workers online</p>
-                </article>
-            </section>
+          <div id="wl-users-wrap" class="mt-4 overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="text-left text-zinc-400">
+                <tr>
+                  <th class="py-2 pr-4">When</th>
+                  <th class="py-2 pr-4">Full name</th>
+                  <th class="py-2 pr-4">Email</th>
+                  <th class="py-2 pr-4">Company</th>
+                  <th class="py-2 pr-4">Primary use case</th>
+                  <th class="py-2 pr-4">Monthly budget</th>
+                  <th class="py-2 pr-4">Source</th>
+                </tr>
+              </thead>
+              <tbody id="wl-users-rows"></tbody>
+            </table>
+          </div>
 
-            <section class="overflow-hidden rounded-3xl border border-white/10 bg-mesh-card shadow-2xl shadow-black/30">
-                <div class="flex items-center justify-between border-b border-white/10 px-6 py-5">
-                    <div>
-                        <h2 class="text-xl font-semibold tracking-[-0.03em]">Recent API Calls</h2>
-                        <p class="mt-1 text-sm text-mesh-muted">Latest requests routed through NeuralMesh.</p>
-                    </div>
-                    <span id="recent-updated" class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-slate-400">Updated just now</span>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full min-w-[720px] text-left text-sm">
-                        <thead class="border-b border-white/10 text-xs uppercase tracking-[0.18em] text-slate-500">
-                            <tr>
-                                <th class="px-6 py-4 font-medium">Model</th>
-                                <th class="px-6 py-4 font-medium">Tokens</th>
-                                <th class="px-6 py-4 font-medium">Timestamp</th>
-                                <th class="px-6 py-4 font-medium">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="recent-calls" class="divide-y divide-white/10">
-                            <tr class="transition hover:bg-white/[0.025]">
-                                <td class="px-6 py-5 font-medium text-white">llama3</td>
-                                <td class="px-6 py-5 text-slate-300">1,842</td>
-                                <td class="px-6 py-5 text-slate-400">Apr 27, 21:45 UTC</td>
-                                <td class="px-6 py-5"><span class="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-300">success</span></td>
-                            </tr>
-                            <tr class="transition hover:bg-white/[0.025]">
-                                <td class="px-6 py-5 font-medium text-white">mistral-7b</td>
-                                <td class="px-6 py-5 text-slate-300">932</td>
-                                <td class="px-6 py-5 text-slate-400">Apr 27, 21:42 UTC</td>
-                                <td class="px-6 py-5"><span class="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-300">success</span></td>
-                            </tr>
-                            <tr class="transition hover:bg-white/[0.025]">
-                                <td class="px-6 py-5 font-medium text-white">llama3</td>
-                                <td class="px-6 py-5 text-slate-300">2,417</td>
-                                <td class="px-6 py-5 text-slate-400">Apr 27, 21:38 UTC</td>
-                                <td class="px-6 py-5"><span class="rounded-full border border-red-400/20 bg-red-400/10 px-3 py-1 text-xs font-medium text-red-300">error</span></td>
-                            </tr>
-                            <tr class="transition hover:bg-white/[0.025]">
-                                <td class="px-6 py-5 font-medium text-white">mistral-7b</td>
-                                <td class="px-6 py-5 text-slate-300">684</td>
-                                <td class="px-6 py-5 text-slate-400">Apr 27, 21:34 UTC</td>
-                                <td class="px-6 py-5"><span class="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-300">success</span></td>
-                            </tr>
-                            <tr class="transition hover:bg-white/[0.025]">
-                                <td class="px-6 py-5 font-medium text-white">llama3</td>
-                                <td class="px-6 py-5 text-slate-300">1,206</td>
-                                <td class="px-6 py-5 text-slate-400">Apr 27, 21:29 UTC</td>
-                                <td class="px-6 py-5"><span class="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-300">success</span></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </section>
+          <div id="wl-providers-wrap" class="mt-4 hidden overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="text-left text-zinc-400">
+                <tr>
+                  <th class="py-2 pr-4">When</th>
+                  <th class="py-2 pr-4">Full name</th>
+                  <th class="py-2 pr-4">Email</th>
+                  <th class="py-2 pr-4">GPU model</th>
+                  <th class="py-2 pr-4">#GPUs</th>
+                  <th class="py-2 pr-4">Hours / day</th>
+                  <th class="py-2 pr-4">Region</th>
+                  <th class="py-2 pr-4">Earnings goal</th>
+                  <th class="py-2 pr-4">Source</th>
+                </tr>
+              </thead>
+              <tbody id="wl-providers-rows"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
 
-            <section class="rounded-3xl border border-white/10 bg-mesh-card p-6 shadow-2xl shadow-black/30">
-                <div class="flex flex-col gap-3 border-b border-white/10 pb-6 md:flex-row md:items-start md:justify-between">
-                    <div>
-                        <p class="text-sm font-medium uppercase tracking-[0.24em] text-purple-300">Live playground</p>
-                        <h2 class="mt-3 text-2xl font-semibold tracking-[-0.03em]">Try the API</h2>
-                        <p class="mt-2 max-w-2xl text-sm leading-6 text-mesh-muted">Submit a prompt to FastAPI, watch the job move through Supabase, and read the Ollama output when your worker completes it.</p>
-                    </div>
-                    <span id="backend-status" class="w-fit rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs font-medium text-slate-400">Connecting</span>
-                </div>
+  <script>
+    // Cross-origin API base. dashboard.meshnet.co must be in the backend
+    // ALLOWED_ORIGINS env var for these calls to succeed (CORS).
+    const API_BASE = "https://api.beta.meshnet.co";
 
-                <div class="mt-6 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-                    <form id="try-api-form" class="space-y-4">
-                        <label for="api-prompt" class="block text-sm font-medium text-slate-300">Prompt</label>
-                        <textarea id="api-prompt" name="prompt" rows="7" required class="w-full resize-none rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm leading-6 text-white outline-none transition placeholder:text-slate-600 focus:border-mesh-primary focus:ring-4 focus:ring-mesh-primary/10" placeholder="Ask the AI something..."></textarea>
-                        <button id="run-inference" type="submit" class="flex w-full items-center justify-center gap-3 rounded-2xl bg-mesh-primary px-5 py-3 text-sm font-semibold text-white shadow-xl shadow-purple-950/30 transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-60">
-                            <span id="run-spinner" class="hidden h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"></span>
-                            <span id="run-label">Run Inference</span>
-                        </button>
-                    </form>
+    const $ = id => document.getElementById(id);
+    const TOK_KEY = "nm_admin_token";
+    const TOK_KIND = "nm_admin_token_kind";
 
-                    <article class="rounded-2xl border border-white/10 bg-black/30 p-5">
-                        <div class="flex items-start justify-between gap-4">
-                            <div>
-                                <p class="text-xs uppercase tracking-[0.18em] text-slate-500">Result</p>
-                                <p id="result-job-id" class="mt-2 truncate font-mono text-xs text-slate-500">No job submitted yet</p>
-                            </div>
-                            <span id="result-status" class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs font-medium text-slate-400">Idle</span>
-                        </div>
-                        <pre id="result-output" class="mt-5 min-h-44 whitespace-pre-wrap rounded-2xl border border-white/10 bg-mesh-bg/80 p-4 text-sm leading-6 text-slate-300">Run an inference job to see the model output here.</pre>
-                    </article>
-                </div>
-            </section>
-        </main>
-    </div>
-    <script>
-        const API_BASE_URL = "http://localhost:8000";
-        const API_KEY = "nm_live_sk_3f9a8b2c1d4e5f6a7b8c9d0e1f2a3b4c";
-        const POLL_INTERVAL_MS = 2000;
-        let activePoll = null;
+    function getCreds() {
+      const tok = sessionStorage.getItem(TOK_KEY);
+      const kind = sessionStorage.getItem(TOK_KIND);
+      return tok ? { tok, kind } : null;
+    }
+    function setCreds(tok, kind) { sessionStorage.setItem(TOK_KEY, tok); sessionStorage.setItem(TOK_KIND, kind); }
+    function clearCreds() { sessionStorage.removeItem(TOK_KEY); sessionStorage.removeItem(TOK_KIND); }
 
-        const tryApiForm = document.getElementById("try-api-form");
-        const promptInput = document.getElementById("api-prompt");
-        const runButton = document.getElementById("run-inference");
-        const runSpinner = document.getElementById("run-spinner");
-        const runLabel = document.getElementById("run-label");
-        const backendStatus = document.getElementById("backend-status");
-        const resultJobId = document.getElementById("result-job-id");
-        const resultStatus = document.getElementById("result-status");
-        const resultOutput = document.getElementById("result-output");
-        const recentCalls = document.getElementById("recent-calls");
-        const recentUpdated = document.getElementById("recent-updated");
-        const copyKeyButton = document.getElementById("copy-key");
-        const apiKeyEl = document.getElementById("api-key");
-        const usageToday = document.getElementById("usage-today");
-        const usageLimit = document.getElementById("usage-limit");
+    async function api(path, opts = {}) {
+      const creds = getCreds();
+      const headers = Object.assign({ "Content-Type": "application/json" }, opts.headers || {});
+      if (creds) {
+        if (creds.kind === "key") headers["X-Admin-Key"] = creds.tok;
+        else headers["Authorization"] = "Bearer " + creds.tok;
+      }
+      const response = await fetch(API_BASE + path, Object.assign({}, opts, { headers }));
+      if (response.status === 401 || response.status === 403) { clearCreds(); showGate("Session expired. Sign in again."); throw new Error("auth"); }
+      if (response.status === 503) { showGate("Admin API not configured on server."); throw new Error("server"); }
+      return response.json();
+    }
+    // public endpoint (no auth) — same base
+    async function pub(path) {
+      const r = await fetch(API_BASE + path);
+      return r.json();
+    }
 
-        function authHeaders(extraHeaders = {}) {
-            return {
-                ...extraHeaders,
-                "X-API-Key": API_KEY,
-            };
+    function showGate(err) {
+      $("gate").classList.remove("hidden");
+      $("panel").classList.add("hidden");
+      $("logout").classList.add("hidden");
+      $("live-status").classList.add("hidden");
+      $("gate-error").textContent = err || "";
+      stopAuto();
+    }
+    function showPanel() {
+      $("gate").classList.add("hidden");
+      $("panel").classList.remove("hidden");
+      $("logout").classList.remove("hidden");
+      $("live-status").classList.remove("hidden");
+      refreshAll();
+      startAuto();
+    }
+
+    function escapeHtml(s) {
+      return String(s == null ? "" : s)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    }
+    const fmt = n => (n == null ? "-" : Number(n).toLocaleString());
+    const ms  = n => (n == null ? "—" : Math.round(n) + " ms");
+    const pct = n => (n == null ? "—" : (Number(n) * 100).toFixed(1) + "%");
+    const usd = n => (n == null ? "—" : "$" + Number(n).toFixed(4));
+
+    // ---------- Overview: admin stats + mesh status ----------
+    async function loadStats() {
+      const data = await api("/api/admin/stats");
+      $("m-users").textContent = fmt(data.users_total ?? 0);
+      $("m-nodes-online").textContent = fmt(data.nodes_online ?? 0);
+      $("m-nodes-total").textContent = "of " + (data.nodes_total ?? 0) + " total";
+      $("m-invites-claimed").textContent = fmt(data.invites_claimed ?? 0);
+      $("m-invites-total").textContent = "of " + (data.invites_total ?? 0) + " issued";
+      $("m-tokens").textContent = fmt(data.tokens_served_total ?? 0);
+    }
+
+    async function loadMesh() {
+      let d;
+      try { d = await pub("/api/mesh/status"); } catch (e) { return; }
+      // KPI supplements
+      if ($("m-tokens-today")) $("m-tokens-today").textContent = fmt(d.tokens_today ?? 0) + " today";
+      // network health
+      $("net-registered").textContent = fmt(d.registered ?? 0);
+      $("net-capacity").textContent = fmt(d.capacity ?? 0);
+      $("net-latency").textContent = ms(d.latency_p50_ms);
+      $("net-tokens-today").textContent = fmt(d.tokens_today ?? 0);
+      // sovereignty
+      const sov = d.sovereignty || {};
+      const share = Number(sov.mesh_share ?? 0);
+      const pctShare = (share <= 1 ? share * 100 : share);
+      $("sov-bar").style.width = Math.max(0, Math.min(100, pctShare)).toFixed(1) + "%";
+      $("sov-share-label").textContent = pctShare.toFixed(1) + "% on mesh";
+      $("sov-turns").textContent = fmt(sov.mesh_turns ?? 0);
+      $("sov-credits").textContent = fmt(sov.provider_credits ?? 0);
+      $("sov-cost").textContent = usd(sov.fallback_cost_usd);
+      // routing
+      const fb = d.fallback || {};
+      const active = !!fb.active;
+      const badge = $("fb-active");
+      badge.textContent = active ? "ACTIVE" : "standby";
+      badge.className = "rounded-md px-2 py-0.5 text-xs font-semibold " + (active ? "bg-amber-500/20 text-amber-300" : "bg-emerald-500/20 text-emerald-300");
+      $("fb-mesh-model").textContent = fb.mesh_model || "—";
+      $("fb-model").textContent = fb.model || "—";
+      $("fb-provider").textContent = fb.provider || "—";
+      $("fb-reason").textContent = (sov.top_fallback_reason || (d.fallback_reasons && d.fallback_reasons[0] && d.fallback_reasons[0].reason)) || "—";
+      // nodes view (shares the same payload)
+      renderNodes(d);
+    }
+
+    // ---------- Nodes ----------
+    function shortId(id) {
+      if (!id) return "—";
+      return id.length > 16 ? id.slice(0, 10) + "…" + id.slice(-4) : id;
+    }
+    function statusBadge(s) {
+      const map = { online: "bg-emerald-500/20 text-emerald-300", offline: "bg-zinc-600/30 text-zinc-400", degraded: "bg-amber-500/20 text-amber-300" };
+      const cls = map[s] || "bg-zinc-600/30 text-zinc-400";
+      const dot = s === "online" ? '<span class="dot-online inline-block h-2 w-2 rounded-full bg-emerald-400 mr-1.5 align-middle"></span>' : "";
+      return `<span class="rounded-md px-2 py-0.5 text-xs font-semibold ${cls}">${dot}${escapeHtml(s || "unknown")}</span>`;
+    }
+    function renderNodes(d) {
+      $("nodes-online-inline").textContent = fmt(d.online ?? 0);
+      $("nodes-total-inline").textContent = fmt(d.registered ?? 0);
+      const providers = d.providers || [];
+      $("node-rows").innerHTML = providers.length ? providers.map(p => {
+        const gpu = p.gpu && (p.gpu.model || p.gpu) ? escapeHtml(p.gpu.model || p.gpu) : `<span class="text-zinc-600">—</span>`;
+        return `<tr class="border-t border-white/5">
+          <td class="py-2 pr-4 font-mono text-zinc-300" title="${escapeHtml(p.node_id||'')}">${escapeHtml(shortId(p.node_id))}</td>
+          <td class="py-2 pr-4">${statusBadge(p.status)}</td>
+          <td class="py-2 pr-4 text-zinc-300">${gpu}</td>
+          <td class="py-2 pr-4 text-zinc-300">${ms(p.latency_p50_ms)}</td>
+          <td class="py-2 pr-4 text-zinc-300">${ms(p.latency_p95_ms)}</td>
+          <td class="py-2 pr-4 text-zinc-300">${pct(p.success_rate)}</td>
+          <td class="py-2 pr-4 text-zinc-300">${fmt(p.tokens_today ?? 0)}</td>
+        </tr>`;
+      }).join("") : `<tr><td colspan="7" class="py-4 text-zinc-500">No nodes registered yet.</td></tr>`;
+    }
+
+    // ---------- Invites ----------
+    const PLATFORM_LABEL = { user: "MeshNet user", provider: "GPU provider", ef: "EFund" };
+    const PLATFORM_TARGET = { user: "beta.meshnet.co", provider: "beta.meshnet.co/host", ef: "ef.meshnet.co" };
+
+    async function loadInvites() {
+      const data = await api("/api/admin/invites");
+      const rows = (data.invites || []).map(row => {
+        const status = row.revoked ? "revoked" : row.claimed_by_user_id ? "claimed" : "open";
+        const color = status === "claimed" ? "text-emerald-300" : status === "revoked" ? "text-red-300" : "text-zinc-300";
+        const claimedAt = row.claimed_at ? new Date(row.claimed_at).toLocaleString() : "-";
+        const platform = PLATFORM_LABEL[row.intent] || "—";
+        const platformColor = row.intent === "ef" ? "text-emerald-300" : row.intent === "provider" ? "text-sky-300" : "text-zinc-300";
+        const issuedTo = row.email ? escapeHtml(row.email) : `<span class="text-zinc-600">anyone</span>`;
+        return `<tr class="border-t border-white/5"><td class="py-2 pr-4 font-mono">${escapeHtml(row.code)}</td><td class="py-2 pr-4 ${platformColor}">${platform}</td><td class="py-2 pr-4 text-zinc-400">${issuedTo}</td><td class="py-2 pr-4 ${color}">${status}</td><td class="py-2 pr-4 text-zinc-400">${claimedAt}</td><td class="py-2 pr-4 text-zinc-400">${escapeHtml(row.notes || "")}</td></tr>`;
+      }).join("");
+      $("invite-rows").innerHTML = rows || `<tr><td colspan="6" class="py-4 text-zinc-500">No invites yet.</td></tr>`;
+    }
+
+    async function doGenerate() {
+      const intent = $("gen-intent").value;
+      const email = $("gen-email").value.trim().toLowerCase();
+      const notes = $("gen-notes").value.trim();
+      const count = email ? 1 : Math.max(1, Math.min(50, parseInt($("gen-count").value || "1", 10)));
+      $("gen").disabled = true;
+      const original = $("gen").textContent;
+      $("gen").textContent = "Generating…";
+      try {
+        const response = await api("/api/admin/invites", { method: "POST", body: JSON.stringify({ count, notes, intent, email: email || null }) });
+        const codes = response.codes || [];
+        $("gen-result").classList.remove("hidden");
+        const where = PLATFORM_TARGET[intent] || "";
+        $("gen-summary").textContent = codes.length + " " + (PLATFORM_LABEL[intent] || "") + " code" + (codes.length === 1 ? "" : "s")
+          + (email ? " for " + email : "") + " — redeem at " + where;
+        $("gen-output").textContent = codes.join("\n");
+        await loadInvites();
+      } catch (e) {
+        if (e.message !== "auth") alert("Couldn't generate codes: " + e.message);
+      } finally {
+        $("gen").disabled = false;
+        $("gen").textContent = original;
+      }
+    }
+
+    // ---------- Waitlist ----------
+    let WL = { users: [], providers: [], tab: "users", filter: "" };
+
+    function renderWaitlist() {
+      const q = WL.filter.trim().toLowerCase();
+      const matches = (row, fields) => !q || fields.some(f => String(row[f] || "").toLowerCase().includes(q));
+
+      const users = WL.users.filter(r => matches(r, ["full_name","email","company","primary_use_case","monthly_budget"]));
+      const providers = WL.providers.filter(r => matches(r, ["full_name","email","gpu_model","region","available_hours_per_day","expected_monthly_earnings_goal"]));
+
+      $("wl-users-count").textContent = WL.users.length;
+      $("wl-providers-count").textContent = WL.providers.length;
+
+      $("wl-users-rows").innerHTML = users.length ? users.map(r => {
+        const when = r.created_at ? new Date(r.created_at).toLocaleString() : "-";
+        return `<tr class="border-t border-white/5">
+          <td class="py-2 pr-4 text-zinc-400 whitespace-nowrap">${when}</td>
+          <td class="py-2 pr-4">${escapeHtml(r.full_name || "-")}</td>
+          <td class="py-2 pr-4"><a class="text-violet-300 hover:underline" href="mailto:${escapeHtml(r.email || "")}">${escapeHtml(r.email || "-")}</a></td>
+          <td class="py-2 pr-4 text-zinc-300">${escapeHtml(r.company || "-")}</td>
+          <td class="py-2 pr-4 text-zinc-300">${escapeHtml(r.primary_use_case || "-")}</td>
+          <td class="py-2 pr-4 text-zinc-300">${escapeHtml(r.monthly_budget || "-")}</td>
+          <td class="py-2 pr-4 text-zinc-500">${escapeHtml(r.source || "-")}</td>
+        </tr>`;
+      }).join("") : `<tr><td colspan="7" class="py-4 text-zinc-500">No AI user signups yet.</td></tr>`;
+
+      $("wl-providers-rows").innerHTML = providers.length ? providers.map(r => {
+        const when = r.created_at ? new Date(r.created_at).toLocaleString() : "-";
+        return `<tr class="border-t border-white/5">
+          <td class="py-2 pr-4 text-zinc-400 whitespace-nowrap">${when}</td>
+          <td class="py-2 pr-4">${escapeHtml(r.full_name || "-")}</td>
+          <td class="py-2 pr-4"><a class="text-violet-300 hover:underline" href="mailto:${escapeHtml(r.email || "")}">${escapeHtml(r.email || "-")}</a></td>
+          <td class="py-2 pr-4 text-zinc-300">${escapeHtml(r.gpu_model || "-")}</td>
+          <td class="py-2 pr-4 text-zinc-300">${r.number_of_gpus ?? "-"}</td>
+          <td class="py-2 pr-4 text-zinc-300">${escapeHtml(r.available_hours_per_day || "-")}</td>
+          <td class="py-2 pr-4 text-zinc-300">${escapeHtml(r.region || "-")}</td>
+          <td class="py-2 pr-4 text-zinc-300">${escapeHtml(r.expected_monthly_earnings_goal || "-")}</td>
+          <td class="py-2 pr-4 text-zinc-500">${escapeHtml(r.source || "-")}</td>
+        </tr>`;
+      }).join("") : `<tr><td colspan="9" class="py-4 text-zinc-500">No provider signups yet.</td></tr>`;
+    }
+
+    function setWaitlistTab(tab) {
+      WL.tab = tab;
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+      $("wl-users-wrap").classList.toggle("hidden", tab !== "users");
+      $("wl-providers-wrap").classList.toggle("hidden", tab !== "providers");
+    }
+
+    async function loadWaitlist() {
+      try {
+        const data = await api("/api/admin/waitlist");
+        WL.users = data.users || [];
+        WL.providers = data.providers || [];
+        renderWaitlist();
+      } catch (e) {
+        if (e.message !== "auth") console.error("waitlist load failed", e);
+      }
+    }
+
+    function exportCsv() {
+      const rows = WL.tab === "users" ? WL.users : WL.providers;
+      if (!rows.length) { alert("Nothing to export yet."); return; }
+      const headers = Object.keys(rows[0]);
+      const esc = v => {
+        if (v == null) return "";
+        const s = typeof v === "object" ? JSON.stringify(v) : String(v);
+        return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+      };
+      const csv = [headers.join(",")].concat(rows.map(r => headers.map(h => esc(r[h])).join(","))).join("\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "waitlist_" + WL.tab + "_" + new Date().toISOString().slice(0,10) + ".csv";
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    // ---------- refresh orchestration ----------
+    async function refreshAll() {
+      try { await Promise.all([loadStats(), loadMesh(), loadInvites(), loadWaitlist()]); } catch(_) {}
+    }
+    let autoTimer = null;
+    function startAuto() { stopAuto(); autoTimer = setInterval(() => { loadStats().catch(()=>{}); loadMesh().catch(()=>{}); }, 30000); }
+    function stopAuto() { if (autoTimer) { clearInterval(autoTimer); autoTimer = null; } }
+
+    // ---------- nav ----------
+    function setView(view) {
+      document.querySelectorAll(".nav-btn").forEach(b => b.classList.toggle("active", b.dataset.view === view));
+      document.querySelectorAll(".view").forEach(v => v.classList.add("hidden"));
+      const el = $("view-" + view);
+      if (el) el.classList.remove("hidden");
+      try { location.hash = view; } catch(_) {}
+    }
+
+    // ---------- auth ----------
+    async function doPasswordLogin() {
+      const email = $("email").value.trim();
+      const password = $("password").value;
+      if (!email || !password) { $("gate-error").textContent = "Email and password are required."; return; }
+      $("gate-error").textContent = "";
+      $("unlock").disabled = true;
+      $("unlock").textContent = "Signing in…";
+      try {
+        const r = await fetch(API_BASE + "/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) });
+        const d = await r.json().catch(()=>({}));
+        if (!r.ok) {
+          const map = { invalid_credentials: "Wrong email or password.", email_not_confirmed: "Email not yet confirmed.", invalid_email: "That doesn't look like a valid email.", auth_provider_error: "Auth provider error — try again." };
+          $("gate-error").textContent = map[d.detail] || ("Login failed: " + (d.detail || ("HTTP " + r.status)));
+          return;
         }
+        setCreds(d.access_token, "jwt");
+        try { await loadStats(); } catch (_) { return; }
+        showPanel();
+      } catch (e) {
+        $("gate-error").textContent = "Network error: " + e.message;
+      } finally {
+        $("unlock").disabled = false;
+        $("unlock").textContent = "Sign in";
+      }
+    }
 
-        function maskApiKey(apiKey) {
-            return `${apiKey.slice(0, 8)}${"•".repeat(12)}${apiKey.slice(-4)}`;
-        }
+    async function doKeyLogin() {
+      const key = $("api-key").value.trim();
+      if (!key) { $("gate-error").textContent = "Paste a key first."; return; }
+      setCreds(key, "key");
+      try { await loadStats(); showPanel(); } catch (_) {}
+    }
 
-        function setBackendStatus(text, tone = "neutral") {
-            const tones = {
-                neutral: "border-white/10 bg-white/[0.03] text-slate-400",
-                online: "border-emerald-400/20 bg-emerald-400/10 text-emerald-300",
-                error: "border-red-400/20 bg-red-400/10 text-red-300",
-            };
-            backendStatus.className = `w-fit rounded-full border px-3 py-1 text-xs font-medium ${tones[tone]}`;
-            backendStatus.textContent = text;
-        }
+    // ---------- wire up ----------
+    $("gen-copy").addEventListener("click", async () => {
+      const txt = $("gen-output").textContent;
+      try { await navigator.clipboard.writeText(txt); $("gen-copy").textContent = "Copied!"; setTimeout(()=>{$("gen-copy").textContent="Copy all";},1400); } catch(_){}
+    });
+    $("unlock").addEventListener("click", doPasswordLogin);
+    $("unlock-key").addEventListener("click", doKeyLogin);
+    $("password").addEventListener("keydown", e => { if (e.key === "Enter") doPasswordLogin(); });
+    $("email").addEventListener("keydown", e => { if (e.key === "Enter") $("password").focus(); });
+    $("logout").addEventListener("click", () => { clearCreds(); showGate(""); });
+    $("refresh").addEventListener("click", loadInvites);
+    $("gen").addEventListener("click", doGenerate);
+    $("gen-email").addEventListener("input", e => {
+      const on = !!e.target.value.trim();
+      $("gen-count").disabled = on;
+      $("gen-hint").classList.toggle("hidden", !on);
+      $("gen-hint").textContent = on ? "Targeted invite — one code, usable only by this email address." : "";
+    });
+    $("nodes-refresh").addEventListener("click", () => loadMesh());
+    $("wl-refresh").addEventListener("click", loadWaitlist);
+    $("wl-export").addEventListener("click", exportCsv);
+    $("wl-search").addEventListener("input", e => { WL.filter = e.target.value; renderWaitlist(); });
+    document.querySelectorAll(".tab-btn").forEach(b => b.addEventListener("click", () => setWaitlistTab(b.dataset.tab)));
+    document.querySelectorAll(".nav-btn").forEach(b => b.addEventListener("click", () => setView(b.dataset.view)));
 
-        function setLoading(isLoading) {
-            runButton.disabled = isLoading;
-            runSpinner.classList.toggle("hidden", !isLoading);
-            runLabel.textContent = isLoading ? "Processing..." : "Run Inference";
-        }
+    // initial view from hash
+    const initialView = (location.hash || "").replace("#", "");
+    if (["overview","nodes","invites","waitlist"].includes(initialView)) setView(initialView);
 
-        function setResultStatus(status) {
-            const tones = {
-                idle: "border-white/10 bg-white/[0.03] text-slate-400",
-                pending: "border-slate-400/20 bg-slate-400/10 text-slate-300",
-                processing: "border-purple-400/20 bg-purple-400/10 text-purple-200",
-                complete: "border-emerald-400/20 bg-emerald-400/10 text-emerald-300",
-                error: "border-red-400/20 bg-red-400/10 text-red-300",
-            };
-            resultStatus.className = `rounded-full border px-3 py-1 text-xs font-medium ${tones[status] || tones.idle}`;
-            resultStatus.textContent = status === "idle" ? "Idle" : status;
-        }
-
-        function setResultOutput(text, isError = false) {
-            resultOutput.textContent = text;
-            resultOutput.className = `mt-5 min-h-44 whitespace-pre-wrap rounded-2xl border bg-mesh-bg/80 p-4 text-sm leading-6 ${
-                isError ? "border-red-400/20 text-red-300" : "border-white/10 text-slate-300"
-            }`;
-        }
-
-        function addRecentCall({ model = "llama3", tokens = "pending", status = "pending" }) {
-            const statusClasses = {
-                success: "border-emerald-400/20 bg-emerald-400/10 text-emerald-300",
-                complete: "border-emerald-400/20 bg-emerald-400/10 text-emerald-300",
-                error: "border-red-400/20 bg-red-400/10 text-red-300",
-                pending: "border-slate-400/20 bg-slate-400/10 text-slate-300",
-                processing: "border-purple-400/20 bg-purple-400/10 text-purple-200",
-            };
-            const row = document.createElement("tr");
-            row.className = "transition hover:bg-white/[0.025]";
-            row.innerHTML = `
-                <td class="px-6 py-5 font-medium text-white">${model}</td>
-                <td class="px-6 py-5 text-slate-300">${tokens}</td>
-                <td class="px-6 py-5 text-slate-400">${new Date().toLocaleString()}</td>
-                <td class="px-6 py-5"><span class="rounded-full border px-3 py-1 text-xs font-medium ${statusClasses[status] || statusClasses.pending}">${status === "complete" ? "success" : status}</span></td>
-            `;
-            recentCalls.prepend(row);
-            while (recentCalls.children.length > 5) {
-                recentCalls.removeChild(recentCalls.lastElementChild);
-            }
-            recentUpdated.textContent = "Updated just now";
-        }
-
-        async function checkBackendHealth() {
-            try {
-                const response = await fetch(`${API_BASE_URL}/`);
-                if (!response.ok) {
-                    throw new Error("Health check failed");
-                }
-                setBackendStatus("Backend online", "online");
-            } catch (error) {
-                setBackendStatus("Backend offline", "error");
-            }
-        }
-
-        async function fetchJob(jobId) {
-            const response = await fetch(`${API_BASE_URL}/job/${jobId}`, {
-                headers: authHeaders(),
-            });
-            if (!response.ok) {
-                throw new Error("Could not fetch job status");
-            }
-            return response.json();
-        }
-
-        async function pollJob(jobId) {
-            try {
-                const job = await fetchJob(jobId);
-                const status = job.status || "pending";
-                setResultStatus(status);
-
-                if (status === "complete") {
-                    clearInterval(activePoll);
-                    activePoll = null;
-                    setLoading(false);
-                    loadBillingSummary();
-                    setResultOutput(job.output || "Inference completed without output.");
-                    addRecentCall({
-                        model: "llama3",
-                        tokens: job.output ? job.output.length.toLocaleString() : "0",
-                        status: "complete",
-                    });
-                    return;
-                }
-
-                if (status === "error") {
-                    clearInterval(activePoll);
-                    activePoll = null;
-                    setLoading(false);
-                    loadBillingSummary();
-                    setResultOutput(job.output || "Inference failed.", true);
-                    addRecentCall({ model: "llama3", tokens: "0", status: "error" });
-                    return;
-                }
-
-                setResultOutput("Processing... waiting for a node to complete this job.");
-            } catch (error) {
-                clearInterval(activePoll);
-                activePoll = null;
-                setLoading(false);
-                setResultStatus("error");
-                setResultOutput(error.message, true);
-            }
-        }
-
-        tryApiForm.addEventListener("submit", async (event) => {
-            event.preventDefault();
-            const prompt = promptInput.value.trim();
-            if (!prompt) {
-                return;
-            }
-
-            if (activePoll) {
-                clearInterval(activePoll);
-                activePoll = null;
-            }
-
-            setLoading(true);
-            setResultStatus("processing");
-            resultJobId.textContent = "Submitting job...";
-            setResultOutput("Processing...");
-
-            try {
-                const response = await fetch(`${API_BASE_URL}/submit`, {
-                    method: "POST",
-                    headers: authHeaders({
-                        "Content-Type": "application/json",
-                    }),
-                    body: JSON.stringify({ prompt }),
-                });
-
-                if (!response.ok) {
-                    const error = await response.json().catch(() => ({}));
-                    throw new Error(error.detail || "Could not submit job");
-                }
-
-                const data = await response.json();
-                resultJobId.textContent = `Job ID: ${data.id}`;
-                setResultStatus("pending");
-                setResultOutput("Processing... job submitted and waiting for a worker node.");
-                addRecentCall({ model: "llama3", status: "pending" });
-
-                await pollJob(data.id);
-                if (activePoll === null && runButton.disabled) {
-                    activePoll = setInterval(() => pollJob(data.id), POLL_INTERVAL_MS);
-                }
-            } catch (error) {
-                setLoading(false);
-                setResultStatus("error");
-                resultJobId.textContent = "Submission failed";
-                setResultOutput(error.message, true);
-            }
-        });
-
-        copyKeyButton.addEventListener("click", async () => {
-            try {
-                await navigator.clipboard.writeText(API_KEY);
-                copyKeyButton.textContent = "Copied!";
-            } catch (error) {
-                copyKeyButton.textContent = "Copy failed";
-            }
-            setTimeout(() => {
-                copyKeyButton.textContent = "Copy";
-            }, 1400);
-        });
-
-        async function loadBillingSummary() {
-            try {
-                const response = await fetch(`${API_BASE_URL}/billing/me`, {
-                    headers: authHeaders(),
-                });
-                if (!response.ok) {
-                    throw new Error("Could not load billing data");
-                }
-                const billing = await response.json();
-                apiKeyEl.textContent = maskApiKey(billing.api_key);
-                usageToday.textContent = billing.requests_today.toLocaleString();
-                usageLimit.textContent = `${billing.request_limit.toLocaleString()} request plan limit`;
-            } catch (error) {
-                apiKeyEl.textContent = maskApiKey(API_KEY);
-                usageToday.textContent = "Unavailable";
-                usageLimit.textContent = error.message;
-            }
-        }
-
-        setResultStatus("idle");
-        checkBackendHealth();
-        loadBillingSummary();
-    </script>
+    if (getCreds()) { loadStats().then(showPanel).catch(()=>{}); } else { showGate(""); }
+  </script>
 </body>
 </html>

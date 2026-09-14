@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Provider Wallet - Meshnet</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background: radial-gradient(circle at 20% 0%, rgba(139,92,246,.22), transparent 32rem), radial-gradient(circle at 85% 12%, rgba(34,211,238,.13), transparent 28rem), #05050a; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; letter-spacing: -.005em; }
+    .grad-btn { background: linear-gradient(135deg,#8b5cf6,#22d3ee); color:#020617; }
+    .grad-btn:hover { filter: brightness(1.1); }
+    .grad-btn:disabled { opacity:.4; cursor:not-allowed; filter:none; }
+    .card { border:1px solid rgba(255,255,255,.10); background:rgba(255,255,255,.04); }
+  </style>
+</head>
+<body class="min-h-screen text-white">
+  <main class="mx-auto max-w-4xl px-6 py-10">
+    <header class="flex items-center justify-between">
+      <a class="inline-flex items-center gap-3" href="https://meshnet.co/"><img src="https://meshnet.co/logo-new.png?v=2" alt="MeshNet" style="height:32px"><span class="text-base font-semibold text-zinc-400">provider wallet</span></a>
+      <button id="logout" class="hidden text-sm text-zinc-400 hover:text-white">Sign out</button>
+    </header>
+
+    <!-- gate -->
+    <section id="gate" class="mt-10 rounded-3xl card p-8 max-w-md mx-auto">
+      <h2 class="text-2xl font-bold tracking-tight">Provider sign in</h2>
+      <p class="mt-2 text-sm text-zinc-400">Use the Node ID and Node Secret you received when you connected your GPU.</p>
+      <label class="mt-6 block text-xs uppercase tracking-wide text-zinc-400">Node ID</label>
+      <input id="node-id" type="text" placeholder="node_xxxxxxxx" class="mt-2 w-full rounded-xl bg-black/40 px-4 py-3 outline-none focus:ring-2 focus:ring-violet-500 font-mono text-sm">
+      <label class="mt-4 block text-xs uppercase tracking-wide text-zinc-400">Node Secret</label>
+      <input id="node-secret" type="password" placeholder="••••••••" class="mt-2 w-full rounded-xl bg-black/40 px-4 py-3 outline-none focus:ring-2 focus:ring-violet-500">
+      <button id="unlock" class="grad-btn mt-6 w-full rounded-xl px-4 py-3 font-bold">Open wallet</button>
+      <p id="gate-error" class="mt-3 min-h-5 text-sm text-red-300"></p>
+    </section>
+
+    <!-- panel -->
+    <section id="panel" class="mt-8 hidden">
+      <div class="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 class="text-2xl font-bold tracking-tight">Wallet</h1>
+          <p class="mt-1 text-sm text-zinc-400"><span id="p-email"></span> · <span id="p-node" class="font-mono text-zinc-500"></span></p>
+        </div>
+        <div id="connect-badge"></div>
+      </div>
+
+      <div class="mt-6 grid gap-4 md:grid-cols-3">
+        <div class="rounded-3xl card p-6 md:col-span-1">
+          <div class="text-xs uppercase tracking-wide text-zinc-400">Available to withdraw</div>
+          <div id="w-available" class="mt-2 text-4xl font-bold text-emerald-300">$0.00</div>
+          <div class="mt-3 space-y-1 text-sm text-zinc-400">
+            <div class="flex justify-between"><span>Pending</span><span id="w-pending" class="text-zinc-200">$0.00</span></div>
+            <div class="flex justify-between"><span>Paid out</span><span id="w-paid" class="text-zinc-200">$0.00</span></div>
+            <div class="flex justify-between"><span>Lifetime earned</span><span id="w-lifetime" class="text-zinc-200">$0.00</span></div>
+          </div>
+        </div>
+        <div class="rounded-3xl card p-6 md:col-span-2">
+          <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <div><div class="text-xs uppercase tracking-wide text-zinc-400">Earned today</div><div id="e-today" class="mt-1 text-xl font-bold">-</div></div>
+            <div><div class="text-xs uppercase tracking-wide text-zinc-400">This month</div><div id="e-month" class="mt-1 text-xl font-bold">-</div></div>
+            <div><div class="text-xs uppercase tracking-wide text-zinc-400">Tokens served</div><div id="e-tokens" class="mt-1 text-xl font-bold">-</div><div class="text-xs text-zinc-500">lifetime</div></div>
+            <div><div class="text-xs uppercase tracking-wide text-zinc-400">Rate</div><div id="e-rate" class="mt-1 text-xl font-bold">-</div><div class="text-xs text-zinc-500">$ / 1M tokens</div></div>
+          </div>
+
+          <!-- bank + withdraw -->
+          <div class="mt-6 rounded-2xl border border-white/10 p-4">
+            <div id="bank-block">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="text-sm font-semibold">Bank account</div>
+                  <div id="bank-status" class="text-xs text-zinc-400">Not connected</div>
+                </div>
+                <button id="connect-btn" class="grad-btn rounded-xl px-4 py-2 font-bold text-sm">Connect bank</button>
+              </div>
+            </div>
+            <div id="withdraw-block" class="mt-4 hidden">
+              <label class="block text-xs uppercase tracking-wide text-zinc-400">Withdraw amount (USD)</label>
+              <div class="mt-2 flex gap-2">
+                <input id="wd-amount" type="number" min="0" step="0.01" placeholder="0.00" class="flex-1 rounded-xl bg-black/40 px-4 py-2 outline-none focus:ring-2 focus:ring-violet-500">
+                <button id="wd-btn" class="grad-btn rounded-xl px-5 py-2 font-bold">Withdraw</button>
+              </div>
+              <p id="wd-hint" class="mt-2 text-xs text-zinc-500"></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-8 rounded-3xl card p-6">
+        <h2 class="text-lg font-semibold tracking-tight">Payout history</h2>
+        <div class="mt-4 overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="text-left text-zinc-400"><tr><th class="py-2 pr-4">Requested</th><th class="py-2 pr-4">Amount</th><th class="py-2 pr-4">Status</th><th class="py-2 pr-4">Paid</th><th class="py-2 pr-4">Transfer</th></tr></thead>
+            <tbody id="payout-rows"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const FN_BASE = "https://czphnagkzvkemgtkliew.functions.supabase.co";
+    const $ = id => document.getElementById(id);
+    const fmt = n => Number(n||0).toLocaleString();
+    const usd = n => "$" + Number(n||0).toFixed(2);
+    let CREDS = null, STATE = null;
+
+    function saveCreds(c){ sessionStorage.setItem("nm_node", JSON.stringify(c)); CREDS=c; }
+    function loadCreds(){ try{ CREDS=JSON.parse(sessionStorage.getItem("nm_node")||"null"); }catch{ CREDS=null; } return CREDS; }
+    function clearCreds(){ sessionStorage.removeItem("nm_node"); CREDS=null; }
+
+    async function fn(action, extra={}) {
+      const r = await fetch(FN_BASE+"/nm-provider", { method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify(Object.assign({ action, node_id:CREDS.node_id, node_secret:CREDS.node_secret }, extra)) });
+      return r.json();
+    }
+
+    function showGate(err){ $("gate").classList.remove("hidden"); $("panel").classList.add("hidden"); $("logout").classList.add("hidden"); $("gate-error").textContent=err||""; }
+    function showPanel(){ $("gate").classList.add("hidden"); $("panel").classList.remove("hidden"); $("logout").classList.remove("hidden"); load(); }
+
+    async function auth(){
+      const node_id=$("node-id").value.trim(), node_secret=$("node-secret").value.trim();
+      if(!node_id||!node_secret){ $("gate-error").textContent="Node ID and secret required."; return; }
+      $("unlock").disabled=true; $("unlock").textContent="Opening…";
+      CREDS={node_id,node_secret};
+      const d=await fn("wallet");
+      $("unlock").disabled=false; $("unlock").textContent="Open wallet";
+      if(d.error){ $("gate-error").textContent = d.error==="invalid_node_credentials" ? "Invalid Node ID or secret." : d.error; CREDS=null; return; }
+      saveCreds(CREDS); render(d); showPanel();
+    }
+
+    async function load(){ const d=await fn("wallet"); if(d.error){ if(d.error==="invalid_node_credentials"){ clearCreds(); showGate("Session expired."); } return; } render(d); }
+
+    function render(d){
+      STATE=d;
+      $("p-email").textContent=d.provider?.email||"";
+      $("p-node").textContent=d.provider?.node_id||"";
+      $("w-available").textContent=usd(d.wallet?.available_usd);
+      $("w-pending").textContent=usd(d.wallet?.pending_usd);
+      $("w-paid").textContent=usd(d.wallet?.paid_usd);
+      $("w-lifetime").textContent=usd(d.wallet?.lifetime_earned_usd);
+      $("e-today").textContent=usd(d.earnings_today_usd);
+      $("e-month").textContent=usd(d.earnings_month_usd);
+      $("e-tokens").textContent=fmt(d.total_tokens_served);
+      $("e-rate").textContent="$"+Number(d.rate_per_mtok_usd||0).toFixed(2);
+      // connect state
+      const c=d.connect||{}; const enabled=!!c.payouts_enabled;
+      $("connect-badge").innerHTML = `<span class="rounded-md px-2.5 py-1 text-xs font-semibold ${enabled?'bg-emerald-500/20 text-emerald-300':'bg-amber-500/20 text-amber-300'}">${enabled?'Bank connected':'Bank not connected'}</span>`;
+      $("bank-status").textContent = enabled ? "Connected — payouts enabled" : (c.account_id ? "Onboarding incomplete — finish setup" : "Not connected");
+      $("connect-btn").textContent = c.account_id ? (enabled?"Manage":"Finish setup") : "Connect bank";
+      $("connect-btn").classList.toggle("hidden", enabled && false); // keep visible for manage
+      $("withdraw-block").classList.toggle("hidden", !enabled);
+      $("wd-hint").textContent = `Minimum withdrawal ${usd(d.payout_min_usd)}. Paid to your connected bank via Stripe.`;
+      // payouts
+      const rows=d.payouts||[];
+      $("payout-rows").innerHTML = rows.length ? rows.map(p=>{
+        const color=p.status==="paid"?"text-emerald-300":p.status==="requested"?"text-amber-300":p.status==="rejected"||p.status==="failed"?"text-red-300":"text-zinc-300";
+        return `<tr class="border-t border-white/5">
+          <td class="py-2 pr-4 text-zinc-400">${p.created_at?new Date(p.created_at).toLocaleDateString():'-'}</td>
+          <td class="py-2 pr-4 font-semibold">${usd(p.usd)}</td>
+          <td class="py-2 pr-4 ${color}">${p.status}</td>
+          <td class="py-2 pr-4 text-zinc-400">${p.paid_at?new Date(p.paid_at).toLocaleDateString():'-'}</td>
+          <td class="py-2 pr-4 font-mono text-xs text-zinc-500">${p.stripe_transfer_id||'-'}</td></tr>`;
+      }).join("") : `<tr><td colspan="5" class="py-4 text-zinc-500">No payouts yet.</td></tr>`;
+    }
+
+    async function connect(){
+      $("connect-btn").disabled=true; $("connect-btn").textContent="Opening…";
+      const d=await fn("connect",{ return_url: location.href.split('?')[0], country: (navigator.language||'en-US').split('-')[1]||'US' });
+      if(d.url){ location.href=d.url; }
+      else { $("bank-status").textContent="Connect error: "+(d.detail||d.error||"unknown")+(String(d.error).includes('connect')?' (enable Stripe Connect first)':''); $("connect-btn").disabled=false; $("connect-btn").textContent="Connect bank"; }
+    }
+
+    async function withdraw(){
+      const amount=parseFloat($("wd-amount").value||"0");
+      if(!(amount>0)){ $("wd-hint").textContent="Enter an amount."; return; }
+      $("wd-btn").disabled=true; $("wd-btn").textContent="Requesting…";
+      const d=await fn("withdraw",{ amount_usd: amount });
+      $("wd-btn").disabled=false; $("wd-btn").textContent="Withdraw";
+      if(d.ok){ $("wd-hint").textContent="✓ "+d.message; $("wd-amount").value=""; load(); }
+      else {
+        const m={ below_minimum:`Minimum is $${d.min_usd}.`, insufficient_balance:`Only ${usd(d.available_usd)} available.`, connect_required:"Connect a bank account first." };
+        $("wd-hint").textContent = m[d.error] || ("Error: "+(d.detail||d.error));
+      }
+    }
+
+    $("unlock").addEventListener("click", auth);
+    $("node-secret").addEventListener("keydown",e=>{ if(e.key==="Enter") auth(); });
+    $("logout").addEventListener("click",()=>{ clearCreds(); showGate(""); });
+    $("connect-btn").addEventListener("click", connect);
+    $("wd-btn").addEventListener("click", withdraw);
+    if(loadCreds()) showPanel(); else showGate("");
+  </script>
+</body>
+</html>

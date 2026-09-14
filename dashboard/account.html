@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Account - Meshnet</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background: radial-gradient(circle at 20% 0%, rgba(139,92,246,.22), transparent 32rem), radial-gradient(circle at 85% 12%, rgba(34,211,238,.13), transparent 28rem), #05050a; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; letter-spacing: -.005em; }
+    .grad-btn { background: linear-gradient(135deg,#8b5cf6,#22d3ee); color: #020617; }
+    .grad-btn:hover { filter: brightness(1.1); }
+    .card { border:1px solid rgba(255,255,255,.10); background:rgba(255,255,255,.04); }
+  </style>
+</head>
+<body class="min-h-screen text-white">
+  <main class="mx-auto max-w-5xl px-6 py-10">
+    <header class="flex items-center justify-between">
+      <a class="inline-flex items-center gap-3" href="https://meshnet.co/"><img src="https://meshnet.co/logo-new.png?v=2" alt="MeshNet" style="height:32px"><span class="text-base font-semibold text-zinc-400">account</span></a>
+      <div class="flex items-center gap-4">
+        <a href="/provider.html" class="text-sm text-zinc-400 hover:text-white">Provider wallet →</a>
+        <button id="logout" class="hidden text-sm text-zinc-400 hover:text-white">Sign out</button>
+      </div>
+    </header>
+
+    <!-- gate -->
+    <section id="gate" class="mt-10 rounded-3xl card p-8 max-w-md mx-auto">
+      <h2 class="text-2xl font-bold tracking-tight">Sign in</h2>
+      <p class="mt-2 text-sm text-zinc-400">Your MeshNet account — see your plan and token usage.</p>
+      <label class="mt-6 block text-xs uppercase tracking-wide text-zinc-400">Email</label>
+      <input id="email" type="email" autocomplete="username" class="mt-2 w-full rounded-xl bg-black/40 px-4 py-3 outline-none focus:ring-2 focus:ring-violet-500">
+      <label class="mt-4 block text-xs uppercase tracking-wide text-zinc-400">Password</label>
+      <input id="password" type="password" autocomplete="current-password" class="mt-2 w-full rounded-xl bg-black/40 px-4 py-3 outline-none focus:ring-2 focus:ring-violet-500">
+      <button id="unlock" class="grad-btn mt-6 w-full rounded-xl px-4 py-3 font-bold">Sign in</button>
+      <p id="gate-error" class="mt-3 min-h-5 text-sm text-red-300"></p>
+    </section>
+
+    <!-- panel -->
+    <section id="panel" class="mt-8 hidden">
+      <div class="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 class="text-2xl font-bold tracking-tight">Your usage</h1>
+          <p class="mt-1 text-sm text-zinc-400"><span id="u-email"></span> · <span id="u-tier" class="text-violet-300 font-semibold"></span> plan</p>
+        </div>
+        <div id="sub-badge"></div>
+      </div>
+
+      <div class="mt-6 grid gap-4 lg:grid-cols-3">
+        <!-- usage ring -->
+        <div class="rounded-3xl card p-6 lg:col-span-1 flex flex-col items-center justify-center">
+          <svg viewBox="0 0 120 120" class="w-44 h-44 -rotate-90">
+            <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="12"></circle>
+            <circle id="ring" cx="60" cy="60" r="52" fill="none" stroke="url(#g)" stroke-width="12" stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="326.7"></circle>
+            <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8b5cf6"/><stop offset="1" stop-color="#22d3ee"/></linearGradient></defs>
+          </svg>
+          <div class="-mt-28 text-center pointer-events-none">
+            <div id="ring-pct" class="text-3xl font-bold">0%</div>
+            <div class="text-xs text-zinc-400">of allowance</div>
+          </div>
+          <div class="mt-24 text-center text-sm text-zinc-400"><span id="ring-used" class="text-white font-semibold">0</span> of <span id="ring-allow">0</span> tokens</div>
+        </div>
+
+        <!-- stats -->
+        <div class="rounded-3xl card p-6 lg:col-span-2">
+          <div class="grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <div><div class="text-xs uppercase tracking-wide text-zinc-400">Tokens used</div><div id="s-used" class="mt-1 text-2xl font-bold">-</div><div class="text-xs text-zinc-500">this month</div></div>
+            <div><div class="text-xs uppercase tracking-wide text-zinc-400">Remaining</div><div id="s-remain" class="mt-1 text-2xl font-bold text-emerald-300">-</div></div>
+            <div><div class="text-xs uppercase tracking-wide text-zinc-400">Allowance</div><div id="s-allow" class="mt-1 text-2xl font-bold">-</div><div class="text-xs text-zinc-500">tokens / month</div></div>
+            <div><div class="text-xs uppercase tracking-wide text-zinc-400">Plan price</div><div id="s-price" class="mt-1 text-2xl font-bold">-</div><div class="text-xs text-zinc-500">per month</div></div>
+            <div><div class="text-xs uppercase tracking-wide text-zinc-400">Eff. price</div><div id="s-eff" class="mt-1 text-2xl font-bold">-</div><div class="text-xs text-zinc-500">$ / 1M tokens</div></div>
+            <div><div class="text-xs uppercase tracking-wide text-zinc-400">Value used</div><div id="s-value" class="mt-1 text-2xl font-bold">-</div><div class="text-xs text-zinc-500">vs GPT-4o rates</div></div>
+          </div>
+          <div class="mt-6">
+            <div class="text-xs uppercase tracking-wide text-zinc-400 mb-2">Last 14 days</div>
+            <div id="chart" class="flex items-end gap-1 h-24"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- plans -->
+      <div class="mt-8">
+        <h2 class="text-lg font-semibold tracking-tight">Plans</h2>
+        <p class="mt-1 text-sm text-zinc-400">Generous token allowances — near-frontier quality at a flat price. Cancel anytime.</p>
+        <div id="plan-cards" class="mt-4 grid gap-4 sm:grid-cols-3"></div>
+        <p id="plan-hint" class="mt-3 text-xs text-zinc-500"></p>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const API_BASE = "https://api.beta.meshnet.co";
+    const FN_BASE  = "https://czphnagkzvkemgtkliew.functions.supabase.co";
+    const $ = id => document.getElementById(id);
+    const TOK = "nm_user_token";
+    const fmt = n => Number(n||0).toLocaleString();
+    const usd = n => "$" + Number(n||0).toFixed(2);
+
+    function getTok(){ return sessionStorage.getItem(TOK); }
+    function setTok(t){ sessionStorage.setItem(TOK, t); }
+    function clearTok(){ sessionStorage.removeItem(TOK); }
+
+    async function fn(path, opts={}) {
+      const headers = Object.assign({ "Content-Type":"application/json" }, opts.headers||{});
+      const tok = getTok(); if (tok) headers["Authorization"] = "Bearer " + tok;
+      const r = await fetch(FN_BASE + path, Object.assign({}, opts, { headers }));
+      if (r.status === 401) { clearTok(); showGate("Session expired — sign in again."); throw new Error("auth"); }
+      return r.json();
+    }
+
+    function showGate(err){ $("gate").classList.remove("hidden"); $("panel").classList.add("hidden"); $("logout").classList.add("hidden"); $("gate-error").textContent = err||""; }
+    function showPanel(){ $("gate").classList.add("hidden"); $("panel").classList.remove("hidden"); $("logout").classList.remove("hidden"); load(); }
+
+    async function login(){
+      const email=$("email").value.trim(), password=$("password").value;
+      if(!email||!password){ $("gate-error").textContent="Email and password required."; return; }
+      $("unlock").disabled=true; $("unlock").textContent="Signing in…"; $("gate-error").textContent="";
+      try{
+        const r=await fetch(API_BASE+"/api/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password})});
+        const d=await r.json().catch(()=>({}));
+        if(!r.ok){ const m={invalid_credentials:"Wrong email or password.",email_not_confirmed:"Email not confirmed yet."}; $("gate-error").textContent=m[d.detail]||("Login failed: "+(d.detail||r.status)); return; }
+        setTok(d.access_token); showPanel();
+      }catch(e){ $("gate-error").textContent="Network error: "+e.message; }
+      finally{ $("unlock").disabled=false; $("unlock").textContent="Sign in"; }
+    }
+
+    async function load(){
+      let d; try{ d=await fn("/nm-billing",{method:"POST",body:JSON.stringify({action:"usage"})}); }catch(e){ return; }
+      $("u-email").textContent=d.user?.email||"";
+      $("u-tier").textContent=d.plan_name||"Free";
+      const badge=$("sub-badge");
+      const active=d.subscription_status==="active";
+      badge.innerHTML = `<span class="rounded-md px-2.5 py-1 text-xs font-semibold ${active?'bg-emerald-500/20 text-emerald-300':'bg-zinc-600/30 text-zinc-300'}">${active?'Subscribed':'No active subscription'}</span>`;
+      // ring
+      const pct=Math.round(d.pct_used||0), C=326.7;
+      $("ring").setAttribute("stroke-dashoffset", (C*(1-Math.min(1,pct/100))).toFixed(1));
+      $("ring-pct").textContent=pct+"%";
+      $("ring-used").textContent=fmt(d.tokens_used);
+      $("ring-allow").textContent=fmt(d.allowance_tokens);
+      // stats
+      $("s-used").textContent=fmt(d.tokens_used);
+      $("s-remain").textContent=fmt(d.tokens_remaining);
+      $("s-allow").textContent=fmt(d.allowance_tokens);
+      $("s-price").textContent=usd(d.price_monthly);
+      $("s-eff").textContent="$"+Number(d.effective_price_per_mtok||0).toFixed(2);
+      $("s-value").textContent=usd(d.value_at_gpt4o_usd);
+      // chart
+      const hist=d.history||[]; const max=Math.max(1,...hist.map(h=>h.tokens));
+      $("chart").innerHTML = (hist.length?hist:[{day:'',tokens:0}]).map(h=>`<div class="flex-1 rounded-t" style="height:${Math.max(3,(h.tokens/max)*96)}px;background:linear-gradient(180deg,#8b5cf6,#22d3ee)" title="${h.day}: ${fmt(h.tokens)}"></div>`).join("");
+      loadPlans(d.tier);
+    }
+
+    async function loadPlans(currentTier){
+      let d; try{ d=await fn("/nm-billing",{method:"POST",body:JSON.stringify({action:"plans"})}); }catch(e){ return; }
+      $("plan-cards").innerHTML=(d.plans||[]).map(p=>{
+        const cur=p.id===currentTier;
+        return `<div class="rounded-2xl card p-5 ${cur?'ring-2 ring-violet-500':''}">
+          <div class="flex items-baseline justify-between"><div class="text-lg font-bold">${p.name}</div><div class="text-xl font-bold">$${Number(p.price_monthly).toFixed(0)}<span class="text-xs text-zinc-400">/mo</span></div></div>
+          <div class="mt-2 text-sm text-zinc-300">${Number(p.token_allowance_mtok)}M tokens / month</div>
+          <div class="text-xs text-zinc-500">≈ $${Number(p.price_per_mtok).toFixed(2)} / 1M tokens</div>
+          <button data-tier="${p.id}" class="upgrade grad-btn mt-4 w-full rounded-xl px-4 py-2 font-bold ${cur?'opacity-50 pointer-events-none':''}">${cur?'Current plan':'Choose '+p.name}</button>
+        </div>`;
+      }).join("");
+      document.querySelectorAll(".upgrade").forEach(b=>b.addEventListener("click",()=>checkout(b.dataset.tier)));
+    }
+
+    async function checkout(tier){
+      $("plan-hint").textContent="Opening secure checkout…";
+      try{
+        const d=await fn("/nm-billing",{method:"POST",body:JSON.stringify({action:"checkout",tier,return_url:location.href.split('?')[0]})});
+        if(d.url){ location.href=d.url; } else { $("plan-hint").textContent="Checkout error: "+(d.detail||d.error||"unknown")+ (d.error==='stripe_customer_failed'||d.error==='stripe_checkout_failed'?' (Stripe not configured yet)':''); }
+      }catch(e){ if(e.message!=="auth") $("plan-hint").textContent="Error: "+e.message; }
+    }
+
+    $("unlock").addEventListener("click", login);
+    $("password").addEventListener("keydown",e=>{ if(e.key==="Enter") login(); });
+    $("logout").addEventListener("click",()=>{ clearTok(); showGate(""); });
+    // checkout return banner
+    const cs=new URLSearchParams(location.search).get("checkout");
+    if(cs==="success") setTimeout(()=>{ $("plan-hint")&&($("plan-hint").textContent="✓ Subscription active — your new allowance is applied."); },800);
+    if(getTok()) showPanel(); else showGate("");
+  </script>
+</body>
+</html>

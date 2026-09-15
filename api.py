@@ -21,6 +21,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from supabase import create_client
 
+import mesh_router
 import waitlist_emails
 
 
@@ -954,6 +955,24 @@ def complete_node_job(
     )
     if not result.data:
         raise HTTPException(status_code=404, detail="Job not found for this node")
+
+    # Settlement. This endpoint is the single choke point every completed mesh
+    # job passes through, so it is where usage is recorded: one routing_events
+    # row per job (per-user token consumption) and a credit to the provider's
+    # token totals via the credit_provider RPC. record() is metrics-only and is
+    # written to never raise into the request path, so a settlement hiccup can
+    # never cost the node its completion acknowledgement.
+    job_row = result.data[0]
+    mesh_router.record(
+        supabase,
+        target="mesh",
+        tokens=total_tokens,
+        user_id=job_row.get("user_id"),
+        job_id=job_id,
+        node_id=provider["node_id"],
+        model=body.model,
+        latency_ms=body.latency_ms,
+    )
     return {"status": "complete"}
 
 

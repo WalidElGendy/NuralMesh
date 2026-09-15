@@ -617,13 +617,11 @@ def _route_and_stream(
                 conversation_id=conversation_id,
             )
             for kind, payload, meta in mesh_router.stream_job(supabase, job_id):
-                if kind == "done":
-                    mesh_router.record(
-                        supabase, target="mesh", tokens=meta.get("tokens", 0),
-                        user_id=user_id, job_id=job_id, node_id=meta.get("node_id"),
-                        model=meta.get("model"), latency_ms=meta.get("latency_ms"),
-                        ttft_ms=meta.get("ttft_ms"),
-                    )
+                # Settlement for a mesh job is recorded server-side in
+                # /api/node/jobs/{job_id}/complete — the single node-completion
+                # choke point every mesh job passes through. Recording here as
+                # well would double-count both the user's tokens and the
+                # provider's credit, so this path only relays the stream.
                 yield (kind, payload, meta)
             return
         except mesh_router.MeshUnavailable as e:

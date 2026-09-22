@@ -321,6 +321,40 @@
 
     /* Tooltip-ish for OS step */
     .hidden { display: none !important; }
+
+    /* download CTA */
+    .dl-cta { margin-bottom: 8px; }
+    .dl-btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+      width: 100%;
+      padding: 18px 24px;
+      border-radius: 16px;
+      font-family: inherit; font-weight: 700; font-size: 16px;
+      letter-spacing: -.01em;
+      color: #05010f;
+      background: linear-gradient(135deg, var(--violet), var(--cyan));
+      cursor: pointer;
+      transition: transform .1s, filter .15s;
+      box-shadow: 0 10px 30px -12px rgba(139,92,246,.7);
+    }
+    .dl-btn:hover { filter: brightness(1.06); transform: translateY(-1px); }
+    .dl-btn:active { transform: translateY(0); }
+    .dl-btn svg { width: 20px; height: 20px; }
+    .dl-sub { margin: 12px 2px 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
+    .dl-sub b { color: var(--text); font-weight: 600; }
+    /* manual fallback */
+    details.manual { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 6px; }
+    details.manual > summary {
+      cursor: pointer; list-style: none; user-select: none;
+      color: var(--muted); font-size: 14px; font-weight: 600;
+      padding: 12px 2px; display: inline-flex; align-items: center; gap: 8px;
+      transition: color .15s;
+    }
+    details.manual > summary:hover { color: var(--text); }
+    details.manual > summary::-webkit-details-marker { display: none; }
+    details.manual > summary::before { content: '▸'; font-size: 12px; transition: transform .15s; }
+    details.manual[open] > summary::before { transform: rotate(90deg); }
+    details.manual .step:first-of-type { margin-top: 14px; }
   
     /* Session badge + role switcher */
     nav { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
@@ -372,6 +406,18 @@
         </button>
       </div>
 
+      <!-- PRIMARY: one-click download -->
+      <div class="dl-cta" id="download-cta">
+        <a class="dl-btn" id="download-btn" href="#" download>
+          <svg id="dl-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"></svg>
+          <span id="dl-label">Preparing your installer…</span>
+        </a>
+        <p class="dl-sub" id="download-sub"></p>
+      </div>
+
+      <details class="manual" id="manual-details">
+        <summary id="manual-summary">Prefer to paste a command instead?</summary>
+
       <div class="step">
         <div class="step-num">1</div>
         <div class="step-body">
@@ -399,6 +445,7 @@
           <p>The installer pulls a model and registers your node. Once your terminal prints <code>heartbeat ok</code>, this page switches to the live dashboard automatically.</p>
         </div>
       </div>
+      </details>
 
       <div class="status-row">
         <div class="pulse-dot"></div>
@@ -509,6 +556,29 @@
     function winCmd(t) {
       return 'iwr https://install.beta.meshnet.co/win.ps1 -UseBasicParsing | iex; Install-Meshnet -ClaimToken ' + t;
     }
+    /* ----- one-click downloads ----- */
+    const WIN_DL = tok => 'https://czphnagkzvkemgtkliew.functions.supabase.co/nm-download?token=' + encodeURIComponent(tok);
+    const MAC_DL = 'https://czphnagkzvkemgtkliew.supabase.co/storage/v1/object/public/installers/MeshNet-Node-mac.zip';
+    const WIN_ICON = '<path d="M0 3.449 9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/>';
+    const MAC_ICON = '<path d="M16.365 1.43c0 1.14-.493 2.27-1.177 3.08-.744.9-1.99 1.57-2.987 1.57-.12-1.103.42-2.244 1.114-3.075.785-.94 2.122-1.633 3.05-1.575zm4.565 16.51c-.388.9-.95 1.79-1.66 2.685-.97 1.18-2.32 2.66-3.99 2.69-1.49.03-1.87-.96-3.89-.96-2.03 0-2.44.94-3.84.99-1.6.07-2.83-1.27-3.81-2.45-2.05-2.45-3.6-6.92-1.52-9.93 1.04-1.5 2.92-2.44 4.85-2.47 1.45-.03 2.83.97 3.72.97.88 0 2.55-1.2 4.29-1.02.73.03 2.79.3 4.11 2.26-3.55 1.97-2.97 6.6.74 7.24z"/>';
+    function updateDownload() {
+      const btn = $('download-btn'), label = $('dl-label'), icon = $('dl-icon'), sub = $('download-sub');
+      if (!btn) return;
+      btn.setAttribute('download', '');
+      if (currentOS === 'win') {
+        icon.innerHTML = WIN_ICON;
+        label.textContent = claimToken ? 'Download for Windows' : 'Preparing your installer…';
+        sub.innerHTML = 'Double-click the file and press <b>Activate</b> — it installs everything and puts your GPU on the mesh. No terminal, no commands. <b>SmartScreen?</b> Click "More info → Run anyway".';
+        if (claimToken) { btn.href = WIN_DL(claimToken); btn.style.pointerEvents = ''; btn.style.opacity = ''; }
+        else { btn.href = '#'; btn.style.pointerEvents = 'none'; btn.style.opacity = '.55'; }
+      } else {
+        icon.innerHTML = MAC_ICON;
+        label.textContent = 'Download for macOS';
+        sub.innerHTML = 'Unzip, then open <b>MeshNet Node</b> (first time: right-click → <b>Open</b>). Your activation token is copied for you — just press <b>Activate</b>.';
+        btn.href = MAC_DL; btn.style.pointerEvents = ''; btn.style.opacity = '';
+      }
+    }
+
     function renderInstallCmd() {
       const t = claimToken || 'YOUR_CLAIM_TOKEN';
       $('install-cmd').textContent = currentOS === 'mac' ? macCmd(t) : winCmd(t);
@@ -519,6 +589,7 @@
       $('step2-title').textContent = currentOS === 'mac'
         ? 'Paste this command and press Return'
         : 'Paste this in PowerShell and press Enter';
+      updateDownload();
     }
 
     /* ----- request claim token + start polling ----- */
@@ -556,6 +627,13 @@
         $('copy-btn').textContent = 'Copied!';
         setTimeout(() => { $('copy-btn').textContent = 'Copy'; }, 1400);
       } catch(_) { $('copy-btn').textContent = 'Press ⌘C'; }
+    });
+
+    /* macOS: copy the token so the app's Activate dialog is prefilled */
+    $('download-btn').addEventListener('click', async () => {
+      if (currentOS === 'mac' && claimToken) {
+        try { await navigator.clipboard.writeText(claimToken); } catch(_) {}
+      }
     });
 
     function pollClaim(tok, email) {

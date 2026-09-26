@@ -198,7 +198,7 @@ async function readSSE(res, onDelta) {
  * hooks.onStep(name, state, info)  state: 'run' | 'done' | 'skip'
  * hooks.onDelta(chunk)
  */
-export async function runTurn({ agentId, query, mode, hooks = {}, signal }) {
+export async function runTurn({ agentId, query, mode, agentType = null, hooks = {}, signal }) {
   const step = (n, st, info) => hooks.onStep?.(n, st, info);
   const timings = {};
   const timed = async (name, fn) => {
@@ -243,6 +243,9 @@ export async function runTurn({ agentId, query, mode, hooks = {}, signal }) {
     sources,
     plan: planOut,
   };
+  // Explicit agent binding (a stable slug chosen by the user in the gallery),
+  // never inferred from the thread title. The server maps it to a prompt.
+  if (agentType) context.agent_type = agentType;
 
   step('draft', 'run');
   const tDraft = performance.now();

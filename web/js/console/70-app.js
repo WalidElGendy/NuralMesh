@@ -22,6 +22,9 @@ import {
   loadVaultConfig, connectVault, disconnectVault, searchVault, importVaultGraph,
   saveThreadToVault, appendToDaily, toObsidianMarkdown, downloadMarkdown,
 } from './55-vault.js';
+import {
+  initAgents, agentForThread, agentWelcomeHTML, agentMeta,
+} from './65-agents.js';
 
 /* ---------------------------- pipeline strip ----------------------------- */
 
@@ -247,7 +250,8 @@ async function send(text) {
 
   try {
     const res = await runTurn({
-      agentId: S.activeId, query: text, mode, signal: S.abort.signal,
+      agentId: S.activeId, query: text, mode, agentType: agentForThread(S.activeId),
+      signal: S.abort.signal,
       hooks: {
         onStep: (n, st, info) => setStep(pipe, n, st, info),
         onDelta: (d) => { raw += d; schedulePaint(); },
@@ -390,7 +394,10 @@ async function openThread(id) {
     }
     inner.appendChild(el);
   }
-  if (!messages.length) inner.innerHTML = welcomeHTML();
+  if (!messages.length) {
+    const slug = agentForThread(id);
+    inner.innerHTML = slug ? agentWelcomeHTML(slug) : welcomeHTML();
+  }
   updateCtxHint();
   scrollDown(true);
 }
@@ -797,6 +804,16 @@ function wire() {
   mq.addEventListener ? mq.addEventListener('change', onNarrow) : mq.addListener(onNarrow);
 
   subscribe((evt, data) => {
+    if (evt === 'agent:open') {
+      // A gallery card created a fresh bound thread — adopt its default mode
+      // and open it (openThread shows the agent's welcome for an empty thread).
+      if (data?.mode) setMode(data.mode);
+      paintThreads($('#threadSearch').value);
+      openThread(data.id);
+      if (narrow()) { const app = $('#app'); app.dataset.threads = 'off'; }
+      $('#input').focus();
+      return;
+    }
     if (evt !== 'canvas-tab') return;
     if (data === 'mesh') refreshMesh();
     // The graph pane has no layout box until it is visible — lay out on show.
@@ -824,6 +841,7 @@ export async function boot() {
   }
   $('#themeBtn').innerHTML = S.theme === 'dark' ? ICON.moon : ICON.sun;
   wire();
+  initAgents();
   setMode('ask');
 
   if (!requireAuth()) return;

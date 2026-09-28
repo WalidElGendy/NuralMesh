@@ -85,23 +85,82 @@ def startup_self_check():
         raise SystemExit(1)
 
 
-def run_inference(prompt):
+def _job_messages(job):
+    """The messages to send to Ollama.
+
+    The API hands a node the full conversation as `messages` (a list of
+    {role, content}) plus `params`. An earlier version of this client read
+    `job["prompt"]`, which the API never sends, so every claimed job died with
+    a KeyError, was marked failed, and the user was silently routed to the paid
+    fallback. Accept both shapes so the node keeps working against either."""
+    messages = job.get("messages")
+    if isinstance(messages, list) and messages:
+        return [
+            {"role": str(m.get("role", "user")), "content": str(m.get("content", ""))}
+            for m in messages
+            if isinstance(m, dict)
+        ]
+    prompt = job.get("prompt")
+    if prompt:
+        return [{"role": "user", "content": str(prompt)}]
+    raise ValueError("job has neither messages nor prompt")
+
+
+def _pick_model(job):
+    """Serve with the model the job asked for when this node has it, otherwise
+    the node's default. The API only hands a node jobs whose model it
+    advertised, so the fallback is a safety net, not the normal path."""
+    wanted = job.get("model")
+    if wanted and wanted in NODE_MODELS:
+        return wanted
+    return NODE_MODEL
+
+
+def _ollama_options(params):
+    options = {}
+    if not isinstance(params, dict):
+        return options
+    if params.get("temperature") is not None:
+        options["temperature"] = float(params["temperature"])
+    if params.get("max_tokens") is not None:
+        options["num_predict"] = int(params["max_tokens"])
+    if params.get("top_p") is not None:
+        options["top_p"] = float(params["top_p"])
+    return options
+
+
+def run_inference(job, on_chunk=None):
+    """Generate the answer for one job, streaming pieces to `on_chunk(seq, text)`
+    as they arrive so the user sees tokens while the node is still working."""
+    messages = _job_messages(job)
+    model = _pick_model(job)
+    options = _ollama_options(job.get("params"))
     start = time.perf_counter()
-    response = ollama.chat(
-        model=NODE_MODEL,
-        messages=[
-            {
-                "role": "user",
-                "content": prompt,
-            }
-        ],
-    )
-    content = response["message"]["content"]
-    prompt_tokens = int(response.get("prompt_eval_count", 0) or max(1, len(prompt.split())))
-    completion_tokens = int(response.get("eval_count", 0) or max(1, len(content.split())))
+    content_parts = []
+    prompt_tokens = 0
+    completion_tokens = 0
+    seq = 0
+    for part in ollama.chat(model=model, messages=messages, options=options or None, stream=True):
+        piece = (part.get("message") or {}).get("content") or ""
+        if piece:
+            content_parts.append(piece)
+            if on_chunk is not None:
+                try:
+                    on_chunk(seq, piece)
+                except Exception as error:  # a dropped chunk must not kill the job
+                    logger.warning("chunk %s not delivered: %s", seq, error)
+            seq += 1
+        if part.get("done"):
+            prompt_tokens = int(part.get("prompt_eval_count", 0) or 0)
+            completion_tokens = int(part.get("eval_count", 0) or 0)
+    content = "".join(content_parts)
+    if not prompt_tokens:
+        prompt_tokens = max(1, sum(len(m["content"].split()) for m in messages))
+    if not completion_tokens:
+        completion_tokens = max(1, len(content.split()))
     return {
         "content": content,
-        "model": NODE_MODEL,
+        "model": model,
         "latency_ms": int((time.perf_counter() - start) * 1000),
         "prompt_tokens": prompt_tokens,
         "completion_tokens": completion_tokens,
@@ -145,7 +204,7 @@ def build_session(node_id, node_secret):
 def heartbeat(session, api_base_url, gpu_info=None):
     response = session.post(
         f"{api_base_url}/api/node/heartbeat",
-        json={"hostname": socket.gethostname(), "gpu_info": gpu_info or {}},
+        json={"hostname": socket.gethostname(), "gpu_info": gpu_info or {}, "models": NODE_MODELS},
         timeout=15,
     )
     response.raise_for_status()
@@ -180,18 +239,34 @@ def complete_job(session, api_base_url, job_id, inference):
 def mark_job_error(session, api_base_url, job_id, error):
     response = session.post(
         f"{api_base_url}/api/node/jobs/{job_id}/error",
-        json={"error": str(error)},
+        json={"error": str(error)[:500]},
         timeout=30,
     )
     response.raise_for_status()
 
 
+def send_chunk(session, api_base_url, job_id, seq, content):
+    response = session.post(
+        f"{api_base_url}/api/node/jobs/{job_id}/chunk",
+        json={"seq": seq, "content": content[:8000]},
+        timeout=15,
+    )
+    response.raise_for_status()
+
+
 def process_job(session, api_base_url, job):
+    job_id = job["id"]
     try:
-        inference = run_inference(job["prompt"])
+        inference = run_inference(
+            job,
+            on_chunk=lambda seq, text: send_chunk(session, api_base_url, job_id, seq, text),
+        )
     except Exception as error:
-        mark_job_error(session, api_base_url, job["id"], error)
-        print(f"Job {job['id']} failed: {error}")
+        try:
+            mark_job_error(session, api_base_url, job_id, error)
+        except Exception as report_error:
+            logger.error("could not report job %s failure: %s", job_id, report_error)
+        print(f"Job {job_id} failed: {error}")
         return
 
     complete_job(session, api_base_url, job["id"], inference)

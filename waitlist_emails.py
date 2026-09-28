@@ -4,6 +4,7 @@ Auto-issues a beta activation code and emails it to the new signup.
 GPU providers get node-activation steps; AI users get a node-availability
 snapshot and can start sending jobs right away.
 """
+import html as _html
 import logging
 import os
 import secrets
@@ -88,6 +89,9 @@ def _code_box(code: str) -> str:
 
 
 def provider_email_html(name: str, code: str, signup_url: str) -> str:
+    # The name comes straight from the public waitlist form and is sent to any
+    # address the same form supplies, so it must never reach the HTML unescaped.
+    name = _html.escape((name or "").strip().splitlines()[0][:80]) if (name or "").strip() else ""
     greeting = f"Hi {name}," if name else "Hi,"
     return f"""\
 <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#111">
@@ -111,6 +115,7 @@ def provider_email_html(name: str, code: str, signup_url: str) -> str:
 
 
 def user_email_html(name: str, code: str, signup_url: str, nodes_online: int) -> str:
+    name = _html.escape((name or "").strip().splitlines()[0][:80]) if (name or "").strip() else ""
     greeting = f"Hi {name}," if name else "Hi,"
     if nodes_online > 0:
         availability = (

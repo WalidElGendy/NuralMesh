@@ -19,6 +19,7 @@ from __future__ import annotations
 import logging
 import os
 import time
+from datetime import datetime
 
 from fastapi import APIRouter
 from pydantic import BaseModel
@@ -77,10 +78,24 @@ def mesh_status():
     except Exception:
         logger.warning("mesh_status_query_failed", exc_info=True)
 
+    # `status` in the providers table is written "online" on every heartbeat
+    # and never written back, so a node that died in May still reads online.
+    # Liveness is a recent heartbeat, the same test the router uses to decide
+    # whether a node can be handed a job.
+    def _fresh(r) -> bool:
+        ts = r.get("last_seen_at")
+        if not ts:
+            return False
+        try:
+            seen = datetime.fromisoformat(str(ts).replace("Z", "+00:00")).timestamp()
+            return now - seen < mesh_router.HEARTBEAT_STALE_S
+        except Exception:
+            return False
+
     providers = [
         {
             "node_id": r.get("node_id"),
-            "status": r.get("status", "offline"),
+            "status": "online" if _fresh(r) else "offline",
             "latency_p50_ms": r.get("latency_p50_ms"),
             "latency_p95_ms": r.get("latency_p95_ms"),
             "success_rate": r.get("success_rate"),
@@ -107,8 +122,7 @@ def mesh_status():
         "registered": len(providers),
         "latency_p50_ms": round(sum(lat) / len(lat)) if lat else None,
         "tokens_today": sum(p["tokens_today"] for p in providers),
-        "capacity": sum(int(r.get("max_concurrent") or 1) for r in rows
-                        if r.get("status") == "online"),
+        "capacity": sum(int(r.get("max_concurrent") or 1) for r in rows if _fresh(r)),
         # Honest about what is actually serving chat right now.
         "fallback": {"provider": FALLBACK_LABEL, "model": FALLBACK_MODEL,
                      "active": len(online) == 0,

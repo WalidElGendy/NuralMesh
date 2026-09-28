@@ -6,7 +6,10 @@ import os
 import secrets
 import subprocess
 import sys
+import threading
+import time as _time
 import uuid
+from collections import deque
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta, timezone
 from functools import lru_cache
@@ -14,9 +17,9 @@ from pathlib import Path
 from typing import Any
 
 import stripe
-from fastapi import Depends, FastAPI, Header, HTTPException, Response, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from supabase import create_client
@@ -146,6 +149,88 @@ app.add_middleware(
 )
 
 
+# ---------------------------------------------------------------------------
+# Per-IP rate limiting for the routes anyone on the internet can hit.
+#
+# Before this, /api/waitlist and /api/auth/* could be called without limit:
+# unlimited transactional emails to arbitrary addresses, unlimited invite rows,
+# credential stuffing against login, and — because every call reaches GoTrue
+# from Render's single egress IP — one attacker tripping GoTrue's per-IP limit
+# would lock every real user out. Chat-style routes are limited too so a
+# stolen or leaked session cannot run up the paid-provider bill unbounded.
+#
+# Sliding window, in memory, per worker. That is deliberately simple: this
+# service runs one worker (render.yaml) and the goal is to stop abuse, not to
+# meter fairly. Move to Redis (REDIS_URL is already provisioned) when there is
+# more than one instance.
+# ---------------------------------------------------------------------------
+_RATE_LIMITS: dict[str, tuple[int, int]] = {
+    # path: (max requests, window seconds)
+    "/api/waitlist": (5, 60),
+    "/api/auth/signup": (5, 60),
+    "/api/auth/login": (10, 60),
+    "/api/auth/magic-link": (5, 60),
+    "/api/provider/signup": (5, 60),
+    "/api/provider/claim": (10, 60),
+    "/api/chat": (20, 60),
+    "/api/search": (30, 60),
+}
+_RATE_PREFIX_LIMITS: tuple[tuple[str, tuple[int, int]], ...] = (
+    # every conversation turn / completion endpoint under /api/agents/
+    ("/api/agents/", (60, 60)),
+)
+_rate_buckets: dict[str, deque] = {}
+_rate_lock = threading.Lock()
+_RATE_MAX_KEYS = 50_000
+
+
+def _client_ip(request: Request) -> str:
+    # Vercel (the site proxy) and Render both append to X-Forwarded-For; the
+    # original client is the first entry.
+    xff = request.headers.get("x-forwarded-for", "")
+    if xff:
+        return xff.split(",")[0].strip()[:64]
+    return (request.client.host if request.client else "unknown")[:64]
+
+
+def _rate_limit_for(path: str, method: str) -> tuple[int, int] | None:
+    if method == "OPTIONS":
+        return None
+    hit = _RATE_LIMITS.get(path)
+    if hit:
+        return hit
+    if method == "POST":
+        for prefix, limit in _RATE_PREFIX_LIMITS:
+            if path.startswith(prefix):
+                return limit
+    return None
+
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    limit = _rate_limit_for(request.url.path, request.method)
+    if limit is None:
+        return await call_next(request)
+    max_req, window = limit
+    key = f"{_client_ip(request)}|{request.url.path}"
+    now = _time.monotonic()
+    with _rate_lock:
+        if len(_rate_buckets) > _RATE_MAX_KEYS:
+            _rate_buckets.clear()   # bounded memory beats a perfect window
+        bucket = _rate_buckets.setdefault(key, deque())
+        while bucket and now - bucket[0] > window:
+            bucket.popleft()
+        if len(bucket) >= max_req:
+            retry = int(window - (now - bucket[0])) + 1
+            return JSONResponse(
+                status_code=429,
+                content={"detail": "rate_limited"},
+                headers={"Retry-After": str(max(retry, 1))},
+            )
+        bucket.append(now)
+    return await call_next(request)
+
+
 class JobRequest(BaseModel):
     prompt: str = Field(..., min_length=1)
 
@@ -176,8 +261,12 @@ class ProviderClaimResponse(BaseModel):
 
 
 class NodeHeartbeatRequest(BaseModel):
-    hostname: str = Field(default="")
+    hostname: str = Field(default="", max_length=200)
     gpu_info: dict[str, Any] = Field(default_factory=dict)
+    # The Ollama models this node can serve. The scheduler only hands a node
+    # jobs for models it advertised, so a node that never says what it has
+    # would be given the default model's jobs whether or not it can run them.
+    models: list[str] | None = Field(default=None, max_length=32)
 
 
 class JobCompleteRequest(BaseModel):
@@ -252,10 +341,30 @@ def verify_admin(
     raise HTTPException(status_code=401, detail="invalid_admin_credentials")
 
 
-def claim_invite(supabase, code: str, claimed_by_user_id: str, intent: str) -> dict:
-    code = code.strip().upper()
+def claim_invite(
+    supabase, code: str, claimed_by_user_id: str, intent: str, email: str | None = None
+) -> dict:
+    code = (code or "").strip().upper()
     if not code:
         raise HTTPException(status_code=400, detail="invite_code_required")
+    # A targeted code (one issued to a specific address / intent) only works for
+    # that address and intent. Untargeted codes (email/intent null) work for
+    # anyone, as before. Checked before the atomic claim below so a code sent
+    # to alice@ cannot be redeemed by bob@.
+    targeted = (
+        supabase.table("invites")
+        .select("email, intent")
+        .eq("code", code)
+        .limit(1)
+        .execute()
+    )
+    if targeted.data:
+        bound_email = (targeted.data[0].get("email") or "").strip().lower()
+        bound_intent = (targeted.data[0].get("intent") or "").strip().lower()
+        if bound_email and (email or "").strip().lower() != bound_email:
+            raise HTTPException(status_code=400, detail="invite_code_invalid")
+        if bound_intent and (intent or "").strip().lower() != bound_intent:
+            raise HTTPException(status_code=400, detail="invite_code_invalid")
     update_payload = {"claimed_at": isoformat(utc_now())}
     update_payload["claimed_by_user_id"] = claimed_by_user_id
     result = (
@@ -283,9 +392,6 @@ def claim_invite(supabase, code: str, claimed_by_user_id: str, intent: str) -> d
         raise HTTPException(status_code=400, detail="invite_code_invalid")
     return result.data[0]
 
-
-
-DEMO_API_KEY = "nm_live_sk_3f9a8b2c1d4e5f6a7b8c9d0e1f2a3b4c"
 
 
 def utc_now() -> datetime:
@@ -368,7 +474,7 @@ class InMemoryProviderStore:
             raise HTTPException(status_code=401, detail="Invalid node credentials")
         return provider
 
-    def record_heartbeat(self, node_id: str, hostname: str, gpu_info: dict[str, Any]) -> dict[str, Any]:
+    def record_heartbeat(self, node_id: str, hostname: str, gpu_info: dict[str, Any], models=None) -> dict[str, Any]:
         provider = self.providers[node_id]
         provider.update(
             {
@@ -378,6 +484,8 @@ class InMemoryProviderStore:
                 "last_seen_at": isoformat(utc_now()),
             }
         )
+        if models:
+            provider["models"] = list(models)
         return provider
 
     def dashboard(self) -> dict[str, Any]:
@@ -495,13 +603,15 @@ class SupabaseProviderStore:
             raise HTTPException(status_code=401, detail="Invalid node credentials")
         return result.data[0]
 
-    def record_heartbeat(self, node_id: str, hostname: str, gpu_info: dict[str, Any]) -> dict[str, Any]:
+    def record_heartbeat(self, node_id: str, hostname: str, gpu_info: dict[str, Any], models=None) -> dict[str, Any]:
         payload = {
             "hostname": hostname,
             "gpu_info": gpu_info,
             "status": "online",
             "last_seen_at": isoformat(utc_now()),
         }
+        if models:
+            payload["models"] = [str(m)[:120] for m in models][:32]
         result = self.supabase.table("providers").update(payload).eq("node_id", node_id).execute()
         return result.data[0] if result.data else payload
 
@@ -553,10 +663,29 @@ def get_required_env(name):
     return value
 
 
+MAX_JOB_TOKENS = 65_536
+
+_supabase_client = None
+_supabase_client_lock = threading.Lock()
+
+
 def get_supabase_client():
-    supabase_url = get_required_env("SUPABASE_URL")
-    supabase_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or get_required_env("SUPABASE_KEY")
-    return create_client(supabase_url, supabase_key)
+    """One client for the process.
+
+    This used to build a fresh client on every call, and it is called several
+    times per request — so every request paid for new TLS handshakes and
+    connection setup, and nothing was ever pooled. The underlying httpx client
+    is thread-safe, so a single shared instance is both correct and far
+    cheaper under load."""
+    global _supabase_client
+    if _supabase_client is not None:
+        return _supabase_client
+    with _supabase_client_lock:
+        if _supabase_client is None:
+            supabase_url = get_required_env("SUPABASE_URL")
+            supabase_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or get_required_env("SUPABASE_KEY")
+            _supabase_client = create_client(supabase_url, supabase_key)
+    return _supabase_client
 
 
 @lru_cache
@@ -806,7 +935,7 @@ def node_heartbeat(
     provider=Depends(verify_node_credentials),
     provider_store=Depends(get_provider_store),
 ):
-    provider_store.record_heartbeat(provider["node_id"], body.hostname, body.gpu_info)
+    provider_store.record_heartbeat(provider["node_id"], body.hostname, body.gpu_info, body.models)
     return {"status": "ok", "node_id": provider["node_id"], "last_seen_at": isoformat(utc_now())}
 
 
@@ -934,6 +1063,12 @@ def complete_node_job(
 ):
     supabase = get_supabase_client()
     total_tokens = body.total_tokens or body.tokens_served or (body.prompt_tokens + body.completion_tokens)
+    # Token counts are self-reported by the node and are what the user is
+    # charged and the provider is credited for, so bound them. A single job can
+    # never legitimately exceed this; anything above is a lying client.
+    total_tokens = min(int(total_tokens), MAX_JOB_TOKENS)
+    prompt_tokens = min(int(body.prompt_tokens), MAX_JOB_TOKENS)
+    completion_tokens = min(int(body.completion_tokens), MAX_JOB_TOKENS)
     result = (
         supabase.table("jobs")
         .update(
@@ -942,15 +1077,21 @@ def complete_node_job(
                 "output": body.output,
                 "model": body.model,
                 "latency_ms": body.latency_ms,
-                "prompt_tokens": body.prompt_tokens,
-                "completion_tokens": body.completion_tokens,
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
                 "total_tokens": total_tokens,
                 "tokens_served": total_tokens,
                 "served_by": provider["node_id"],
+                "completed_at": isoformat(utc_now()),
             }
         )
         .eq("id", job_id)
         .eq("node_id", provider["node_id"])
+        # Only an in-flight job can be completed. Without this a node could
+        # re-POST /complete for the same job forever, and every replay would
+        # settle again: another routing_events row against the user and another
+        # credit to the provider.
+        .in_("status", ["claimed", "streaming"])
         .execute()
     )
     if not result.data:
@@ -1123,7 +1264,7 @@ def auth_signup(body: AuthSignupRequest):
         else signup_result["user"]["id"]
     )
     try:
-        claim_invite(supabase, body.invite_code, user_id, body.intent)
+        claim_invite(supabase, body.invite_code, user_id, body.intent, email=body.email)
     except HTTPException:
         try:
             supabase.auth.admin.delete_user(user_id)
@@ -1399,12 +1540,14 @@ import urllib.error as _urlerr
 
 
 class ChatMessage(BaseModel):
-    role: str
-    content: str
+    # Only the two conversational roles. Letting a client send `system` meant
+    # anyone could replace the server-side instructions on the paid model.
+    role: str = Field(..., pattern=r"^(user|assistant)$")
+    content: str = Field(..., min_length=1, max_length=20_000)
 
 
 class ChatRequest(BaseModel):
-    messages: list[ChatMessage]
+    messages: list[ChatMessage] = Field(..., min_length=1, max_length=40)
     stream: bool = False
 
 
@@ -1412,8 +1555,14 @@ class ChatResponse(BaseModel):
     answer: str
 
 
+from agents import get_current_user_id as _require_user  # noqa: E402
+
+
 @app.post("/api/chat", response_model=ChatResponse)
-def chat(body: ChatRequest):
+def chat(body: ChatRequest, user_id: str = Depends(_require_user)):
+    # This route used to take no credentials at all: an open, unmetered proxy
+    # to the paid provider. It now requires the same bearer session as the
+    # console and is rate limited above.
     sf_key = os.environ.get("SILICONFLOW_API_KEY")
     SILICONFLOW_MODEL = os.environ.get("SILICONFLOW_MODEL", "deepseek-ai/DeepSeek-V3.1")
     if not sf_key:

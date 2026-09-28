@@ -615,24 +615,61 @@ class SupabaseProviderStore:
         result = self.supabase.table("providers").update(payload).eq("node_id", node_id).execute()
         return result.data[0] if result.data else payload
 
+    def claim_status(self, claim_token: str) -> dict[str, Any] | None:
+        """The provider row a claim token was redeemed for, or None."""
+        rec = (
+            self.supabase.table("provider_claim_tokens")
+            .select("provider_id, used_at")
+            .eq("claim_token", claim_token)
+            .limit(1)
+            .execute()
+        )
+        row = (rec.data or [None])[0]
+        if not row or not row.get("provider_id"):
+            return None
+        prov = (
+            self.supabase.table("providers")
+            .select("*")
+            .eq("id", row["provider_id"])
+            .limit(1)
+            .execute()
+        )
+        return (prov.data or [None])[0]
+
     def dashboard(self) -> dict[str, Any]:
         result = self.supabase.table("providers").select("*").order("last_seen_at", desc=True).execute()
         providers = result.data or []
+        # A node is online if it heartbeated recently — the same test the router
+        # uses. The stored `status` column is never written back to offline.
+        stale_after = int(os.environ.get("NM_HEARTBEAT_STALE_S", "90"))
+        now = utc_now()
+
+        def _online(p) -> bool:
+            try:
+                return p.get("last_seen_at") and (now - parse_datetime(p["last_seen_at"])).total_seconds() < stale_after
+            except Exception:
+                return False
+
+        # Real values only. This used to substitute 220/520 ms latency, a 0.99
+        # success rate and 3.2M tokens/month whenever the real number was zero,
+        # so a brand-new mesh advertised earnings nobody had earned.
         nodes = [
             {
                 "node_id": provider["node_id"],
-                "last_seen": provider.get("last_seen_at") or isoformat(utc_now()),
-                "latency_p50_ms": provider.get("latency_p50_ms") or 220,
-                "latency_p95_ms": provider.get("latency_p95_ms") or 520,
-                "success_rate": provider.get("success_rate") or 0.99,
-                "models": provider.get("models") or ["llama3.3:70b-instruct-q4_K_M"],
+                "online": bool(_online(provider)),
+                "last_seen": provider.get("last_seen_at"),
+                "latency_p50_ms": provider.get("latency_p50_ms"),
+                "latency_p95_ms": provider.get("latency_p95_ms"),
+                "success_rate": provider.get("success_rate"),
+                "models": provider.get("models") or [],
             }
             for provider in providers
         ]
-        tokens_month = sum(int(provider.get("tokens_month") or 0) for provider in providers) or 3_210_400
+        tokens_month = sum(int(provider.get("tokens_month") or 0) for provider in providers)
         credits = tokens_month / 1000
         return {
-            "nodes_online": len(nodes),
+            "nodes_online": sum(1 for n in nodes if n["online"]),
+            "nodes_registered": len(nodes),
             "tokens_today": sum(int(provider.get("tokens_today") or 0) for provider in providers),
             "tokens_week": sum(int(provider.get("tokens_week") or 0) for provider in providers),
             "tokens_month": tokens_month,
@@ -923,11 +960,35 @@ def provider_dashboard(provider_store=Depends(get_provider_store)):
 
 @app.get("/api/provider/claim-status")
 def provider_claim_status(claim_token: str, provider_store=Depends(get_provider_store)):
-    record = provider_store.claim_tokens.get(claim_token) or {}
-    provider = provider_store.providers.get(record.get("node_id") or "") or {}
-    if not provider: return {"claimed": False}
-    age_s = max(0, int((utc_now() - parse_datetime(provider["last_seen_at"])).total_seconds()))
-    return {"claimed": True, "node_id": provider["node_id"], "status": provider.get("status", "online"), "gpu_info": provider.get("gpu_info", {}), "earnings_usd": round(0.045 * (age_s / 3600.0), 4), "jobs_served": 0, "tokens_out": 0, "last_beat_ago_s": age_s, "bpm": 60, "rate_per_hour_usd": 0.045}
+    """Polled by the host dashboard after a download: has this claim token been
+    redeemed by a running node, and is that node alive?
+
+    This reached into in-memory dicts that only the memory store has, so in
+    production (Supabase store) it raised AttributeError → 500 on every poll and
+    no provider ever saw their node come online."""
+    if hasattr(provider_store, "claim_status"):
+        provider = provider_store.claim_status(claim_token)
+    else:
+        record = provider_store.claim_tokens.get(claim_token) or {}
+        provider = provider_store.providers.get(record.get("node_id") or "")
+    if not provider:
+        return {"claimed": False}
+    try:
+        age_s = max(0, int((utc_now() - parse_datetime(provider["last_seen_at"])).total_seconds()))
+    except Exception:
+        age_s = None
+    stale_after = int(os.environ.get("NM_HEARTBEAT_STALE_S", "90"))
+    online = age_s is not None and age_s < stale_after
+    return {
+        "claimed": True,
+        "node_id": provider["node_id"],
+        "status": "online" if online else "offline",
+        "gpu_info": provider.get("gpu_info") or {},
+        "models": provider.get("models") or [],
+        "jobs_served": int(provider.get("jobs_served") or 0),
+        "tokens_out": int(provider.get("total_tokens_served") or 0),
+        "last_beat_ago_s": age_s,
+    }
 
 @app.post("/api/node/heartbeat")
 def node_heartbeat(

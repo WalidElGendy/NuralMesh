@@ -725,6 +725,24 @@ def get_supabase_client():
     return _supabase_client
 
 
+def get_auth_client():
+    """A throwaway client for signing a user in. Never the shared one.
+
+    supabase-py listens for its own sign-in: once sign_in_with_password
+    succeeds on a client, that client swaps its service-role Authorization
+    header for the user's access token. Signing in on the shared client from
+    get_supabase_client() therefore turned every later database call in the
+    process into a call made *as that user* (role `authenticated`), which the
+    tables refuse — "permission denied for table conversations" on every agent,
+    dashboard and provider query until the next restart. A fresh client per
+    sign-in keeps the user's session out of the server's own connection."""
+    supabase_url = get_required_env("SUPABASE_URL")
+    supabase_key = (os.environ.get("SUPABASE_ANON_KEY")
+                    or os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+                    or get_required_env("SUPABASE_KEY"))
+    return create_client(supabase_url, supabase_key)
+
+
 @lru_cache
 def get_version() -> str:
     for name in ("RENDER_GIT_COMMIT", "GIT_SHA", "COMMIT_SHA"):
@@ -1524,7 +1542,7 @@ class MagicLinkRequest(BaseModel):
 def auth_login(body: AuthLoginRequest):
     if not EMAILRE.match(body.email):
         raise HTTPException(status_code=400, detail="invalid_email")
-    supabase = get_supabase_client()
+    supabase = get_auth_client()   # not the shared client: see get_auth_client
     try:
         result = supabase.auth.sign_in_with_password({"email": body.email, "password": body.password})
     except Exception as e:
@@ -1589,7 +1607,7 @@ def auth_update_intent(body: IntentUpdateRequest, authorization: str | None = He
 def auth_magic_link(body: MagicLinkRequest):
     if not EMAILRE.match(body.email):
         raise HTTPException(status_code=400, detail="invalid_email")
-    supabase = get_supabase_client()
+    supabase = get_auth_client()   # not the shared client: see get_auth_client
     try:
         supabase.auth.sign_in_with_otp({"email": body.email, "options": {"should_create_user": False}})
     except Exception:

@@ -465,8 +465,8 @@
     <!-- LIVE PANEL -->
     <section id="live-panel">
       <div class="live-head">
-        <h2>Your node is on the mesh</h2>
-        <span class="pill pill-live"><span class="dot"></span> LIVE</span>
+        <h2 id="live-title">Your node is on the mesh</h2>
+        <span class="pill pill-live" id="live-pill"><span class="dot"></span> LIVE</span>
       </div>
       <p class="node-id-line">Node ID: <span id="node-id">…</span></p>
       <p id="model-note" class="node-id-line" style="display:none">Downloading the AI model in the background. Your node starts taking jobs when it finishes; keep the computer on.</p>
@@ -490,7 +490,7 @@
           </div>
           <div class="stat-sub hb-sub">
             <span>Last beat: <span id="hb-last">just now</span></span>
-            <span class="bpm" id="hb-bpm">60 BPM</span>
+            <span class="bpm" id="hb-bpm"></span>
           </div>
         </div>
 
@@ -499,23 +499,23 @@
           <div class="stat-label">Earnings</div>
           <div><span class="stat-value accent-violet" id="earnings-val">$0.0000</span></div>
           <div class="stat-sub">
-            <span id="rate-sub">Rate: $0.045 / hour · paid weekly to your wallet</span>
+            <span id="rate-sub">Paid per million tokens your node serves</span>
           </div>
         </div>
 
         <!-- Uptime -->
         <div class="stat-card bg-accent cyan">
-          <div class="stat-label">Uptime</div>
-          <div><span class="stat-value accent-cyan" id="uptime-val">0s</span></div>
+          <div class="stat-label">Tokens served</div>
+          <div><span class="stat-value accent-cyan" id="uptime-val">0</span></div>
           <div class="stat-sub">
-            <span id="jobs-sub">Jobs served: 0 · Tokens out: 0</span>
+            <span id="jobs-sub">Jobs served: 0</span>
           </div>
         </div>
       </div>
 
       <div class="stat-card" id="gpu-card" style="margin-top:18px;display:none"><div class="stat-label">GPU</div><div><span class="stat-value" id="gpu-model-val">—</span></div><div class="stat-sub"><span id="gpu-vram-val">VRAM: —</span> · <span id="gpu-req-note"></span></div></div><div class="stop-section">
-        <h3>To stop your node</h3>
-        <p>Press <kbd>Ctrl+C</kbd> in the terminal where the install is running. Earnings keep accruing while heartbeats arrive — once they stop for 5 minutes we mark you offline.</p>
+        <h3>Keeping your node online</h3>
+        <p>Your node runs in the background and starts by itself when you sign in to your computer. It earns while it is online and taking jobs; if its heartbeat stops for a few minutes, this page shows it as offline.</p>
       </div>
     </section>
 
@@ -668,9 +668,8 @@
             const d = await r.json();
             if (d.claimed) {
               clearInterval(tid);
-              showLive(d.node_id, email);
-              const note = $('model-note');
-              if (note) note.style.display = (d.models && d.models.length) ? 'none' : '';
+              showLive(d.node_id);
+              startLiveUpdates(tok);
               return;
             }
           }
@@ -682,69 +681,116 @@
       }, 4000);
     }
 
-    const DEFAULT_RATE_PER_HOUR = 0.045;
-    let nodeStartTs = 0;
-    let liveRate = DEFAULT_RATE_PER_HOUR;
+    /* ----- live dashboard: real numbers from the API -----
+       /api/provider/me (signed in) gives this account's nodes with status,
+       heartbeat age, tokens, jobs and earnings. A provider whose node is
+       already on the mesh lands here directly; the page refreshes every 10s.
+       Without a sign-in it falls back to the activation code's claim status. */
     let liveNodeId = '';
+    let liveTimer = null;
+    let ecgStarted = false;
 
-    function showLive(nodeId, email) {
+    function authToken() { try { return localStorage.getItem('nm_access_token') || ''; } catch (_) { return ''; } }
+    async function fetchMine() {
+      const t = authToken();
+      if (!t) return null;
+      try {
+        const r = await fetch('/api/provider/me', { headers: { 'Authorization': 'Bearer ' + t } });
+        return r.ok ? await r.json() : null;
+      } catch (_) { return null; }
+    }
+    function fmtAgo(s) {
+      if (s == null) return 'never';
+      if (s < 60) return s + 's ago';
+      if (s < 3600) return Math.floor(s / 60) + 'm ago';
+      if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+      return Math.floor(s / 86400) + 'd ago';
+    }
+    function renderGpu(g) {
+      if (!g || (!g.gpu_model && !g.vram_mib)) return;
+      const card = $('gpu-card'); if (!card) return;
+      card.style.display = '';
+      const v = Number(g.vram_mib || 0);
+      const ok = v >= 23552 && /(rtx\s*3090|rtx\s*4090|a6000|a5000|l40s|a100)/i.test(g.gpu_model || '');
+      $('gpu-model-val').textContent = g.gpu_model || 'Unknown GPU';
+      $('gpu-vram-val').textContent = 'VRAM: ' + (v ? Math.round(v / 1024) + ' GB' : 'unknown');
+      $('gpu-req-note').textContent = ok ? 'Meets the 24 GB requirement' : 'Below 24 GB / unsupported GPU';
+      const col = ok ? '' : '#ff4d4f';
+      $('gpu-model-val').style.color = col; $('gpu-vram-val').style.color = col; $('gpu-req-note').style.color = col;
+    }
+    function renderRate(rate) {
+      if (rate == null) return;
+      $('rate-sub').textContent = '$' + Number(rate).toFixed(2) + ' per million tokens your node serves';
+    }
+    function renderNode(n) {
+      if (!n) return;
+      liveNodeId = n.node_id;
+      $('node-id').textContent = n.node_id + (n.hostname ? ' · ' + n.hostname : '');
+      const online = n.status === 'online';
+      const pill = $('live-pill');
+      pill.innerHTML = '<span class="dot"></span> ' + (online ? 'LIVE' : 'OFFLINE');
+      pill.style.filter = online ? '' : 'grayscale(1)';
+      pill.style.opacity = online ? '' : '.7';
+      $('live-title').textContent = online ? 'Your node is on the mesh' : 'Your node is offline';
+      $('hb-last').textContent = fmtAgo(n.last_beat_ago_s);
+      $('earnings-val').textContent = '$' + Number(n.earnings_usd || 0).toFixed(4);
+      $('uptime-val').textContent = Number(n.tokens_out || 0).toLocaleString();
+      $('jobs-sub').textContent = 'Jobs served: ' + Number(n.jobs_served || 0).toLocaleString();
+      let msg;
+      if (!online) msg = 'Last heartbeat ' + fmtAgo(n.last_beat_ago_s) + '. Check the computer is on and signed in; the node starts by itself at sign-in.';
+      else if (!n.model_ready) msg = 'Downloading the AI model in the background. Your node starts taking jobs when it finishes; keep the computer on.';
+      else if (n.eligible_for_jobs === false) msg = 'Online, but this GPU is below the 24 GB requirement, so it is not sent jobs.';
+      else msg = 'Ready: your node is online and taking jobs.';
+      const note = $('model-note');
+      note.textContent = msg; note.style.display = '';
+      renderGpu(n.gpu_info);
+    }
+    function showLive(nodeId) {
       $('install-panel').style.display = 'none';
       $('live-panel').style.display = 'block';
-      liveNodeId = nodeId || ('node-' + Math.random().toString(36).slice(2,10));
-      $('node-id').textContent = liveNodeId;
-
-      const k = 'nm_node_start_' + (nodeId || email);
-      let startTs = parseInt(localStorage.getItem(k) || '0', 10);
-      if (!startTs) { startTs = Date.now(); localStorage.setItem(k, String(startTs)); }
-      nodeStartTs = startTs;
-
-      startEcg();
-      startTickers();
+      if (nodeId) { liveNodeId = nodeId; $('node-id').textContent = nodeId; }
+      if (!ecgStarted) { ecgStarted = true; startEcg(); }
     }
-
-    function fmtUptime(ms) {
-      const s = Math.max(0, Math.floor(ms / 1000));
-      const d = Math.floor(s / 86400);
-      const h = Math.floor((s % 86400) / 3600);
-      const m = Math.floor((s % 3600) / 60);
-      const sec = s % 60;
-      if (d) return d+'d '+h+'h '+m+'m';
-      if (h) return h+'h '+m+'m '+String(sec).padStart(2,'0')+'s';
-      if (m) return m+'m '+String(sec).padStart(2,'0')+'s';
-      return sec + 's';
-    }
-
-    let lastStatsAt = 0;
-    async function tick() {
-      const now = Date.now();
-      const ms = now - nodeStartTs;
-      const hrs = ms / 3600000;
-      $('uptime-val').textContent = fmtUptime(ms);
-      const earnings = hrs * liveRate;
-      $('earnings-val').textContent = '$' + earnings.toFixed(4);
-
-      if (now - lastStatsAt > 8000 && liveNodeId) {
-        lastStatsAt = now;
+    function startLiveUpdates(claimTok) {
+      if (liveTimer) return;
+      const refresh = async () => {
+        const d = await fetchMine();
+        if (d && d.nodes && d.nodes.length) {
+          renderRate(d.rate_per_mtok_usd);
+          renderNode(d.nodes.find(n => n.node_id === liveNodeId) || d.nodes[0]);
+          return;
+        }
+        if (!claimTok) return;
         try {
-          const r = await fetch('/api/provider/node-stats?node_id=' + encodeURIComponent(liveNodeId));
-          if (r.ok) {
-            const d = await r.json();
-            if (d.earnings_usd != null) $('earnings-val').textContent = '$' + Number(d.earnings_usd).toFixed(4);
-            if (d.jobs_served != null || d.tokens_out != null) {
-              $('jobs-sub').textContent = 'Jobs served: ' + (d.jobs_served ?? 0) + ' · Tokens out: ' + (d.tokens_out ?? 0);
-            }
-            if (d.last_beat_ago_s != null) $('hb-last').textContent = d.last_beat_ago_s + 's ago';
-            if (d.bpm != null) $('hb-bpm').textContent = d.bpm + ' BPM';
-            if (d.rate_per_hour_usd != null) {
-              liveRate = Number(d.rate_per_hour_usd);
-              $('rate-sub').textContent = 'Rate: $' + liveRate.toFixed(3) + ' / hour · paid weekly to your wallet';
-            }
-          }
-        } catch(_) {}
-      }
+          const r = await fetch('/api/provider/claim-status?claim_token=' + encodeURIComponent(claimTok));
+          if (!r.ok) return;
+          const c = await r.json();
+          if (c.claimed) renderNode({
+            node_id: c.node_id, status: c.status, last_beat_ago_s: c.last_beat_ago_s, gpu_info: c.gpu_info,
+            model_ready: !!(c.models && c.models.length), tokens_out: c.tokens_out, jobs_served: c.jobs_served,
+            earnings_usd: Number(c.tokens_out || 0) * 0.6 / 1e6,
+          });
+        } catch (_) {}
+      };
+      refresh();
+      liveTimer = setInterval(refresh, 10000);
     }
 
-    function startTickers() { tick(); setInterval(tick, 1000); }
+    /* A provider who already has a node goes straight to the live dashboard;
+       otherwise the install steps and activation code are shown. */
+    async function boot() {
+      renderInstallCmd();
+      const d = await fetchMine();
+      if (d && d.email) { try { sessionStorage.setItem('nm_email', d.email); } catch (_) {} }
+      if (d && d.nodes && d.nodes.length) {
+        showLive(d.nodes[0].node_id);
+        renderRate(d.rate_per_mtok_usd);
+        renderNode(d.nodes[0]);
+        startLiveUpdates(null);
+        return;
+      }
+      startActivation();
+    }
 
     function startEcg() {
       const W = 600, H = 60, BASE = H * 0.55;
@@ -775,8 +821,7 @@
       window.location.href = '/login.html';
     });
 
-    renderInstallCmd();
-    startActivation();
+    boot();
   
 
     /* ---- Session badge + role switcher ---- */
@@ -827,5 +872,5 @@
       } catch (e) { /* ignore */ }
     })();
   </script>
-<script>(function(){var R=24576;var OK=/(rtx\s*3090|rtx\s*4090|a6000|a5000|l40s|a100)/i;var of=window.fetch;window.fetch=function(){var a=arguments;var p=of.apply(this,a);try{var u=(a[0]&&a[0].url)||a[0]||'';if((''+u).indexOf('claim-status')>=0){p.then(function(r){r.clone().json().then(function(d){if(!d||!d.gpu_info)return;var g=d.gpu_info;var c=document.getElementById('gpu-card');if(!c)return;c.style.display='';var m=g.gpu_model||'Unknown GPU';var v=g.vram_mib||0;var mv=document.getElementById('gpu-model-val');var vv=document.getElementById('gpu-vram-val');var nv=document.getElementById('gpu-req-note');mv.textContent=m;vv.textContent='VRAM: '+(v?(Math.round(v/1024)+' GB'):'unknown');var ok=v>=R&&OK.test(m);var col=ok?'':'#ff4d4f';mv.style.color=col;vv.style.color=col;if(nv){nv.textContent=ok?'Meets 24 GB requirement':'Below 24 GB / unsupported GPU';nv.style.color=col;}}).catch(function(){});}).catch(function(){});}}catch(e){}return p;};})();</script></body>
+<script>(function(){var R=23552;var OK=/(rtx\s*3090|rtx\s*4090|a6000|a5000|l40s|a100)/i;var of=window.fetch;window.fetch=function(){var a=arguments;var p=of.apply(this,a);try{var u=(a[0]&&a[0].url)||a[0]||'';if((''+u).indexOf('claim-status')>=0){p.then(function(r){r.clone().json().then(function(d){if(!d||!d.gpu_info||!(d.gpu_info.gpu_model||d.gpu_info.vram_mib))return;var g=d.gpu_info;var c=document.getElementById('gpu-card');if(!c)return;c.style.display='';var m=g.gpu_model||'Unknown GPU';var v=g.vram_mib||0;var mv=document.getElementById('gpu-model-val');var vv=document.getElementById('gpu-vram-val');var nv=document.getElementById('gpu-req-note');mv.textContent=m;vv.textContent='VRAM: '+(v?(Math.round(v/1024)+' GB'):'unknown');var ok=v>=R&&OK.test(m);var col=ok?'':'#ff4d4f';mv.style.color=col;vv.style.color=col;if(nv){nv.textContent=ok?'Meets 24 GB requirement':'Below 24 GB / unsupported GPU';nv.style.color=col;}}).catch(function(){});}).catch(function(){});}}catch(e){}return p;};})();</script></body>
 </html>

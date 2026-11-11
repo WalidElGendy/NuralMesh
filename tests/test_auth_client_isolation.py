@@ -71,3 +71,22 @@ def test_magic_link_does_not_touch_the_shared_client(monkeypatch):
     api.auth_magic_link(api.MagicLinkRequest(email="someone@example.com"))
     assert used and used[0] is not shared.auth
     assert _auth_header(shared) == before
+
+
+def test_auth_client_uses_the_service_key_not_the_anon_key(monkeypatch):
+    """SUPABASE_ANON_KEY on the server was not a valid key for the project,
+    and preferring it made every password sign-in fail."""
+    monkeypatch.setenv("SUPABASE_ANON_KEY", "stale-anon-key")
+    c = api.get_auth_client()
+    assert "service-role-key" in c.supabase_key
+    assert "stale-anon-key" not in c.supabase_key
+
+
+def test_a_rejected_api_key_is_not_reported_as_a_wrong_password(monkeypatch):
+    def refuse(self, credentials):
+        raise Exception("Invalid API key")
+    monkeypatch.setattr(SyncGoTrueClient, "sign_in_with_password", refuse)
+    import pytest
+    with pytest.raises(api.HTTPException) as e:
+        api.auth_login(api.AuthLoginRequest(email="someone@example.com", password="x"))
+    assert e.value.status_code == 502 and e.value.detail == "auth_provider_error"

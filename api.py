@@ -769,11 +769,15 @@ def get_auth_client():
     process into a call made *as that user* (role `authenticated`), which the
     tables refuse — "permission denied for table conversations" on every agent,
     dashboard and provider query until the next restart. A fresh client per
-    sign-in keeps the user's session out of the server's own connection."""
+    sign-in keeps the user's session out of the server's own connection.
+
+    It uses the same key as the shared client. It used to prefer
+    SUPABASE_ANON_KEY, and the value set for that on the server is not a valid
+    key for this project: Supabase refused every password sign-in with 401
+    "Invalid API key", which the login endpoint reported as "Wrong email or
+    password" — so no one could log in with a password, even a correct one."""
     supabase_url = get_required_env("SUPABASE_URL")
-    supabase_key = (os.environ.get("SUPABASE_ANON_KEY")
-                    or os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
-                    or get_required_env("SUPABASE_KEY"))
+    supabase_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or get_required_env("SUPABASE_KEY")
     return create_client(supabase_url, supabase_key)
 
 
@@ -1583,6 +1587,10 @@ def auth_login(body: AuthLoginRequest):
         msg = str(e).lower()
         if "not confirmed" in msg or "email_not_confirmed" in msg:
             raise HTTPException(status_code=403, detail="email_not_confirmed")
+        if "api key" in msg or "apikey" in msg:
+            # A server configuration fault, not the user's password.
+            logging.error("supabase_login_rejected_api_key: %s", e)
+            raise HTTPException(status_code=502, detail="auth_provider_error")
         if "invalid" in msg or "credentials" in msg or "not found" in msg or "wrong" in msg:
             raise HTTPException(status_code=401, detail="invalid_credentials")
         logging.exception("supabase_login_failed")

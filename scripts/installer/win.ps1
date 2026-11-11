@@ -207,7 +207,7 @@ function Install-MeshnetService {
   $venvPy   = Join-Path $script:VenvDir 'Scripts\python.exe'
   $nodePy   = Join-Path $script:NodeDir 'node.py'
   $launcher = Join-Path $script:MeshnetDir 'start-node.cmd'
-  $taskName = 'MeshnetNode'
+  $hidden   = Join-Path $script:MeshnetDir 'start-node-hidden.vbs'
 
   if (-not (Test-Path -LiteralPath $venvPy)) { Fail "Python not found at $venvPy" }
   if (-not (Test-Path -LiteralPath $nodePy)) { Fail "node.py not found at $nodePy" }
@@ -223,48 +223,37 @@ set "PYTHONUNBUFFERED=1"
 "$venvPy" "$nodePy" >> "$($script:LogFile)" 2>&1
 "@
   Set-Content -LiteralPath $launcher -Value $launcherBody -Encoding ASCII
+  # Runs the .cmd with no window at all.
+  $vbsPath = $launcher.Replace('"', '""')
+  Set-Content -LiteralPath $hidden -Value "CreateObject(""WScript.Shell"").Run """"""$vbsPath"""""", 0, False" -Encoding ASCII
   Write-Log "Wrote node launcher: $launcher"
 
-  Write-Log "Registering scheduled task '$taskName' (runs at logon)..."
-  # Best-effort delete any previous task
-  Invoke-NativeQuiet -Exe 'schtasks.exe' -Args @('/Delete','/TN',$taskName,'/F') | Out-Null
-
-  # Create — point /TR at the wrapper script. /TR must be a single token, so we pass it as one quoted arg.
-  $trArg = '"' + $launcher + '"'
-  $createRes = Invoke-NativeQuiet -Exe 'schtasks.exe' -Args @('/Create','/TN',$taskName,'/SC','ONLOGON','/RL','LIMITED','/F','/TR',$trArg)
-  if ($createRes.ExitCode -ne 0) {
-    Write-Log "schtasks /Create output: $($createRes.Output.Trim())"
-    Fail "Failed to register scheduled task '$taskName' (exit $($createRes.ExitCode)). Try running PowerShell as Administrator."
+  # Start at logon from the user's Startup folder. The scheduled task this
+  # used to create was reported as started but was missing afterwards on
+  # real machines (schtasks: "cannot find the file specified"), so the node
+  # never ran in the background. The Startup folder needs no admin rights.
+  Invoke-NativeQuiet -Exe 'schtasks.exe' -Args @('/Delete','/TN','MeshnetNode','/F') | Out-Null
+  try {
+    $startup = [Environment]::GetFolderPath('Startup')
+    Ensure-Directory $startup
+    Copy-Item -LiteralPath $hidden -Destination (Join-Path $startup 'MeshNet Node.vbs') -Force
+    Write-Log 'The node will start automatically when you sign in to Windows.'
+  } catch {
+    Write-Log "Could not add the node to Startup ($($_.Exception.Message)); start it after a restart with: wscript `"$hidden`""
   }
 
-  # Verify the task actually exists post-create (catches the silent-discard case).
-  $verify = Invoke-NativeQuiet -Exe 'schtasks.exe' -Args @('/Query','/TN',$taskName)
-  if ($verify.ExitCode -ne 0) {
-    Write-Log "schtasks /Query output: $($verify.Output.Trim())"
-    Write-Log "Falling back to direct launch (no scheduled task)..."
-    # Fallback: start the launcher in the background so the user still gets a running node.
-    try {
-      Start-Process -FilePath 'cmd.exe' -ArgumentList @('/c', $launcher) -WindowStyle Hidden | Out-Null
-      Write-Log "Node launched directly. Logs: $($script:LogFile)"
-      Write-Log "NOTE: scheduled task could not be registered; node will NOT auto-restart at next logon. Re-run installer as Administrator to fix."
-      return
-    } catch {
-      Fail "Scheduled task did not persist after /Create and direct launch also failed: $($_.Exception.Message)"
-    }
-  }
-
-  # Start now — non-fatal if it can't start immediately
-  $runRes = Invoke-NativeQuiet -Exe 'schtasks.exe' -Args @('/Run','/TN',$taskName)
-  if ($runRes.ExitCode -ne 0) {
-    Write-Log "Scheduled task registered but did not start now (exit $($runRes.ExitCode)). It will run at next logon. Falling back to direct launch for this session..."
-    try {
-      Start-Process -FilePath 'cmd.exe' -ArgumentList @('/c', $launcher) -WindowStyle Hidden | Out-Null
-      Write-Log "Node launched directly. Logs: $($script:LogFile)"
-    } catch {
-      Write-Log "Direct launch failed: $($_.Exception.Message). Log out and back in to start the task."
-    }
-  } else {
-    Write-Log "Scheduled task started. Logs: $($script:LogFile)"
+  # Stop a node agent that is already running (an older install), then start
+  # the fresh one in the background now.
+  try {
+    Get-CimInstance Win32_Process -Filter "Name='python.exe'" -ErrorAction SilentlyContinue |
+      Where-Object { $_.CommandLine -and $_.CommandLine -like '*\.meshnet\node\node.py*' } |
+      ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+  } catch { }
+  try {
+    Start-Process -FilePath 'wscript.exe' -ArgumentList @("`"$hidden`"") | Out-Null
+    Write-Log "Node agent started in the background. Logs: $($script:LogFile)"
+  } catch {
+    Fail "Could not start the node agent: $($_.Exception.Message)"
   }
 }
 

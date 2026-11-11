@@ -447,6 +447,16 @@ class InMemoryProviderStore:
         self.claim_tokens[token] = record
         return record
 
+    def nodes_for_email(self, email: str) -> list[dict[str, Any]]:
+        email = (email or "").strip().lower()
+        return [p for p in self.providers.values() if (p.get("email") or "").strip().lower() == email]
+
+    def node_totals(self, provider: dict[str, Any]) -> dict[str, Any]:
+        return {"jobs_served": int(provider.get("jobs_served") or 0), "paid_usd": 0.0, "pending_usd": 0.0}
+
+    def payout_rate_per_mtok(self) -> float:
+        return 0.6
+
     def claim_status(self, claim_token: str) -> dict[str, Any] | None:
         """Same rules as SupabaseProviderStore.claim_status."""
         record = self.claim_tokens.get(claim_token)
@@ -629,6 +639,63 @@ class SupabaseProviderStore:
             payload["models"] = [str(m)[:120] for m in models][:32]
         result = self.supabase.table("providers").update(payload).eq("node_id", node_id).execute()
         return result.data[0] if result.data else payload
+
+    def nodes_for_email(self, email: str) -> list[dict[str, Any]]:
+        """Every node registered to this account (emails compared without case)."""
+        email = (email or "").strip().lower()
+        if not email:
+            return []
+        pattern = email.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        result = self.supabase.table("providers").select("*").ilike("email", pattern).execute()
+        return result.data or []
+
+    def node_totals(self, provider: dict[str, Any]) -> dict[str, Any]:
+        """Jobs served and money already paid or on its way for one node."""
+        out = {"jobs_served": 0, "paid_usd": 0.0, "pending_usd": 0.0}
+        try:
+            jobs = (
+                self.supabase.table("provider_jobs")
+                .select("id", count="exact")
+                .eq("provider_id", provider["id"])
+                .limit(1)
+                .execute()
+            )
+            out["jobs_served"] = int(jobs.count or 0)
+        except Exception:
+            logging.exception("provider_jobs_count_failed")
+        try:
+            pays = (
+                self.supabase.table("provider_payouts")
+                .select("usd_equivalent, status")
+                .eq("provider_id", provider["id"])
+                .execute()
+            )
+            for p in pays.data or []:
+                amount = float(p.get("usd_equivalent") or 0)
+                if p.get("status") == "paid":
+                    out["paid_usd"] += amount
+                elif p.get("status") in ("requested", "approved", "processing"):
+                    out["pending_usd"] += amount
+        except Exception:
+            logging.exception("provider_payouts_read_failed")
+        return out
+
+    def payout_rate_per_mtok(self) -> float:
+        """USD a provider earns per million tokens served (app_config), the
+        same rate the wallet (nm-provider) pays out on."""
+        try:
+            r = (
+                self.supabase.table("app_config")
+                .select("value")
+                .eq("key", "provider_payout_per_mtok_usd")
+                .limit(1)
+                .execute()
+            )
+            if r.data:
+                return float(r.data[0]["value"])
+        except Exception:
+            logging.exception("payout_rate_read_failed")
+        return 0.6
 
     def claim_status(self, claim_token: str) -> dict[str, Any] | None:
         """The provider row a claim token was redeemed for, or None.
@@ -1046,6 +1113,68 @@ def provider_claim_status(claim_token: str, provider_store=Depends(get_provider_
         "last_beat_ago_s": age_s,
     }
 
+def _bearer_user_email(authorization: str | None) -> str:
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="missing_token")
+    token = authorization.split(" ", 1)[1].strip()
+    if not token:
+        raise HTTPException(status_code=401, detail="missing_token")
+    try:
+        user = getattr(get_supabase_client().auth.get_user(token), "user", None)
+    except Exception:
+        raise HTTPException(status_code=401, detail="invalid_token")
+    email = (getattr(user, "email", None) or "").strip().lower() if user else ""
+    if not email:
+        raise HTTPException(status_code=401, detail="invalid_token")
+    return email
+
+
+@app.get("/api/provider/me")
+def provider_me(
+    authorization: str | None = Header(default=None),
+    provider_store=Depends(get_provider_store),
+):
+    """The signed-in provider's nodes with live status and real numbers, for
+    the host dashboard. A provider who already has a node sees it straight
+    away instead of the install steps; the page polls this while open."""
+    email = _bearer_user_email(authorization)
+    stale_after = int(os.environ.get("NM_HEARTBEAT_STALE_S", "90"))
+    rate = provider_store.payout_rate_per_mtok()
+    nodes = []
+    for p in provider_store.nodes_for_email(email):
+        try:
+            age_s = max(0, int((utc_now() - parse_datetime(p["last_seen_at"])).total_seconds()))
+        except Exception:
+            age_s = None
+        models = p.get("models") or []
+        if isinstance(models, str):
+            try:
+                models = json.loads(models)
+            except Exception:
+                models = [models]
+        tokens = int(p.get("total_tokens_served") or 0)
+        totals = provider_store.node_totals(p)
+        earned = tokens * rate / 1e6
+        nodes.append({
+            "node_id": p["node_id"],
+            "hostname": p.get("hostname"),
+            "status": "online" if age_s is not None and age_s < stale_after else "offline",
+            "last_beat_ago_s": age_s,
+            "gpu_info": p.get("gpu_info") or {},
+            "eligible_for_jobs": node_meets_requirements(p.get("gpu_info")),
+            "models": models,
+            "model_ready": bool(models),
+            "tokens_out": tokens,
+            "jobs_served": totals["jobs_served"],
+            "earnings_usd": round(earned, 6),
+            "paid_usd": round(totals["paid_usd"], 2),
+            "available_usd": round(max(0.0, earned - totals["paid_usd"] - totals["pending_usd"]), 6),
+            "created_at": p.get("created_at"),
+        })
+    nodes.sort(key=lambda n: (n["status"] != "online", n["last_beat_ago_s"] if n["last_beat_ago_s"] is not None else 10**9))
+    return {"email": email, "rate_per_mtok_usd": rate, "nodes": nodes}
+
+
 @app.post("/api/node/heartbeat")
 def node_heartbeat(
     body: NodeHeartbeatRequest,
@@ -1056,7 +1185,10 @@ def node_heartbeat(
     return {"status": "ok", "node_id": provider["node_id"], "last_seen_at": isoformat(utc_now())}
 
 
-MIN_VRAM_MIB = 24576
+# "24 GB" cards report slightly less than 24576 MiB through nvidia-smi (an
+# RTX 4090 shows 24564), so a strict 24576 check turned every 4090 and 3090
+# away from jobs. 23 GiB still rules out the 16 and 20 GB cards.
+MIN_VRAM_MIB = 23 * 1024
 SUPPORTED_GPUS = ("rtx 3090", "rtx 4090", "a6000", "a5000", "l40s", "a100")
 
 

@@ -21,20 +21,20 @@ class FakeProc:
 
 
 def test_startup_check_no_longer_exits(monkeypatch):
-    monkeypatch.setattr(node.ollama, "list", lambda: {"models": []})
+    monkeypatch.setattr(node, "_list_models", lambda: {"models": []})
     node.startup_self_check()          # used to raise SystemExit(1)
 
 
 def test_installed_models_is_empty_when_ollama_is_missing(monkeypatch):
     def boom():
         raise ConnectionError("ollama not running")
-    monkeypatch.setattr(node.ollama, "list", boom)
+    monkeypatch.setattr(node, "_list_models", boom)
     assert node.installed_models() == []
 
 
 def test_installed_models_reports_what_is_pulled(monkeypatch):
     monkeypatch.setattr(node, "NODE_MODELS", ["a:1", "b:2"])
-    monkeypatch.setattr(node.ollama, "list", lambda: {"models": [{"name": "b:2"}, {"name": "x"}]})
+    monkeypatch.setattr(node, "_list_models", lambda: {"models": [{"name": "b:2"}, {"name": "x"}]})
     assert node.installed_models() == ["b:2"]
 
 

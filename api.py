@@ -442,9 +442,24 @@ class InMemoryProviderStore:
             "region": region,
             "expires_at": isoformat(expires_at),
             "used_at": None,
+            "created_at": isoformat(utc_now()),
         }
         self.claim_tokens[token] = record
         return record
+
+    def claim_status(self, claim_token: str) -> dict[str, Any] | None:
+        """Same rules as SupabaseProviderStore.claim_status."""
+        record = self.claim_tokens.get(claim_token)
+        if not record:
+            return None
+        if record.get("node_id"):
+            return self.providers.get(record["node_id"])
+        since = parse_datetime(record["created_at"])
+        seen = [
+            p for p in self.providers.values()
+            if p.get("email") == record["email"] and parse_datetime(p["last_seen_at"]) >= since
+        ]
+        return max(seen, key=lambda p: parse_datetime(p["last_seen_at"])) if seen else None
 
     def claim_node(self, claim_token: str, hostname: str, gpu_info: dict[str, Any]) -> dict[str, str]:
         record = self.claim_tokens.get(claim_token)
@@ -616,21 +631,40 @@ class SupabaseProviderStore:
         return result.data[0] if result.data else payload
 
     def claim_status(self, claim_token: str) -> dict[str, Any] | None:
-        """The provider row a claim token was redeemed for, or None."""
+        """The provider row a claim token was redeemed for, or None.
+
+        A machine that already has a node keeps its credentials when the
+        installer runs again ("Existing credentials found; skipping claim"),
+        so the new code is never redeemed and the host dashboard used to wait
+        on it forever. If the code's account has a node that checked in after
+        the code was issued, that is the node this install brought online."""
         rec = (
             self.supabase.table("provider_claim_tokens")
-            .select("provider_id, used_at")
+            .select("provider_id, used_at, email, created_at")
             .eq("claim_token", claim_token)
             .limit(1)
             .execute()
         )
         row = (rec.data or [None])[0]
-        if not row or not row.get("provider_id"):
+        if not row:
+            return None
+        if row.get("provider_id"):
+            prov = (
+                self.supabase.table("providers")
+                .select("*")
+                .eq("id", row["provider_id"])
+                .limit(1)
+                .execute()
+            )
+            return (prov.data or [None])[0]
+        if not row.get("email") or not row.get("created_at"):
             return None
         prov = (
             self.supabase.table("providers")
             .select("*")
-            .eq("id", row["provider_id"])
+            .eq("email", row["email"])
+            .gte("last_seen_at", row["created_at"])
+            .order("last_seen_at", desc=True)
             .limit(1)
             .execute()
         )

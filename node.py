@@ -39,9 +39,17 @@ def _model_names(response):
     return names
 
 
+def _list_models():
+    # A short timeout: a stalled Ollama must never hold up the heartbeat.
+    try:
+        return ollama.Client(timeout=10).list()
+    except TypeError:                      # very old ollama package
+        return ollama.list()
+
+
 def check_ollama_models():
     try:
-        installed = _model_names(ollama.list())
+        installed = _model_names(_list_models())
     except Exception as error:
         logger.error("Ollama self-check failed: %s", error)
         return False
@@ -93,7 +101,7 @@ def installed_models():
     """The configured models that Ollama already has, or [] when Ollama is
     not installed or not running yet."""
     try:
-        have = _model_names(ollama.list())
+        have = _model_names(_list_models())
     except Exception:
         return []
     return [model for model in NODE_MODELS if model in have]

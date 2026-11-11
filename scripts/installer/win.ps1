@@ -98,6 +98,25 @@ function Install-OllamaWindows {
 }
 
 function Get-GpuInfo {
+  # nvidia-smi first: Win32_VideoController.AdapterRAM is a 32-bit value and
+  # reports any card over 4 GB (an RTX 4090 included) as 4095 MB, which made
+  # every Windows GPU look too small for jobs.
+  try {
+    $smi = $null
+    $cmd = Get-Command 'nvidia-smi' -ErrorAction SilentlyContinue
+    if ($cmd) { $smi = $cmd.Source }
+    else {
+      $p = Join-Path $env:SystemRoot 'System32\nvidia-smi.exe'
+      if (Test-Path -LiteralPath $p) { $smi = $p }
+    }
+    if ($smi) {
+      $line = (& $smi --query-gpu=memory.total,name,driver_version --format=csv,noheader,nounits 2>$null | Select-Object -First 1)
+      if ($line) {
+        $parts = $line -split ',\s*', 3
+        return @{ gpu_model = $parts[1].Trim(); vram_mib = [int]$parts[0].Trim(); driver = $parts[2].Trim(); platform = 'windows'; os = (Get-CimInstance Win32_OperatingSystem).Caption }
+      }
+    }
+  } catch { }
   try {
     $gpus = Get-CimInstance Win32_VideoController | Where-Object { $_.AdapterRAM -gt 0 }
     $primary = $gpus | Sort-Object AdapterRAM -Descending | Select-Object -First 1
@@ -200,6 +219,7 @@ setlocal
 set "MESHNET_API_BASE_URL=$($script:BackendUrl)"
 set "MESHNET_CREDENTIALS_FILE=$($script:CredentialsFile)"
 set "MESHNET_DIR=$($script:MeshnetDir)"
+set "PYTHONUNBUFFERED=1"
 "$venvPy" "$nodePy" >> "$($script:LogFile)" 2>&1
 "@
   Set-Content -LiteralPath $launcher -Value $launcherBody -Encoding ASCII

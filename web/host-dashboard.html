@@ -442,7 +442,7 @@
         <div class="step-num">3</div>
         <div class="step-body">
           <h3>Wait ~2 minutes</h3>
-          <p>The installer pulls a model and registers your node. Once your terminal prints <code>heartbeat ok</code>, this page switches to the live dashboard automatically.</p>
+          <p>The installer registers your node first, so this page switches to the live dashboard within a few minutes. The AI model (tens of GB) then downloads in the background; your node starts taking jobs when it finishes.</p>
         </div>
       </div>
       </details>
@@ -469,6 +469,7 @@
         <span class="pill pill-live"><span class="dot"></span> LIVE</span>
       </div>
       <p class="node-id-line">Node ID: <span id="node-id">…</span></p>
+      <p id="model-note" class="node-id-line" style="display:none">Downloading the AI model in the background. Your node starts taking jobs when it finishes; keep the computer on.</p>
 
       <div class="live-grid">
         <!-- Heartbeat -->
@@ -593,10 +594,29 @@
     }
 
     /* ----- request claim token + start polling ----- */
+    /* Reuse this browser's unexpired activation code for the same email, so a
+       reload keeps watching the code baked into the installer already
+       downloaded. Every load used to mint a new one, and the page then waited
+       on a code no installer had. */
+    const CLAIM_KEY = 'nm_host_claim';
+    function savedClaim(email) {
+      try {
+        const c = JSON.parse(localStorage.getItem(CLAIM_KEY) || 'null');
+        if (c && c.email === email && c.token && Date.parse(c.expires_at) - Date.now() > 3600e3) return c.token;
+      } catch (_) {}
+      return null;
+    }
     async function startActivation() {
       const email = getEmail();
       if (!email) {
         $('install-error').textContent = 'No email — please sign in again.';
+        return;
+      }
+      const reuse = savedClaim(email);
+      if (reuse) {
+        claimToken = reuse;
+        renderInstallCmd();
+        pollClaim(reuse, email);
         return;
       }
       try {
@@ -612,6 +632,7 @@
           return;
         }
         claimToken = d.claim_token;
+        try { localStorage.setItem(CLAIM_KEY, JSON.stringify({ email, token: d.claim_token, expires_at: d.expires_at })); } catch (_) {}
         renderInstallCmd();
         try { await navigator.clipboard.writeText(currentOS === 'mac' ? macCmd(claimToken) : winCmd(claimToken)); } catch(_){}
         pollClaim(d.claim_token, email);
@@ -648,13 +669,15 @@
             if (d.claimed) {
               clearInterval(tid);
               showLive(d.node_id, email);
+              const note = $('model-note');
+              if (note) note.style.display = (d.models && d.models.length) ? 'none' : '';
               return;
             }
           }
         } catch(_) {}
         if (elapsed > 900) {
           clearInterval(tid);
-          $('status-text').textContent = 'Still waiting — if your terminal shows "heartbeat ok", reload this page.';
+          $('status-text').textContent = 'Still waiting. If the installer finished, reload this page; it keeps the same activation code.';
         }
       }, 4000);
     }

@@ -69,6 +69,7 @@
       const params = new URLSearchParams(location.search);
       const tokenHash = params.get("token_hash") || "";
       const type = params.get("type") || "";
+      const toAdmin = params.get("next") === "admin";
       try { history.replaceState(null, "", location.pathname); } catch (_) {}
 
       function signedIn(data) {
@@ -78,6 +79,12 @@
         try { if (intent !== "user" && intent !== "provider") intent = localStorage.getItem("nm_intent"); } catch (_) {}
         if (intent !== "user" && intent !== "provider") intent = "user";
         try { localStorage.setItem("nm_intent", intent); } catch (_) {}
+        if (toAdmin) {
+          // The admin panel keeps its own session; hand it this one.
+          try { sessionStorage.setItem("nm_admin_token", data.access_token); sessionStorage.setItem("nm_admin_token_kind", "jwt"); } catch (_) {}
+          window.location.replace("/admin.html");
+          return;
+        }
         window.location.replace(intent === "provider" ? "/host-dashboard.html" : "/chat.html");
       }
       async function call(body) {

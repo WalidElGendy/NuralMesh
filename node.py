@@ -426,6 +426,29 @@ def poll_for_jobs():
         time.sleep(POLL_INTERVAL_SECONDS + random.uniform(0, POLL_JITTER_SECONDS))
 
 
+_instance_lock = None
+
+
+def acquire_single_instance(port=int(os.environ.get("MESHNET_NODE_LOCK_PORT", "47811"))):
+    """One node agent per machine. The agent starts from the Startup folder at
+    sign-in and again whenever the installer runs, so a second copy must step
+    aside instead of serving jobs twice. A bound localhost port is released by
+    the OS however the process ends."""
+    global _instance_lock
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        sock.bind(("127.0.0.1", port))
+        sock.listen(1)
+    except OSError:
+        sock.close()
+        return False
+    _instance_lock = sock
+    return True
+
+
 if __name__ == "__main__":
+    if not acquire_single_instance():
+        logger.info("Another MeshNet node agent is already running on this machine; exiting")
+        raise SystemExit(0)
     startup_self_check()
     poll_for_jobs()

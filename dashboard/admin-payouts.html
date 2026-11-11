@@ -26,8 +26,10 @@
       <input id="email" type="email" autocomplete="username" class="mt-2 w-full rounded-xl bg-black/40 px-4 py-3 outline-none focus:ring-2 focus:ring-violet-500">
       <label class="mt-4 block text-xs uppercase tracking-wide text-zinc-400">Password</label>
       <input id="password" type="password" autocomplete="current-password" class="mt-2 w-full rounded-xl bg-black/40 px-4 py-3 outline-none focus:ring-2 focus:ring-violet-500">
+      <p class="mt-2 text-right text-sm"><a href="#" id="forgot-password" class="text-violet-300 hover:text-violet-200">Forgot password?</a></p>
       <button id="unlock" class="grad-btn mt-6 w-full rounded-xl px-4 py-3 font-bold">Sign in</button>
       <p id="gate-error" class="mt-3 min-h-5 text-sm text-red-300"></p>
+      <p id="gate-note" class="min-h-5 text-sm text-emerald-300"></p>
     </section>
 
     <section id="panel" class="mt-8 hidden">
@@ -153,5 +155,46 @@
     $("refresh").addEventListener("click", loadPayouts);
     if(getTok()) showPanel(); else showGate("");
   </script>
+
+<script>
+/* Forgot password: emails a reset link (nm-auth-link edge function). The
+   link opens beta.meshnet.co/auth-callback.html, which sets the new password
+   and sends the person back here to sign in. */
+(function () {
+  var NEXT = "dashboard-payouts";
+  var $ = function (id) { return document.getElementById(id); };
+  var link = $("forgot-password"), note = $("gate-note"), err = $("gate-error"), email = $("email");
+  if (!link) return;
+  if (/[?&]reset=1/.test(location.search)) {
+    note.textContent = "Password changed. Sign in with your new password.";
+    try { history.replaceState(null, "", location.pathname); } catch (_) {}
+  }
+  link.addEventListener("click", async function (e) {
+    e.preventDefault();
+    note.textContent = "";
+    var addr = (email.value || "").trim();
+    if (!addr || !email.checkValidity()) {
+      err.textContent = "Enter your email above, then click Forgot password.";
+      email.focus();
+      return;
+    }
+    err.textContent = "";
+    link.style.pointerEvents = "none"; link.textContent = "Sending…";
+    try {
+      var r = await fetch("https://czphnagkzvkemgtkliew.supabase.co/functions/v1/nm-auth-link", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "send", kind: "recovery", email: addr, next: NEXT })
+      });
+      var d = await r.json().catch(function () { return {}; });
+      if (!r.ok) { err.textContent = d.error === "invalid_email" ? "That doesn't look like a valid email." : "Could not send the reset email. Please try again."; return; }
+      note.textContent = "If that email has an account, a reset link is on its way. It works once and expires in one hour.";
+    } catch (ex) {
+      err.textContent = "Network error: " + ex.message;
+    } finally {
+      link.style.pointerEvents = ""; link.textContent = "Forgot password?";
+    }
+  });
+})();
+</script>
 </body>
 </html>

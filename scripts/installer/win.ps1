@@ -75,23 +75,26 @@ function Get-PythonExe {
   Fail 'Python 3 is required. Install from https://www.python.org/downloads/windows/ (tick "Add Python to PATH") and re-run. If only the Microsoft Store Python alias is present, install the real package from python.org.'
 }
 
+# Installs the Ollama runtime WITHOUT blocking. It used to download Ollama and
+# then pull the ~40 GB model before the node was even registered, so a new
+# provider waited hours (or failed on disk space) and never showed up. Now the
+# install runs in a hidden background process and the node agent (node.py)
+# pulls the model itself once Ollama is there, while already online.
+# The one-click Windows app calls this function first, so it must return fast.
 function Install-OllamaWindows {
-  if (Test-CommandExists 'ollama') {
-    Write-Log 'Ollama already installed.'
-  } else {
-    Write-Log 'Installing Ollama for Windows...'
-    $installer = Join-Path $env:TEMP 'OllamaSetup.exe'
-    Invoke-WebRequest -Uri 'https://ollama.com/download/OllamaSetup.exe' -OutFile $installer -UseBasicParsing
-    Start-Process -FilePath $installer -ArgumentList '/SILENT' -Wait
-    $ollamaBin = Join-Path $env:LOCALAPPDATA 'Programs\Ollama'
-    if (Test-Path $ollamaBin) { $env:Path = "$ollamaBin;$env:Path" }
-    if (-not (Test-CommandExists 'ollama')) {
-      Fail 'Ollama installation failed. Install manually from https://ollama.com/download and re-run.'
-    }
+  $ollamaExe = Join-Path $env:LOCALAPPDATA 'Programs\Ollama\ollama.exe'
+  if ((Test-CommandExists 'ollama') -or (Test-Path -LiteralPath $ollamaExe)) {
+    Write-Log 'Ollama already installed. Your node will download the AI model in the background once it is online.'
+    return
   }
-  Write-Log "Pulling model $($script:ModelName) (this can take a while)..."
-  & ollama pull $script:ModelName
-  if ($LASTEXITCODE -ne 0) { Fail "Failed to pull model $($script:ModelName)" }
+  Write-Log 'Installing Ollama in the background. Your node will come online first and download the AI model afterwards.'
+  $installer = (Join-Path $env:TEMP 'OllamaSetup.exe').Replace("'", "''")
+  $bg = "`$ProgressPreference='SilentlyContinue'; try { Invoke-WebRequest -Uri 'https://ollama.com/download/OllamaSetup.exe' -OutFile '$installer' -UseBasicParsing; Start-Process -FilePath '$installer' -ArgumentList '/VERYSILENT','/NORESTART','/SUPPRESSMSGBOXES' -Wait } catch { }"
+  try {
+    Start-Process -FilePath 'powershell.exe' -WindowStyle Hidden -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-Command',$bg) | Out-Null
+  } catch {
+    Write-Log "Could not start the Ollama install ($($_.Exception.Message)). Install it from https://ollama.com/download; your node will pick it up."
+  }
 }
 
 function Get-GpuInfo {
@@ -100,7 +103,7 @@ function Get-GpuInfo {
     $primary = $gpus | Sort-Object AdapterRAM -Descending | Select-Object -First 1
     $name = if ($primary) { $primary.Name } else { 'unknown' }
     $vramMib = if ($primary -and $primary.AdapterRAM) { [int]($primary.AdapterRAM / 1MB) } else { 0 }
-    return @{ gpu_model = $name; vram_mib = $vramMib; driver = (if ($primary) { $primary.DriverVersion } else { '' }); platform = 'windows'; os = (Get-CimInstance Win32_OperatingSystem).Caption }
+    return @{ gpu_model = $name; vram_mib = $vramMib; driver = $(if ($primary) { $primary.DriverVersion } else { '' }); platform = 'windows'; os = (Get-CimInstance Win32_OperatingSystem).Caption }
   } catch {
     return @{ gpu_model = 'unknown'; vram_mib = 0; platform = 'windows' }
   }
@@ -138,8 +141,10 @@ function Claim-Node {
 
 function Update-NodeClient {
   Ensure-Directory $script:NodeDir
-  Invoke-WebRequest -Uri "$($script:BackendUrl)/node.py"          -OutFile (Join-Path $script:NodeDir 'node.py')          -UseBasicParsing
-  Invoke-WebRequest -Uri "$($script:BackendUrl)/requirements.txt" -OutFile (Join-Path $script:NodeDir 'requirements.txt') -UseBasicParsing
+  Invoke-WebRequest -Uri "$($script:BackendUrl)/node.py" -OutFile (Join-Path $script:NodeDir 'node.py') -UseBasicParsing
+  # The node agent needs only these two packages. The server's requirements.txt
+  # (FastAPI, Stripe, Redis, ...) made setup slow and could fail to build.
+  @('ollama','requests') | Set-Content -Path (Join-Path $script:NodeDir 'requirements.txt') -Encoding ASCII
   Write-Log "Node client updated in $($script:NodeDir)."
 }
 
@@ -247,8 +252,17 @@ function Confirm-Heartbeat {
   Write-Log 'Confirming backend heartbeat...'
   Start-Sleep -Seconds 5
   try {
-    Invoke-RestMethod -Uri "$($script:BackendUrl)/api/node/heartbeat" -Method Post -TimeoutSec 15 -Body '{}' -ContentType 'application/json' | Out-Null
-    Write-Log 'Heartbeat OK.'
+    # The heartbeat needs the node's own credentials; without them it was
+    # always refused, so this step never confirmed anything.
+    $creds = @{}
+    Get-Content -LiteralPath $script:CredentialsFile | ForEach-Object {
+      $pair = $_ -split '=', 2
+      if ($pair.Count -eq 2) { $creds[$pair[0].Trim()] = $pair[1].Trim() }
+    }
+    $headers = @{ 'X-Node-Id' = $creds['NODE_ID']; 'X-Node-Secret' = $creds['NODE_SECRET'] }
+    $body = @{ hostname = [System.Net.Dns]::GetHostName(); gpu_info = (Get-GpuInfo) } | ConvertTo-Json -Depth 4
+    Invoke-RestMethod -Uri "$($script:BackendUrl)/api/node/heartbeat" -Method Post -Headers $headers -TimeoutSec 15 -Body $body -ContentType 'application/json' | Out-Null
+    Write-Log 'Heartbeat OK. Your node is online.'
   } catch {
     Write-Log "Heartbeat not confirmed yet; the service may still be starting. Check $($script:LogFile)."
   }
@@ -266,13 +280,16 @@ function Install-Meshnet {
   Ensure-Directory $script:NodeDir
   Write-Log "MeshNet directory: $($script:MeshnetDir)"
   Write-Log "Backend URL:       $($script:BackendUrl)"
-  Install-OllamaWindows
+  # Register first so the node shows up within minutes; the model download
+  # (tens of GB) happens afterwards in the background.
   Claim-Node -ClaimToken $ClaimToken -Force:$Force
   Update-NodeClient
   Install-PythonDeps
   Install-MeshnetService -SkipService:$SkipService
   Confirm-Heartbeat
+  Install-OllamaWindows
   Write-Log 'Done. Your MeshNet node is registered and running.'
+  Write-Log 'It downloads the AI model in the background and starts taking jobs when that finishes.'
   Write-Log 'Dashboard: https://beta.meshnet.co/host-dashboard.html'
 }
 

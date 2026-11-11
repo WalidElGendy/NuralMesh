@@ -210,7 +210,8 @@ PY
 download_node_client() {
   install -d -m 755 "$NODE_DIR"
   download_text "$BACKEND_URL/node.py" "$NODE_DIR/node.py"
-  download_text "$BACKEND_URL/requirements.txt" "$NODE_DIR/requirements.txt"
+  # The node agent needs only these; the server's requirements.txt is far heavier.
+  printf 'ollama\nrequests\n' > "$NODE_DIR/requirements.txt"
   log "Node client updated in $NODE_DIR."
 }
 
@@ -330,14 +331,16 @@ main() {
   check_disk
   check_gpu
   install -d -m 700 "$MESHNET_DIR"
-  install_ollama
-  pull_model
+  # Register first so the node shows up within minutes. The ~40 GB model is
+  # downloaded afterwards by the node agent itself, while it is already online.
   claim_node
   download_node_client
   install_python_deps
   install_service
   confirm_heartbeat
-  log "Your node is online. Watch it at https://beta.meshnet.co/host/dashboard"
+  install_ollama
+  log "Your node is online. It downloads the AI model in the background and takes jobs once that finishes."
+  log "Watch it at https://beta.meshnet.co/host-dashboard.html"
 }
 
 main

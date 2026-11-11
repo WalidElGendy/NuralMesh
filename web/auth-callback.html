@@ -70,6 +70,10 @@
       const tokenHash = params.get("token_hash") || "";
       const type = params.get("type") || "";
       const toAdmin = params.get("next") === "admin";
+      // dashboard.meshnet.co is another site, so it cannot share this
+      // session: after a reset, send people back there to sign in.
+      const DASH = { "dashboard": "/", "dashboard-account": "/account.html", "dashboard-payouts": "/admin-payouts.html" };
+      const toDash = DASH[params.get("next")] || null;
       try { history.replaceState(null, "", location.pathname); } catch (_) {}
 
       function signedIn(data) {
@@ -116,6 +120,11 @@
             const res = await call(retryToken
               ? { action: "set_password", retry_token: retryToken, password }
               : { action: "set_password", token_hash: tokenHash, type, password });
+            if (res.ok && toDash) {
+              message.style.color = "#86efac"; message.textContent = "Password saved. Taking you back to sign in…";
+              window.location.replace("https://dashboard.meshnet.co" + toDash + "?reset=1");
+              return;
+            }
             if (res.ok) { message.style.color = "#86efac"; message.textContent = "Password saved. Signing you in…"; signedIn(res.data); return; }
             if (res.data.retry_token) retryToken = res.data.retry_token;
             fail(res.data.error);

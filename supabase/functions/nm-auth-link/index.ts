@@ -7,9 +7,9 @@
 // project's auth SMTP and redirect-URL settings.
 //
 // POST JSON, one of:
-//   { action: "send", email, kind: "magiclink" | "recovery", next?: "admin" }
+//   { action: "send", email, kind: "magiclink" | "recovery", next? }
 //       Always answers { sent: true } so it never reveals who has an account.
-//       next: "admin" makes the link return to the admin panel afterwards.
+//       next names the page the link returns to afterwards (NEXT_PAGES).
 //       Throttled per address in the database (nm_auth_email_allowed).
 //   { action: "verify", token_hash, type }
 //       Signs in from a magic link: { access_token, expires_at, email, intent }.
@@ -19,7 +19,9 @@
 //       same as before) the reply carries retry_token, and the page retries
 //       with { action: "set_password", retry_token, password }.
 const BETA = "https://beta.meshnet.co";
-const ALLOWED_ORIGINS = ["https://beta.meshnet.co", "https://meshnet.co", "https://www.meshnet.co"];
+const ALLOWED_ORIGINS = ["https://beta.meshnet.co", "https://meshnet.co", "https://www.meshnet.co", "https://dashboard.meshnet.co"];
+// Where a link may send someone back to (auth-callback.html maps these).
+const NEXT_PAGES = ["admin", "dashboard", "dashboard-account", "dashboard-payouts"];
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -80,7 +82,7 @@ async function send(email: string, kind: string, next: string) {
   const vtype = out?.properties?.verification_type ?? out?.verification_type ?? kind;
   if (!g.ok || !hashed) { console.error("generate_link failed", g.status, out?.msg || out?.error); return; }
   const link = BETA + "/auth-callback.html?token_hash=" + encodeURIComponent(hashed) + "&type=" + encodeURIComponent(vtype) +
-    (next === "admin" ? "&next=admin" : "");
+    (NEXT_PAGES.includes(next) ? "&next=" + next : "");
   const m = emailBody(kind, link);
   const r = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -145,7 +147,7 @@ Deno.serve(async (req) => {
       const kind = body.kind === "recovery" ? "recovery" : "magiclink";
       if (!EMAIL_RE.test(email) || email.length > 255) return json({ error: "invalid_email" }, 400, origin);
       if (!RESEND_API_KEY) return json({ error: "email_not_configured" }, 503, origin);
-      await send(email, kind, body.next === "admin" ? "admin" : "");
+      await send(email, kind, NEXT_PAGES.includes(String(body.next)) ? String(body.next) : "");
       return json({
         sent: true,
         message: kind === "recovery"

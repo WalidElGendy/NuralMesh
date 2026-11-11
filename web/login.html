@@ -19,6 +19,7 @@
     button { box-sizing: border-box; width: 100%; margin-top: 14px; border: 0; border-radius: 999px; padding: 11px 16px; background: #8b5cf6; color: #fff; font-weight: 800; cursor: pointer; }
     button.secondary { background: transparent; border: 1px solid #292940; color: #c4b5fd; }
     #message { min-height: 24px; font-size: 14px; }
+    .forgot { text-align: right; margin: 8px 0 0; font-size: 13px; }
   </style>
 </head>
 <body>
@@ -34,7 +35,7 @@
   <main>
     <form id="login-form">
       <h1>Log in</h1>
-      <p>Use password login or request a Supabase magic link.</p>
+      <p>Log in with your password, or get a sign-in link by email.</p>
       <label>Email<input name="email" type="email" required></label>
       <fieldset class="nm-role-fieldset">
         <legend>Sign in as</legend>
@@ -51,6 +52,7 @@
         <p class="nm-role-hint">Optional — we’ll use what you signed up with by default.</p>
       </fieldset>
       <label>Password<input name="password" type="password"></label>
+      <p class="forgot"><a href="#" id="forgot-password">Forgot password?</a></p>
       <button type="submit">Log in with password</button>
       <button id="magic-link" class="secondary" type="button">Email me a magic link</button>
       <p id="message"></p>
@@ -60,10 +62,60 @@
   <script>
     const form = document.getElementById("login-form");
     const message = document.getElementById("message");
-    async function submitLogin(magicLink) {
+    // Magic links and password resets go through the nm-auth-link edge
+    // function, which emails a link to /auth-callback.html.
+    const NM_SB = (window.NM_CONFIG && /^https:\/\//.test(window.NM_CONFIG.supabaseUrl || ""))
+      ? window.NM_CONFIG.supabaseUrl : "https://czphnagkzvkemgtkliew.supabase.co";
+    const AUTH_LINK_URL = NM_SB + "/functions/v1/nm-auth-link";
+    const ERRORS = {
+      invalid_credentials: "Wrong email or password.",
+      email_not_confirmed: "Please confirm your email address first.",
+      invalid_email: "Please enter a valid email address.",
+      rate_limited: "Too many attempts. Please wait a minute and try again.",
+      auth_provider_error: "Sign-in is unavailable right now. Please try again shortly.",
+      email_not_configured: "Email sign-in is unavailable right now. Please use your password.",
+    };
+    function errorText(data, fallback) {
+      const d = data && (data.detail !== undefined ? data.detail : data.error);
+      if (typeof d === "string") return ERRORS[d] || d.replace(/_/g, " ");
+      if (Array.isArray(d) && d.length) {
+        const field = String((d[0].loc || []).slice(-1)[0] || "");
+        if (field === "password") return "Please enter your password.";
+        if (field === "email") return ERRORS.invalid_email;
+      }
+      return fallback;
+    }
+    function say(text, ok) {
+      message.style.color = ok ? "#86efac" : "#fca5a5";
+      message.textContent = text;
+    }
+    async function emailLink(kind, button) {
+      const email = (new FormData(form).get("email") || "").toString().trim();
+      if (!email || !form.querySelector('input[name="email"]').checkValidity()) {
+        say(kind === "recovery" ? "Enter your email above, then click Forgot password." : ERRORS.invalid_email, false);
+        form.querySelector('input[name="email"]').focus();
+        return;
+      }
+      const label = button.textContent;
+      button.style.pointerEvents = "none"; button.textContent = "Sending...";
+      try {
+        const response = await fetch(AUTH_LINK_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "send", kind, email }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) { say(errorText(data, "Could not send the email. Please try again."), false); return; }
+        say(data.message || "Check your inbox.", true);
+      } catch (_) {
+        say("Could not reach the server. Please check your connection and try again.", false);
+      } finally {
+        button.style.pointerEvents = ""; button.textContent = label;
+      }
+    }
+    async function submitLogin() {
       const payload = Object.fromEntries(new FormData(form).entries());
-      payload.magic_link = magicLink;
-      if (magicLink) delete payload.password;
+      if (!payload.password) { say("Please enter your password, or use a magic link.", false); return; }
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
@@ -71,13 +123,7 @@
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        message.style.color = "#fca5a5";
-        message.textContent = data.detail || "Login failed";
-        return;
-      }
-      if (magicLink) {
-        message.style.color = "#86efac";
-        message.textContent = data.message;
+        say(errorText(data, "Login failed"), false);
         return;
       }
       sessionStorage.setItem("nm_email", payload.email); try { if (data && data.access_token) { localStorage.setItem("nm_access_token", data.access_token); } } catch (_) {} var __serverIntent = (data && data.intent) || null;
@@ -101,9 +147,10 @@
     }
     form.addEventListener("submit", (event) => {
       event.preventDefault();
-      submitLogin(false);
+      submitLogin();
     });
-    document.getElementById("magic-link").addEventListener("click", () => submitLogin(true));
+    document.getElementById("magic-link").addEventListener("click", (e) => emailLink("magiclink", e.currentTarget));
+    document.getElementById("forgot-password").addEventListener("click", (e) => { e.preventDefault(); emailLink("recovery", e.currentTarget); });
   
     try { var __nmI = (localStorage.getItem("nm_intent")||"").toLowerCase(); if (__nmI === "user" || __nmI === "provider") { var __r = form.querySelector('input[name="login_as"][value="'+__nmI+'"]'); if (__r) __r.checked = true; } } catch(_) {}
   </script>

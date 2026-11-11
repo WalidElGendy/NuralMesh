@@ -1,5 +1,6 @@
 import os
 import random
+import shutil
 import socket
 import subprocess
 import time
@@ -80,9 +81,89 @@ def check_gpu_memory():
 
 
 def startup_self_check():
+    # The node used to exit here when the model was missing, so a fresh install
+    # never checked in until a ~40 GB download finished. Now it comes online
+    # straight away and fetches the model in the background (ModelFetcher);
+    # it advertises, and is given jobs for, only the models it actually has.
     if not check_ollama_models():
-        logger.error("Node startup self-check failed; exiting")
-        raise SystemExit(1)
+        logger.warning("Model not ready yet; going online and downloading it in the background")
+
+
+def installed_models():
+    """The configured models that Ollama already has, or [] when Ollama is
+    not installed or not running yet."""
+    try:
+        have = _model_names(ollama.list())
+    except Exception:
+        return []
+    return [model for model in NODE_MODELS if model in have]
+
+
+def find_ollama():
+    found = shutil.which("ollama")
+    if found:
+        return found
+    # A fresh Windows install puts Ollama here, and a task started before the
+    # install finished will not have it on PATH yet.
+    local = os.environ.get("LOCALAPPDATA")
+    if local:
+        candidate = Path(local) / "Programs" / "Ollama" / "ollama.exe"
+        if candidate.exists():
+            return str(candidate)
+    return None
+
+
+class ModelFetcher:
+    """Pulls missing models with `ollama pull`, one at a time, in a child
+    process, so heartbeats keep flowing while tens of GB download."""
+
+    RETRY_AFTER_S = 300
+
+    def __init__(self):
+        self.proc = None
+        self.model = None
+        self.last_try = 0.0
+        self.serve_proc = None
+
+    def tick(self, ready):
+        if self.proc is not None:
+            if self.proc.poll() is None:
+                return "downloading"
+            code = self.proc.returncode
+            logger.info("ollama pull %s finished (exit %s)", self.model, code)
+            self.proc = None
+            if code != 0:
+                self._start_server()          # most often: the Ollama server was not running
+        missing = [model for model in NODE_MODELS if model not in ready]
+        if not missing:
+            return "ready"
+        if time.monotonic() - self.last_try < self.RETRY_AFTER_S and self.last_try:
+            return "waiting"
+        self.last_try = time.monotonic()
+        exe = find_ollama()
+        if not exe:
+            logger.warning("Ollama is not installed yet; will check again shortly")
+            return "waiting_for_ollama"
+        self.model = missing[0]
+        logger.info("Downloading model %s in the background (this can take a long time)...", self.model)
+        try:
+            self.proc = subprocess.Popen([exe, "pull", self.model], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception as error:
+            logger.error("Could not start ollama pull: %s", error)
+            self.proc = None
+        return "downloading"
+
+    def _start_server(self):
+        if self.serve_proc is not None and self.serve_proc.poll() is None:
+            return
+        exe = find_ollama()
+        if not exe:
+            return
+        try:
+            self.serve_proc = subprocess.Popen([exe, "serve"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            logger.info("Started the Ollama server")
+        except Exception as error:
+            logger.warning("Could not start the Ollama server: %s", error)
 
 
 def _job_messages(job):
@@ -201,10 +282,13 @@ def build_session(node_id, node_secret):
     return session
 
 
-def heartbeat(session, api_base_url, gpu_info=None):
+def heartbeat(session, api_base_url, gpu_info=None, models=None):
+    # Advertise only the models that are really here: the scheduler hands a
+    # node jobs for the models it advertises.
     response = session.post(
         f"{api_base_url}/api/node/heartbeat",
-        json={"hostname": socket.gethostname(), "gpu_info": gpu_info or {}, "models": NODE_MODELS},
+        json={"hostname": socket.gethostname(), "gpu_info": gpu_info or {},
+              "models": NODE_MODELS if models is None else list(models)},
         timeout=15,
     )
     response.raise_for_status()
@@ -306,19 +390,28 @@ def poll_for_jobs():
     api_base_url = os.environ.get("MESHNET_API_BASE_URL", DEFAULT_API_BASE_URL).rstrip("/")
     session = build_session(node_id, node_secret)
     gpu_info = get_gpu_info()
+    fetcher = ModelFetcher()
+    ready = installed_models()
+    checked_at = time.monotonic()
     try:
-        heartbeat(session, api_base_url, gpu_info)
+        heartbeat(session, api_base_url, gpu_info, ready)
         print(f"Node {node_id} is online and polling {api_base_url}...")
     except Exception as error:
         print(f"Initial heartbeat failed, will retry in loop: {error}")
 
     while True:
         try:
-            heartbeat(session, api_base_url, gpu_info)
-            job = claim_pending_job(session, api_base_url)
-            if job:
-                print(f"Claimed job {job['id']}")
-                process_job(session, api_base_url, job)
+            if time.monotonic() - checked_at > 30:
+                ready = installed_models()
+                checked_at = time.monotonic()
+            if len(ready) < len(NODE_MODELS):
+                fetcher.tick(ready)
+            heartbeat(session, api_base_url, gpu_info, ready)
+            if ready:
+                job = claim_pending_job(session, api_base_url)
+                if job:
+                    print(f"Claimed job {job['id']}")
+                    process_job(session, api_base_url, job)
         except Exception as error:
             print(f"Polling error: {error}")
 

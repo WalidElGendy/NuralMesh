@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="referrer" content="no-referrer">
+  <title>Sign in | MeshNet Beta</title>
+  <script>window.NM_CONFIG = { apiBase: "__NM_API_BASE__", supabaseUrl: "__NM_SUPABASE_URL__", supabaseAnonKey: "__NM_SUPABASE_ANON_KEY__" };</script>
+  <style>
+    body { margin: 0; min-height: 100vh; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: radial-gradient(circle at top, rgba(139,92,246,.28), transparent 28rem), #05050a; color: #f8fafc; }
+    nav, main { width: min(440px, calc(100% - 40px)); margin: 0 auto; }
+    nav { display: flex; justify-content: space-between; gap: 18px; padding: 24px 0; }
+    main { margin-top: 4vh; border: 1px solid #292940; background: rgba(16,16,27,.82); border-radius: 20px; padding: 24px; }
+    a { color: #c4b5fd; text-decoration: none; }
+    h1 { margin: 0 0 8px; font-size: clamp(22px, 3.5vw, 28px); letter-spacing: -.04em; line-height: 1.1; }
+    p { color: #a1a1aa; line-height: 1.5; font-size: 14px; margin: 0 0 4px; }
+    label { display: block; margin-top: 14px; color: #e4e4e7; font-size: 13px; font-weight: 700; }
+    input { box-sizing: border-box; width: 100%; margin-top: 6px; border: 1px solid #292940; border-radius: 10px; padding: 10px 12px; background: rgba(5,5,10,.72); color: #f8fafc; font: inherit; }
+    button { box-sizing: border-box; width: 100%; margin-top: 14px; border: 0; border-radius: 999px; padding: 11px 16px; background: #8b5cf6; color: #fff; font-weight: 800; cursor: pointer; }
+    button:disabled { opacity: .6; cursor: default; }
+    #message { min-height: 24px; font-size: 14px; margin-top: 12px; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="/" class="brand" aria-label="MeshNet home"><img src="https://meshnet.co/logo-new.png?v=2" alt="MeshNet" style="height:32px;width:auto;display:block;"></a>
+    <a href="/login.html">Login</a>
+  </nav>
+  <main>
+    <section id="signing-in">
+      <h1>Signing you in…</h1>
+      <p>One moment.</p>
+    </section>
+    <form id="reset-form" hidden>
+      <h1>Choose a new password</h1>
+      <p>At least 8 characters.</p>
+      <label>New password<input name="password" type="password" minlength="8" maxlength="128" autocomplete="new-password" required></label>
+      <label>Repeat new password<input name="confirm" type="password" minlength="8" maxlength="128" autocomplete="new-password" required></label>
+      <button type="submit">Save password and sign in</button>
+    </form>
+    <p id="message"></p>
+    <p id="back" hidden><a href="/login.html">Back to login</a> to request a new link.</p>
+  </main>
+  <script>
+    (function () {
+      const NM_SB = (window.NM_CONFIG && /^https:\/\//.test(window.NM_CONFIG.supabaseUrl || ""))
+        ? window.NM_CONFIG.supabaseUrl : "https://czphnagkzvkemgtkliew.supabase.co";
+      const AUTH_LINK_URL = NM_SB + "/functions/v1/nm-auth-link";
+      const ERRORS = {
+        link_invalid_or_expired: "This link has expired or was already used.",
+        password_too_short: "Your password needs at least 8 characters.",
+        password_too_weak: "That password is too easy to guess. Please choose a stronger one.",
+        password_same_as_old: "Please choose a password different from your old one.",
+        password_update_failed: "We couldn't save your password.",
+      };
+      const message = document.getElementById("message");
+      const signingIn = document.getElementById("signing-in");
+      const resetForm = document.getElementById("reset-form");
+      function fail(code) {
+        signingIn.hidden = true;
+        message.style.color = "#fca5a5";
+        message.textContent = ERRORS[code] || "Something went wrong. Please try again.";
+        document.getElementById("back").hidden = code !== "link_invalid_or_expired";
+      }
+
+      // Read the one-time token, then take it out of the address bar and history.
+      let retryToken = null;   // after a refused password, the link is spent: retry with this
+      const params = new URLSearchParams(location.search);
+      const tokenHash = params.get("token_hash") || "";
+      const type = params.get("type") || "";
+      try { history.replaceState(null, "", location.pathname); } catch (_) {}
+
+      function signedIn(data) {
+        try { sessionStorage.setItem("nm_email", data.email || ""); } catch (_) {}
+        try { localStorage.setItem("nm_access_token", data.access_token); } catch (_) {}
+        let intent = data.intent;
+        try { if (intent !== "user" && intent !== "provider") intent = localStorage.getItem("nm_intent"); } catch (_) {}
+        if (intent !== "user" && intent !== "provider") intent = "user";
+        try { localStorage.setItem("nm_intent", intent); } catch (_) {}
+        window.location.replace(intent === "provider" ? "/host-dashboard.html" : "/chat.html");
+      }
+      async function call(body) {
+        const r = await fetch(AUTH_LINK_URL, {
+          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+        });
+        const data = await r.json().catch(() => ({}));
+        return { ok: r.ok && !!data.access_token, data };
+      }
+
+      if (!tokenHash || !type) { fail("link_invalid_or_expired"); return; }
+
+      if (type === "recovery") {
+        // Only use the link when the person submits, so an email scanner
+        // opening the page cannot use it up.
+        signingIn.hidden = true;
+        resetForm.hidden = false;
+        resetForm.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          const fd = new FormData(resetForm);
+          const password = String(fd.get("password") || "");
+          if (password.length < 8) { fail("password_too_short"); return; }
+          if (password !== String(fd.get("confirm") || "")) {
+            message.style.color = "#fca5a5"; message.textContent = "The two passwords don't match."; return;
+          }
+          const button = resetForm.querySelector("button");
+          button.disabled = true; button.textContent = "Saving…"; message.textContent = "";
+          try {
+            const res = await call(retryToken
+              ? { action: "set_password", retry_token: retryToken, password }
+              : { action: "set_password", token_hash: tokenHash, type, password });
+            if (res.ok) { message.style.color = "#86efac"; message.textContent = "Password saved. Signing you in…"; signedIn(res.data); return; }
+            if (res.data.retry_token) retryToken = res.data.retry_token;
+            fail(res.data.error);
+            if (res.data.error === "link_invalid_or_expired") resetForm.hidden = true;
+          } catch (_) {
+            fail("network");
+          }
+          button.disabled = false; button.textContent = "Save password and sign in";
+        });
+        return;
+      }
+
+      call({ action: "verify", token_hash: tokenHash, type })
+        .then((res) => res.ok ? signedIn(res.data) : fail(res.data.error))
+        .catch(() => fail("network"));
+    })();
+  </script>
+</body>
+</html>

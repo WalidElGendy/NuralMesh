@@ -100,3 +100,14 @@ def test_no_jobs_are_claimed_until_a_model_is_ready(monkeypatch, tmp_path):
         node.poll_for_jobs()
     assert beats and all(m == [] for m in beats)
     assert claims == []
+
+
+def test_only_one_agent_per_machine(monkeypatch):
+    monkeypatch.setattr(node, "_instance_lock", None)
+    port = 47999
+    assert node.acquire_single_instance(port) is True
+    first = node._instance_lock
+    assert node.acquire_single_instance(port) is False     # a second copy steps aside
+    first.close()
+    assert node.acquire_single_instance(port) is True      # free again once the first exits
+    node._instance_lock.close()

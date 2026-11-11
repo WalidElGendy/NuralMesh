@@ -7,8 +7,9 @@
 // project's auth SMTP and redirect-URL settings.
 //
 // POST JSON, one of:
-//   { action: "send", email, kind: "magiclink" | "recovery" }
+//   { action: "send", email, kind: "magiclink" | "recovery", next?: "admin" }
 //       Always answers { sent: true } so it never reveals who has an account.
+//       next: "admin" makes the link return to the admin panel afterwards.
 //       Throttled per address in the database (nm_auth_email_allowed).
 //   { action: "verify", token_hash, type }
 //       Signs in from a magic link: { access_token, expires_at, email, intent }.
@@ -69,7 +70,7 @@ function emailBody(kind: string, link: string) {
   return { subject: title, html, text };
 }
 
-async function send(email: string, kind: string) {
+async function send(email: string, kind: string, next: string) {
   if (!(await allowed(email, kind))) return;           // unknown address or throttled: say nothing
   const g = await fetch(SUPABASE_URL + "/auth/v1/admin/generate_link", {
     method: "POST", headers: service, body: JSON.stringify({ type: kind, email }),
@@ -78,7 +79,8 @@ async function send(email: string, kind: string) {
   const hashed = out?.properties?.hashed_token ?? out?.hashed_token;
   const vtype = out?.properties?.verification_type ?? out?.verification_type ?? kind;
   if (!g.ok || !hashed) { console.error("generate_link failed", g.status, out?.msg || out?.error); return; }
-  const link = BETA + "/auth-callback.html?token_hash=" + encodeURIComponent(hashed) + "&type=" + encodeURIComponent(vtype);
+  const link = BETA + "/auth-callback.html?token_hash=" + encodeURIComponent(hashed) + "&type=" + encodeURIComponent(vtype) +
+    (next === "admin" ? "&next=admin" : "");
   const m = emailBody(kind, link);
   const r = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -143,7 +145,7 @@ Deno.serve(async (req) => {
       const kind = body.kind === "recovery" ? "recovery" : "magiclink";
       if (!EMAIL_RE.test(email) || email.length > 255) return json({ error: "invalid_email" }, 400, origin);
       if (!RESEND_API_KEY) return json({ error: "email_not_configured" }, 503, origin);
-      await send(email, kind);
+      await send(email, kind, body.next === "admin" ? "admin" : "");
       return json({
         sent: true,
         message: kind === "recovery"

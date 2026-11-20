@@ -10,10 +10,11 @@ mkdir -p "$MOCK_BIN"
 
 cat > "$MOCK_BIN/nvidia-smi" <<'SH'
 #!/usr/bin/env bash
+# MOCK_VRAM: one MiB figure per card, e.g. "24564 24564" for two 4090s.
 if [[ "$*" == *"--query-gpu=memory.total"* ]]; then
-  echo "24564"
+  for v in ${MOCK_VRAM:-24564}; do echo "$v"; done
 elif [[ "$*" == *"--query-gpu=name,memory.total"* ]]; then
-  echo "NVIDIA RTX 4090, 24564 MiB"
+  for v in ${MOCK_VRAM:-24564}; do echo "NVIDIA RTX 4090, $v MiB"; done
 else
   echo "NVIDIA-SMI mock"
 fi
@@ -69,17 +70,42 @@ esac
 SH
 
 chmod +x "$MOCK_BIN/nvidia-smi" "$MOCK_BIN/ollama" "$MOCK_BIN/curl"
-mkdir -p "$TMP_DIR/home"
+run_install() {   # $1 = MOCK_VRAM, rest = extra installer flags
+  local vram="$1"; shift
+  rm -rf "$TMP_DIR/home"; mkdir -p "$TMP_DIR/home"
+  HOME="$TMP_DIR/home" \
+  PATH="$MOCK_BIN:$PATH" \
+  MOCK_VRAM="$vram" \
+  MESHNET_BACKEND_URL="https://backend.test" \
+  MESHNET_INSTALL_BASE_URL="https://install.test" \
+  MESHNET_SKIP_SERVICE=1 \
+  MESHNET_SKIP_PIP_INSTALL=1 \
+  bash "$ROOT_DIR/scripts/installer/install.sh" --claim-token clm_test_token --dev "$@"
+}
 
-HOME="$TMP_DIR/home" \
-PATH="$MOCK_BIN:$PATH" \
-MESHNET_BACKEND_URL="https://backend.test" \
-MESHNET_INSTALL_BASE_URL="https://install.test" \
-MESHNET_SKIP_SERVICE=1 \
-MESHNET_SKIP_PIP_INSTALL=1 \
-bash "$ROOT_DIR/scripts/installer/install.sh" --claim-token clm_test_token --dev
-
+# One 24 GB card: registers, and is sized to a 32B model.
+run_install "24564"
 test -f "$TMP_DIR/home/.meshnet/credentials"
 test -f "$TMP_DIR/home/.meshnet/node/node.py"
 grep -q "NODE_ID=node_test" "$TMP_DIR/home/.meshnet/credentials"
+grep -q "NM_NODE_MODEL=qwen2.5:32b-instruct-q4_K_M" "$TMP_DIR/home/.meshnet/node.env"
+
+# Two 24 GB cards in one machine work as one: the 70B.
+run_install "24564 24564"
+grep -q "NM_NODE_MODEL=llama3.3:70b-instruct-q4_K_M" "$TMP_DIR/home/.meshnet/node.env"
+
+# An 8 GB card can join too, with an 8B model.
+run_install "8192"
+grep -q "NM_NODE_MODEL=llama3.1:8b-instruct-q4_K_M" "$TMP_DIR/home/.meshnet/node.env"
+
+# Below 6 GB: a clear refusal.
+if run_install "4096" >/dev/null 2>&1; then echo "a 4 GB card should be refused"; exit 1; fi
+
+# RAM-only: the node runs its own Ollama with models in memory.
+run_install "8192" --ram-only
+grep -q "MESHNET_OWN_OLLAMA=1" "$TMP_DIR/home/.meshnet/node.env"
+grep -q "OLLAMA_MODELS=/dev/shm/meshnet-models" "$TMP_DIR/home/.meshnet/node.env"
+
+# A pool worker refuses a public address.
+if run_install "8192" --pool-worker --pool-bind 8.8.8.8 >/dev/null 2>&1; then echo "a public pool address should be refused"; exit 1; fi
 echo "installer mock test passed"

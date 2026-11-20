@@ -110,10 +110,12 @@ function Get-GpuInfo {
       if (Test-Path -LiteralPath $p) { $smi = $p }
     }
     if ($smi) {
-      $line = (& $smi --query-gpu=memory.total,name,driver_version --format=csv,noheader,nounits 2>$null | Select-Object -First 1)
-      if ($line) {
-        $parts = $line -split ',\s*', 3
-        return @{ gpu_model = $parts[1].Trim(); vram_mib = [int]$parts[0].Trim(); driver = $parts[2].Trim(); platform = 'windows'; os = (Get-CimInstance Win32_OperatingSystem).Caption }
+      # Every card counts: Ollama spreads one model across all the GPUs in a machine.
+      $lines = @(& $smi --query-gpu=memory.total,name,driver_version --format=csv,noheader,nounits 2>$null | Where-Object { $_ })
+      if ($lines.Count -gt 0) {
+        $parts = $lines[0] -split ',\s*', 3
+        $total = 0; foreach ($l in $lines) { $total += [int](($l -split ',\s*', 3)[0].Trim()) }
+        return @{ gpu_model = $parts[1].Trim(); vram_mib = $total; gpu_count = $lines.Count; driver = $parts[2].Trim(); platform = 'windows'; accel = 'nvidia'; os = (Get-CimInstance Win32_OperatingSystem).Caption }
       }
     }
   } catch { }
@@ -201,6 +203,17 @@ function Invoke-NativeQuiet {
   }
 }
 
+# The largest model this machine can hold, so any 6 GB+ GPU can earn.
+function Select-NodeModel {
+  if ($env:MESHNET_MODEL) { return $env:MESHNET_MODEL }
+  $gb = [int]((Get-GpuInfo).vram_mib / 1024)
+  if ($gb -ge 42) { return 'llama3.3:70b-instruct-q4_K_M' }
+  if ($gb -ge 21) { return 'qwen2.5:32b-instruct-q4_K_M' }
+  if ($gb -ge 11) { return 'qwen2.5:14b-instruct-q4_K_M' }
+  if ($gb -ge 6)  { return 'llama3.1:8b-instruct-q4_K_M' }
+  Fail "This PC has $gb GB of GPU memory; MeshNet needs at least 6 GB."
+}
+
 function Install-MeshnetService {
   param([switch]$SkipService)
   if ($SkipService -or $env:MESHNET_SKIP_SERVICE -eq '1') { Write-Log 'Skipping service install (MESHNET_SKIP_SERVICE).'; return }
@@ -219,6 +232,7 @@ setlocal
 set "MESHNET_API_BASE_URL=$($script:BackendUrl)"
 set "MESHNET_CREDENTIALS_FILE=$($script:CredentialsFile)"
 set "MESHNET_DIR=$($script:MeshnetDir)"
+set "NM_NODE_MODEL=$($script:ModelName)"
 set "PYTHONUNBUFFERED=1"
 "$venvPy" "$nodePy" >> "$($script:LogFile)" 2>&1
 "@
@@ -291,6 +305,8 @@ function Install-Meshnet {
   Write-Log "Backend URL:       $($script:BackendUrl)"
   # Register first so the node shows up within minutes; the model download
   # (tens of GB) happens afterwards in the background.
+  $script:ModelName = Select-NodeModel
+  Write-Log "This PC will serve $($script:ModelName)."
   Claim-Node -ClaimToken $ClaimToken -Force:$Force
   Update-NodeClient
   Install-PythonDeps

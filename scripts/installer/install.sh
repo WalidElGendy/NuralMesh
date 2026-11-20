@@ -1,8 +1,19 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-MODEL_NAME="llama3.3:70b-instruct-q4_K_M"
-MIN_VRAM_MIB=22528
+# Anyone with a GPU can join. The model is sized to the machine (see
+# pick_model); MESHNET_MODEL overrides it.
+MODEL_NAME="${MESHNET_MODEL:-}"
+MODEL_GB=0
+MIN_ACCEL_MIB=6144
+ACCEL_KIND=""
+ACCEL_MIB=0
+GPU_COUNT=0
+RAM_ONLY=0
+POOL_ROLE=""
+POOL_WORKERS=""
+POOL_BIND=""
+POOL_PORT=50052
 MESHNET_DIR="${MESHNET_DIR:-$HOME/.meshnet}"
 NODE_DIR="$MESHNET_DIR/node"
 VENV_DIR="$MESHNET_DIR/venv"
@@ -16,7 +27,20 @@ FORCE_RECLAIM=0
 TMP_DIR=""
 
 usage() {
-  echo "Usage: install.sh [--claim-token TOKEN] [--dev] [--force-reclaim]"
+  cat <<'USAGE'
+Usage: install.sh [--claim-token TOKEN] [options]
+
+  --ram-only              Keep the model in memory only: nothing is written to
+                          disk but the public model files, and those live on a
+                          RAM disk that disappears on reboot. Needs RAM for the model.
+  --pool-worker           (preview) Lend this machine's GPU to your own pool head
+                          on the same private network. No claim token needed.
+  --pool-head HOST:PORT,… (preview) Run one large model across this machine and
+                          your pool workers, and serve it to MeshNet as one node.
+  --pool-bind IP          Private address a pool worker listens on (default: auto).
+  --dev                   Installer testing on any machine.
+  --force-reclaim         Register this machine again.
+USAGE
 }
 
 log() {
@@ -52,6 +76,24 @@ while [[ $# -gt 0 ]]; do
     --force-reclaim)
       FORCE_RECLAIM=1
       shift
+      ;;
+    --ram-only)
+      RAM_ONLY=1
+      shift
+      ;;
+    --pool-worker)
+      POOL_ROLE="worker"
+      shift
+      ;;
+    --pool-head)
+      POOL_ROLE="head"
+      POOL_WORKERS="${2:-}"
+      [[ -n "$POOL_WORKERS" ]] || fail "--pool-head needs a list of workers, e.g. 192.168.1.20:50052,192.168.1.21:50052"
+      shift 2
+      ;;
+    --pool-bind)
+      POOL_BIND="${2:-}"
+      shift 2
       ;;
     -h|--help)
       usage
@@ -92,27 +134,188 @@ check_commands() {
   command -v python3 >/dev/null 2>&1 || fail "python3 is required."
 }
 
-check_disk() {
-  local available_kib
-  available_kib="$(df -Pk "$HOME" | awk 'NR==2 {print $4}')"
-  if [[ "${available_kib:-0}" -lt 209715200 && "$DEV_MODE" -ne 1 ]]; then
-    fail "At least 200GB free disk is required for model + cache. Re-run with --dev only for local installer testing."
+# What the model can use: every NVIDIA card summed (Ollama spreads one model
+# over the GPUs in a machine), AMD cards through ROCm, or ~70% of an Apple
+# Silicon Mac's unified memory.
+detect_accelerator() {
+  if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi >/dev/null 2>&1; then
+    ACCEL_KIND="nvidia"
+    ACCEL_MIB="$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits | awk '{s+=$1} END{print s+0}')"
+    GPU_COUNT="$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits | grep -c . || true)"
+  elif command -v rocm-smi >/dev/null 2>&1; then
+    ACCEL_KIND="amd"
+    ACCEL_MIB="$(rocm-smi --showmeminfo vram --csv 2>/dev/null | awk -F, 'NR>1 && $2+0>0 {s+=$2} END{print int(s/1048576)}')"
+    GPU_COUNT="$(rocm-smi --showmeminfo vram --csv 2>/dev/null | awk -F, 'NR>1 && $2+0>0' | grep -c . || true)"
+  elif [[ "$(uname -s)" == "Darwin" && "$(uname -m)" == "arm64" ]]; then
+    ACCEL_KIND="apple"
+    ACCEL_MIB="$(( $(sysctl -n hw.memsize) / 1048576 * 70 / 100 ))"
+    GPU_COUNT=1
+  elif [[ "$DEV_MODE" -eq 1 ]]; then
+    ACCEL_KIND="dev"; ACCEL_MIB=16384; GPU_COUNT=1
+  else
+    fail "No supported GPU found. MeshNet runs on NVIDIA (drivers installed), AMD (ROCm) or Apple Silicon Macs."
   fi
-  log "Disk check passed."
+  if [[ "${ACCEL_MIB:-0}" -lt "$MIN_ACCEL_MIB" ]]; then
+    fail "This machine has ${ACCEL_MIB} MiB of GPU memory; MeshNet needs at least ${MIN_ACCEL_MIB} MiB (6 GB)."
+  fi
+  log "Found ${ACCEL_KIND} with $((ACCEL_MIB / 1024)) GB for models across ${GPU_COUNT} GPU(s)."
 }
 
-check_gpu() {
-  if [[ "$DEV_MODE" -eq 1 ]]; then
-    log "Developer mode enabled; accepting this machine for installer testing."
+# The largest model that fits, so every card can earn: an 8 GB card serves an
+# 8B model, two 24 GB cards or a 64 GB Mac serve the 70B.
+pick_model() {
+  local gb=$((ACCEL_MIB / 1024))
+  if [[ -n "$MODEL_NAME" ]]; then
+    MODEL_GB=45
+  elif [[ "$gb" -ge 42 ]]; then MODEL_NAME="llama3.3:70b-instruct-q4_K_M"; MODEL_GB=43
+  elif [[ "$gb" -ge 21 ]]; then MODEL_NAME="qwen2.5:32b-instruct-q4_K_M"; MODEL_GB=20
+  elif [[ "$gb" -ge 11 ]]; then MODEL_NAME="qwen2.5:14b-instruct-q4_K_M"; MODEL_GB=9
+  else MODEL_NAME="llama3.1:8b-instruct-q4_K_M"; MODEL_GB=5
+  fi
+  log "This machine will serve ${MODEL_NAME} (about ${MODEL_GB} GB)."
+}
+
+check_disk() {
+  local need_gb available_kib
+  if [[ "$RAM_ONLY" -eq 1 ]]; then
+    local ram_mib
+    if [[ "$OS_KIND" == "macos" ]]; then ram_mib="$(( $(sysctl -n hw.memsize) / 1048576 ))"
+    else ram_mib="$(awk '/MemAvailable/ {print int($2/1024)}' /proc/meminfo)"; fi
+    if [[ "$ram_mib" -lt $(( (MODEL_GB + 6) * 1024 )) && "$DEV_MODE" -ne 1 ]]; then
+      fail "RAM-only mode needs about $((MODEL_GB + 6)) GB of free memory for ${MODEL_NAME}; this machine has $((ram_mib / 1024)) GB."
+    fi
+    log "RAM-only mode: the model will live in memory and nothing is kept on disk."
     return
   fi
-  command -v nvidia-smi >/dev/null 2>&1 || fail "nvidia-smi was not found. NVIDIA hosts need drivers installed; Mac M-series installer testing can use --dev."
-  local max_vram
-  max_vram="$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits | awk 'max<$1{max=$1} END{print max+0}')"
-  if [[ "$max_vram" -lt "$MIN_VRAM_MIB" ]]; then
-    fail "Detected ${max_vram} MiB VRAM; MeshNet beta requires at least ${MIN_VRAM_MIB} MiB usable VRAM."
+  need_gb=$((MODEL_GB + 5))
+  available_kib="$(df -Pk "$HOME" | awk 'NR==2 {print $4}')"
+  if [[ "${available_kib:-0}" -lt $((need_gb * 1048576)) && "$DEV_MODE" -ne 1 ]]; then
+    fail "About ${need_gb} GB of free disk is needed for ${MODEL_NAME}. Free some space, or use --ram-only."
   fi
-  log "GPU check passed with ${max_vram} MiB VRAM."
+  log "Disk check passed (${need_gb} GB needed)."
+}
+
+# RAM-only: a memory-backed folder for the model files. Linux uses /dev/shm;
+# macOS gets a RAM disk sized to the model.
+RAM_DIR=""
+setup_ram_dir() {
+  [[ "$RAM_ONLY" -eq 1 ]] || return 0
+  if [[ "$OS_KIND" == "macos" ]]; then
+    RAM_DIR="/Volumes/MeshNetModels"
+    if [[ ! -d "$RAM_DIR" ]]; then
+      local sectors=$(( (MODEL_GB + 4) * 1024 * 1024 * 2 ))
+      local dev; dev="$(hdiutil attach -nomount "ram://$sectors" | awk '{print $1}')"
+      diskutil erasevolume APFS MeshNetModels "$dev" >/dev/null
+    fi
+  else
+    RAM_DIR="/dev/shm/meshnet-models"
+    install -d -m 700 "$RAM_DIR"
+  fi
+  log "Model folder in memory: $RAM_DIR"
+}
+
+# The node's settings, read by the service: which model, where it lives,
+# which backend serves it.
+write_node_env() {
+  install -d -m 700 "$MESHNET_DIR"
+  {
+    echo "MESHNET_API_BASE_URL=$BACKEND_URL"
+    echo "NM_NODE_MODEL=$MODEL_NAME"
+    if [[ "$RAM_ONLY" -eq 1 ]]; then
+      echo "MESHNET_OWN_OLLAMA=1"
+      echo "OLLAMA_HOST=127.0.0.1:11435"
+      echo "OLLAMA_MODELS=$RAM_DIR"
+    fi
+    if [[ "$POOL_ROLE" == "head" ]]; then
+      echo "MESHNET_BACKEND=openai"
+      echo "MESHNET_OPENAI_URL=http://127.0.0.1:8080/v1"
+      echo "MESHNET_POOL_WORKERS=$POOL_WORKERS"
+    fi
+  } > "$MESHNET_DIR/node.env"
+  chmod 600 "$MESHNET_DIR/node.env"
+}
+
+# --------------------------------------------------------------- pool (preview)
+# One big model across several of YOUR machines on one private network, with
+# llama.cpp RPC: workers lend their GPU memory to a head, which serves the
+# model to MeshNet as a single node. llama.cpp's rpc-server has no
+# authentication, so a worker only ever listens on a private address.
+LLAMA_DIR="$MESHNET_DIR/llama.cpp"
+is_private_ip() {
+  [[ "$1" =~ ^10\. || "$1" =~ ^192\.168\. || "$1" =~ ^172\.(1[6-9]|2[0-9]|3[01])\. || "$1" =~ ^100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\. ]]
+}
+install_llama_cpp() {
+  [[ -x "$LLAMA_DIR/bin/rpc-server" && -x "$LLAMA_DIR/bin/llama-server" ]] && return 0
+  local pattern asset url
+  if [[ "$OS_KIND" == "macos" ]]; then pattern="bin-macos-arm64"; else pattern="bin-ubuntu-vulkan-x64"; fi
+  url="$(curl -fsSL https://api.github.com/repos/ggml-org/llama.cpp/releases/latest | python3 -c "import json,sys; a=[x['browser_download_url'] for x in json.load(sys.stdin)['assets'] if '$pattern' in x['name'] and x['name'].endswith(('.zip','.tar.gz'))]; print(a[0] if a else '')")"
+  [[ -n "$url" ]] || fail "Could not find a llama.cpp build for this machine ($pattern)."
+  TMP_DIR="$(mktemp -d)"
+  log "Downloading llama.cpp from $url"
+  curl -fsSL "$url" -o "$TMP_DIR/llama.pkg"
+  install -d -m 755 "$LLAMA_DIR/bin" "$TMP_DIR/x"
+  if [[ "$url" == *.zip ]]; then (cd "$TMP_DIR/x" && unzip -q ../llama.pkg); else tar -xzf "$TMP_DIR/llama.pkg" -C "$TMP_DIR/x"; fi
+  local f
+  for f in rpc-server llama-server; do
+    local found; found="$(find "$TMP_DIR/x" -type f -name "$f" | head -n 1)"
+    [[ -n "$found" ]] || fail "This llama.cpp build has no $f; pooling is not available on this machine yet."
+    cp "$(dirname "$found")"/* "$LLAMA_DIR/bin/" 2>/dev/null || true
+  done
+  chmod +x "$LLAMA_DIR/bin/"* 2>/dev/null || true
+}
+pool_worker() {
+  if [[ -z "$POOL_BIND" ]]; then
+    if [[ "$OS_KIND" == "macos" ]]; then POOL_BIND="$(ipconfig getifaddr en0 2>/dev/null || true)"
+    else POOL_BIND="$(hostname -I 2>/dev/null | awk '{print $1}')"; fi
+  fi
+  is_private_ip "${POOL_BIND:-}" || fail "Pool workers listen only on a private address (10.x, 172.16-31.x, 192.168.x or a Tailscale 100.x). Pass one with --pool-bind."
+  install_llama_cpp
+  local cmd="$LLAMA_DIR/bin/rpc-server -H $POOL_BIND -p $POOL_PORT"
+  run_as_service meshnet-pool-worker "$cmd"
+  log "Pool worker listening on $POOL_BIND:$POOL_PORT. Add it to your head: --pool-head $POOL_BIND:$POOL_PORT"
+  log "Keep this port closed to the internet: llama.cpp RPC has no password."
+}
+pool_head() {
+  local w
+  for w in ${POOL_WORKERS//,/ }; do is_private_ip "${w%%:*}" || fail "Worker $w is not on a private network address."; done
+  install_llama_cpp
+  MODEL_NAME="llama3.3:70b-instruct-q4_K_M"; MODEL_GB=43
+  local cmd="$LLAMA_DIR/bin/llama-server -hf bartowski/Llama-3.3-70B-Instruct-GGUF:Q4_K_M --rpc $POOL_WORKERS -ngl 99 -c 8192 --host 127.0.0.1 --port 8080"
+  run_as_service meshnet-pool-head "$cmd"
+  log "Pool head starting: Llama 3.3 70B across this machine and ${POOL_WORKERS}. The first start downloads the model."
+}
+run_as_service() {
+  local name="$1" cmd="$2"
+  if [[ "${MESHNET_SKIP_SERVICE:-0}" == "1" ]]; then log "Skipping $name service (MESHNET_SKIP_SERVICE=1): $cmd"; return; fi
+  if [[ "$OS_KIND" == "macos" ]]; then
+    local plist="$HOME/Library/LaunchAgents/$name.plist" args="" a
+    for a in $cmd; do args="$args<string>$a</string>"; done
+    install -d -m 755 "$HOME/Library/LaunchAgents"
+    cat > "$plist" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict><key>Label</key><string>$name</string>
+<key>ProgramArguments</key><array>$args</array><key>RunAtLoad</key><true/><key>KeepAlive</key><true/>
+<key>StandardOutPath</key><string>$MESHNET_DIR/$name.log</string><key>StandardErrorPath</key><string>$MESHNET_DIR/$name.log</string></dict></plist>
+EOF
+    launchctl bootout "gui/$(id -u)" "$plist" >/dev/null 2>&1 || true
+    launchctl bootstrap "gui/$(id -u)" "$plist"
+  else
+    install -d -m 755 "$HOME/.config/systemd/user"
+    cat > "$HOME/.config/systemd/user/$name.service" <<EOF
+[Unit]
+Description=MeshNet $name
+After=network-online.target
+[Service]
+ExecStart=$cmd
+Restart=always
+RestartSec=5
+[Install]
+WantedBy=default.target
+EOF
+    systemctl --user daemon-reload
+    systemctl --user enable --now "$name.service"
+  fi
 }
 
 download_text() {
@@ -160,7 +363,9 @@ import json
 import os
 import subprocess
 
-info = {"dev_mode": os.environ.get("MESHNET_DEV_MODE") == "1"}
+info = {"dev_mode": os.environ.get("MESHNET_DEV_MODE") == "1",
+        "accel": os.environ.get("MESHNET_ACCEL", ""), "vram_mib": int(os.environ.get("MESHNET_ACCEL_MIB", "0") or 0),
+        "gpu_count": int(os.environ.get("MESHNET_GPU_COUNT", "0") or 0)}
 try:
     output = subprocess.check_output(
         ["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader"],
@@ -236,6 +441,7 @@ After=network-online.target
 [Service]
 Type=simple
 Environment=MESHNET_API_BASE_URL=$BACKEND_URL
+EnvironmentFile=-$MESHNET_DIR/node.env
 WorkingDirectory=$NODE_DIR
 ExecStart=$VENV_DIR/bin/python $NODE_DIR/node.py
 Restart=always
@@ -265,7 +471,7 @@ install_launchd_service() {
   <key>ProgramArguments</key>
   <array><string>$VENV_DIR/bin/python</string><string>$NODE_DIR/node.py</string></array>
   <key>EnvironmentVariables</key>
-  <dict><key>MESHNET_API_BASE_URL</key><string>$BACKEND_URL</string></dict>
+  <dict>$(awk -F= 'NF>1 {printf "<key>%s</key><string>%s</string>", $1, substr($0, index($0, "=") + 1)}' "$MESHNET_DIR/node.env" 2>/dev/null || printf '<key>MESHNET_API_BASE_URL</key><string>%s</string>' "$BACKEND_URL")</dict>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
   <key>StandardOutPath</key><string>$LOG_FILE</string>
@@ -328,18 +534,30 @@ main() {
   export MESHNET_DEV_MODE="$DEV_MODE"
   detect_os
   check_commands
+  detect_accelerator
+  export MESHNET_ACCEL="$ACCEL_KIND" MESHNET_ACCEL_MIB="$ACCEL_MIB" MESHNET_GPU_COUNT="$GPU_COUNT"
+  if [[ "$POOL_ROLE" == "worker" ]]; then
+    # A worker only lends its GPU to the provider's own head; it does not
+    # register with MeshNet or take jobs itself.
+    pool_worker
+    return
+  fi
+  pick_model
   check_disk
-  check_gpu
+  setup_ram_dir
   install -d -m 700 "$MESHNET_DIR"
   # Register first so the node shows up within minutes. The ~40 GB model is
   # downloaded afterwards by the node agent itself, while it is already online.
   claim_node
+  [[ "$POOL_ROLE" == "head" ]] && pool_head
+  write_node_env
   download_node_client
   install_python_deps
   install_service
   confirm_heartbeat
   install_ollama
-  log "Your node is online. It downloads the AI model in the background and takes jobs once that finishes."
+  log "Your node is online with ${MODEL_NAME}. It downloads the model in the background and takes jobs once that finishes."
+  log "As a community node it serves public jobs only; company data is never sent to it."
   log "Watch it at https://beta.meshnet.co/host-dashboard.html"
 }
 

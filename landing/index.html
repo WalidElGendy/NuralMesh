@@ -5,165 +5,352 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>MeshNet — Neo AI and the MeshNet Workspace</title>
 <meta name="description" content="MeshNet Workspace is the workspace for companies, run by Neo AI and 12 agents on AI that works on your own computers. Business and personal plans.">
-<meta name="theme-color" content="#07070d">
+<meta name="theme-color" content="#05070f">
 <link rel="icon" href="favicon.png" type="image/png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
+/* ==========================================================================
+   MeshNet — glass on deep navy. Light comes from three places only: the
+   electric-blue primary, the violet streaks, and the cyan of things that are
+   live. Everything else is glass: a faint top highlight, a 1px edge, blur.
+   ========================================================================== */
 :root{
-  --bg:#07070d; --bg2:#0d0d18; --panel:#11111d; --panel2:#171727; --line:#24243a; --line2:#34345a;
-  --ink:#f5f6fb; --ink2:#b7b8cc; --ink3:#7f8199;
-  --violet:#7c3aed; --violet2:#a78bfa; --cyan:#06b6d4; --cyan2:#67e8f9; --ok:#34d399; --warn:#fbbf24;
-  --grad:linear-gradient(120deg,#7c3aed 0%,#4f46e5 45%,#06b6d4 100%);
-  --r:20px; --sans:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; --ar:"IBM Plex Sans Arabic",var(--sans);
+  --bg:#04060d; --bg2:#070b18; --navy:#141e30; --navy2:#35577d;
+  --ink:#f3f5ff; --ink2:#b7bfd9; --ink3:#7d87a6; --ink4:#4d5673;
+  --blue:#3d7bff; --blue2:#6ea2ff; --cyan:#5fe3ff; --violet:#8b5cf6; --violet2:#b79bff;
+  --ok:#3ee08f; --warn:#ffc65a;
+  --glass:linear-gradient(180deg,rgba(255,255,255,.085),rgba(255,255,255,.025));
+  --glass-strong:linear-gradient(180deg,rgba(255,255,255,.13),rgba(255,255,255,.04));
+  --edge:rgba(255,255,255,.12); --edge2:rgba(255,255,255,.2);
+  --r:22px; --r-sm:14px;
+  --head:"Sora","Inter",system-ui,sans-serif; --body:"Inter",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,monospace;
 }
+:root[dir="rtl"]{--head:"IBM Plex Sans Arabic","Sora",sans-serif;--body:"IBM Plex Sans Arabic","Inter",sans-serif}
 *{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth}
-body{background:var(--bg);color:var(--ink);font:16px/1.6 var(--sans);-webkit-font-smoothing:antialiased;overflow-x:hidden}
-html[lang=ar] body{font-family:var(--ar)}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.65;overflow-x:hidden;-webkit-font-smoothing:antialiased}
 a{color:inherit;text-decoration:none}
-img,svg{display:block;max-width:100%}
+img,svg{display:block}
+button,input,select,textarea{font:inherit;color:inherit}
 .wrap{width:min(1180px,100% - 40px);margin-inline:auto}
-.grad-text{white-space:nowrap;unicode-bidi:isolate;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
-.eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:700;letter-spacing:.04em;color:var(--cyan2);text-transform:uppercase}
-html[lang=ar] .eyebrow{letter-spacing:0}
-.eyebrow i{width:6px;height:6px;border-radius:50%;background:var(--cyan);box-shadow:0 0 12px var(--cyan)}
-h1,h2,h3{letter-spacing:-.025em;line-height:1.08}
-html[lang=ar] h1,html[lang=ar] h2,html[lang=ar] h3{letter-spacing:0;line-height:1.3}
-h2{font-size:clamp(30px,4.4vw,48px);font-weight:800;margin:14px 0 14px}
-.lead{color:var(--ink2);font-size:clamp(16px,1.6vw,19px);max-width:720px}
-section{padding:96px 0;position:relative}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:48px;padding:0 22px;border-radius:999px;font-weight:700;font-size:15px;border:1px solid var(--line2);background:rgba(255,255,255,.03);color:var(--ink);cursor:pointer;transition:transform .15s,background .15s,border-color .15s}
-.btn:hover{transform:translateY(-1px);border-color:#4b4b7a;background:rgba(255,255,255,.06)}
-.btn--primary{background:var(--grad);border:0;color:#fff;box-shadow:0 10px 40px -10px rgba(124,58,237,.7)}
-.btn--primary:hover{background:var(--grad);filter:brightness(1.08)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+/* page-wide atmosphere: a navy wash and a fine dot grid */
+body::before{content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;
+  background:radial-gradient(1200px 700px at 80% -10%,rgba(53,87,125,.35),transparent 60%),
+             radial-gradient(900px 600px at -10% 30%,rgba(139,92,246,.12),transparent 60%),
+             linear-gradient(180deg,#05070f,#060a16 40%,#04060d)}
+body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.35;
+  background-image:radial-gradient(rgba(255,255,255,.07) 1px,transparent 1px);background-size:28px 28px;
+  mask-image:radial-gradient(ellipse 80% 60% at 50% 30%,#000 30%,transparent 80%)}
+
+/* ---------- glass primitives ---------- */
+.glass{position:relative;background:var(--glass);border:1px solid var(--edge);border-radius:var(--r);
+  -webkit-backdrop-filter:blur(18px) saturate(140%);backdrop-filter:blur(18px) saturate(140%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 -1px 0 rgba(255,255,255,.03),0 24px 60px -20px rgba(0,0,0,.7)}
+/* a sheen across the top-left, like light on a pane */
+.glass::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:linear-gradient(125deg,rgba(255,255,255,.10) 0%,rgba(255,255,255,0) 28%)}
+/* glowing edge: a gradient ring drawn with a mask */
+.glow-edge::after{content:"";position:absolute;inset:-1px;border-radius:inherit;padding:1px;pointer-events:none;
+  background:linear-gradient(140deg,rgba(110,162,255,.9),rgba(139,92,246,.15) 40%,rgba(95,227,255,.0) 60%,rgba(183,155,255,.8));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+
+/* ---------- buttons: glossy pills ---------- */
+.btn{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:8px;height:48px;padding:0 24px;border-radius:999px;
+  font-family:var(--head);font-weight:500;font-size:15px;letter-spacing:-.005em;cursor:pointer;white-space:nowrap;border:1px solid var(--edge2);
+  background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.03));color:var(--ink);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 10px 30px -12px rgba(0,0,0,.8);transition:transform .2s,box-shadow .2s,background .2s}
+.btn:hover{transform:translateY(-1px);background:linear-gradient(180deg,rgba(255,255,255,.18),rgba(255,255,255,.05))}
+.btn--primary{border-color:rgba(160,195,255,.7);
+  background:linear-gradient(180deg,#7fb0ff 0%,#3d7bff 48%,#2a5ef0 100%);color:#fff;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.6),inset 0 -6px 12px rgba(10,30,120,.35),0 0 0 1px rgba(61,123,255,.4),0 10px 40px -6px rgba(61,123,255,.75),0 0 60px -10px rgba(95,227,255,.5)}
+.btn--primary:hover{background:linear-gradient(180deg,#93bdff 0%,#4b86ff 48%,#2f66f5 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.7),inset 0 -6px 12px rgba(10,30,120,.35),0 0 0 1px rgba(61,123,255,.5),0 14px 50px -6px rgba(61,123,255,.9),0 0 80px -10px rgba(95,227,255,.6)}
+.btn--violet{border-color:rgba(183,155,255,.55);color:#e4d9ff;background:linear-gradient(180deg,rgba(139,92,246,.28),rgba(139,92,246,.08));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 0 30px -8px rgba(139,92,246,.6)}
 .btn--sm{height:38px;padding:0 16px;font-size:14px}
-/* nav */
-.nav{position:sticky;top:0;z-index:50;background:rgba(7,7,13,.72);backdrop-filter:blur(16px);border-bottom:1px solid rgba(255,255,255,.06)}
-.nav .wrap{display:flex;align-items:center;gap:22px;height:68px}
-.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:19px;letter-spacing:-.03em}
-.brand img{height:30px;width:auto;display:block}
-.nav__links{display:flex;gap:22px;margin-inline-start:auto;font-size:14.5px;color:var(--ink2)}
-.nav__links a:hover{color:var(--ink)}
-.lang{font-size:14px;color:var(--ink2);border:1px solid var(--line2);border-radius:999px;height:36px;padding:0 14px;background:none;cursor:pointer}
-@media(max-width:960px){.nav__links{display:none}.nav .wrap>.lang{margin-inline-start:auto}}
-/* hero */
-.hero{padding:72px 0 64px;overflow:hidden}
-.hero__glow{position:absolute;inset:-200px 0 auto;height:760px;background:radial-gradient(closest-side,rgba(124,58,237,.33),transparent 70%),radial-gradient(closest-side at 70% 40%,rgba(6,182,212,.22),transparent 70%);filter:blur(30px);pointer-events:none;z-index:-1}
-.hero .wrap{display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center}
-.hero h1{font-size:clamp(40px,6.2vw,74px);font-weight:800;margin:18px 0 20px}
-.hero__ctas{display:flex;flex-wrap:wrap;gap:12px;margin-top:30px}
-.hero__trust{display:flex;flex-wrap:wrap;gap:10px 22px;margin-top:30px;color:var(--ink3);font-size:14px}
-.hero__trust span{display:flex;align-items:center;gap:8px}
-.hero__trust span::before{content:"";width:16px;height:16px;border-radius:50%;background:rgba(52,211,153,.15) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4.5 8.2l2.2 2.2 4.8-5' fill='none' stroke='%2334d399' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/16px}
-@media(max-width:960px){.hero .wrap{grid-template-columns:1fr}.orbit{max-width:440px;margin-inline:auto}}
-/* orbit */
-.orbit{position:relative;aspect-ratio:1;width:100%}
-.orbit__ring{position:absolute;inset:6%;border-radius:50%;border:1px dashed rgba(167,139,250,.28)}
-.orbit__ring--2{inset:22%;border-style:solid;border-color:rgba(6,182,212,.18)}
-.orbit__core{position:absolute;inset:36%;border-radius:50%;background:radial-gradient(circle at 35% 30%,#a78bfa,#5b21b6 55%,#1e1b4b);box-shadow:0 0 80px rgba(124,58,237,.55),inset 0 0 30px rgba(255,255,255,.12);display:grid;place-items:center;text-align:center}
-.orbit__core b{font-size:clamp(20px,2.6vw,30px);font-weight:800;letter-spacing:-.03em}
-.orbit__core small{display:block;font-size:12px;color:#ddd6fe;margin-top:2px}
-.orbit__spin{position:absolute;inset:0;animation:spin 60s linear infinite}
-.agent-dot{position:absolute;width:15%;aspect-ratio:1;margin:-7.5%;border-radius:18px;background:var(--panel2);border:1px solid var(--line2);display:grid;place-items:center;font-size:clamp(16px,2vw,22px);box-shadow:0 8px 30px -8px rgba(0,0,0,.6);animation:spin 60s linear infinite reverse}
-.agent-dot::after{content:"";position:absolute;top:8%;inset-inline-end:8%;width:9px;height:9px;border-radius:50%;background:var(--ok);box-shadow:0 0 10px var(--ok)}
-.agent-dot.is-busy::after{background:var(--warn);box-shadow:0 0 10px var(--warn)}
+.btn:disabled{opacity:.6;cursor:default;transform:none}
+.btn:focus-visible,a:focus-visible,summary:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+
+/* ---------- nav: a floating glass pill ---------- */
+.nav{position:fixed;top:14px;inset-inline:0;z-index:50;pointer-events:none}
+.nav .wrap{display:flex;align-items:center;gap:14px;height:62px;padding:0 10px 0 18px;pointer-events:auto;border-radius:999px;
+  background:linear-gradient(180deg,rgba(14,20,38,.72),rgba(8,12,24,.6));border:1px solid var(--edge);
+  -webkit-backdrop-filter:blur(20px) saturate(150%);backdrop-filter:blur(20px) saturate(150%);box-shadow:inset 0 1px 0 rgba(255,255,255,.1),0 20px 50px -20px rgba(0,0,0,.8)}
+.brand img{height:26px;width:auto}
+.nav__links{display:flex;gap:2px;margin-inline:auto;padding:4px;border-radius:999px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)}
+.nav__links a{padding:7px 14px;border-radius:999px;font-size:14px;color:var(--ink2);transition:.2s}
+.nav__links a:hover{color:var(--ink);background:rgba(255,255,255,.06)}
+.lang{height:38px;padding:0 14px;border-radius:999px;border:1px solid var(--edge);background:transparent;color:var(--ink2);cursor:pointer;font-size:14px;font-family:"IBM Plex Sans Arabic",var(--body)}
+.lang:hover{color:var(--ink);border-color:var(--edge2)}
+
+/* ---------- type ---------- */
+h1,h2,h3{font-family:var(--head);letter-spacing:-.03em;line-height:1.05;font-weight:500}
+:root[dir="rtl"] h1,:root[dir="rtl"] h2,:root[dir="rtl"] h3{letter-spacing:0;line-height:1.25}
+h1{font-size:clamp(42px,6.6vw,84px);font-weight:400}
+h2{font-size:clamp(32px,4.4vw,54px);font-weight:400}
+h3{font-size:18px;font-weight:600;letter-spacing:-.015em;line-height:1.3}
+.lead{color:var(--ink2);font-size:clamp(16px,1.5vw,19px);max-width:640px}
+.fade{background:linear-gradient(180deg,#fff 30%,rgba(255,255,255,.55));-webkit-background-clip:text;background-clip:text;color:transparent}
+.grad-text{background:linear-gradient(100deg,#9cc0ff 0%,#5fe3ff 45%,#b79bff 100%);-webkit-background-clip:text;background-clip:text;color:transparent;white-space:nowrap;unicode-bidi:isolate}
+.eyebrow{display:inline-flex;align-items:center;gap:10px;padding:6px 14px 6px 8px;border-radius:999px;font-size:13px;color:var(--ink2);
+  background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.02));border:1px solid var(--edge);box-shadow:inset 0 1px 0 rgba(255,255,255,.1)}
+.eyebrow b{font-weight:600;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#cfe0ff;padding:3px 9px;border-radius:999px;background:linear-gradient(180deg,rgba(61,123,255,.5),rgba(61,123,255,.2));border:1px solid rgba(110,162,255,.5)}
+:root[dir="rtl"] .eyebrow{padding:6px 8px 6px 14px}
+section{position:relative;padding:120px 0}
+.head{display:grid;gap:18px;margin-bottom:56px;max-width:760px}
+.head>.eyebrow{justify-self:start}
+.head--center{text-align:center;margin-inline:auto;justify-items:center}
+.head--center>.eyebrow{justify-self:center}
+
+/* ---------- light streaks (the violet swoosh) ---------- */
+.streaks{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:0}
+.streaks svg{position:absolute;width:140%;height:100%;left:-20%;top:0;animation:drift 22s ease-in-out infinite alternate}
+@keyframes drift{to{transform:translate3d(-4%,2%,0) rotate(-1.5deg)}}
+
+/* ---------- HERO ---------- */
+.hero{padding:170px 0 60px;text-align:center;overflow:hidden}
+.hero .wrap{position:relative;z-index:1;display:grid;justify-items:center;gap:26px}
+.hero h1{max-width:980px}
+.hero .lead{margin-inline:auto;text-align:center}
+.hero__ctas{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-top:6px}
+.hero__trust{display:flex;gap:22px;flex-wrap:wrap;justify-content:center;color:var(--ink3);font-size:14px}
+.hero__trust span{display:inline-flex;align-items:center;gap:8px}
+.hero__trust span::before{content:"";width:16px;height:16px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#a8ffd5,#2bcf80);box-shadow:0 0 12px rgba(62,224,143,.6);
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='8'/%3E%3C/svg%3E")}
+
+/* the stage: Neo's core with four glass panels wired to it */
+.stage{position:relative;width:100%;max-width:1100px;height:520px;margin-top:40px}
+.stage svg.wires{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.core{position:absolute;left:50%;top:50%;width:250px;height:250px;transform:translate(-50%,-50%)}
+.core__glow{position:absolute;inset:-90px;border-radius:50%;background:radial-gradient(circle,rgba(61,123,255,.55),rgba(61,123,255,.12) 40%,transparent 70%);filter:blur(10px);animation:breathe 5s ease-in-out infinite}
+.core__orb{position:absolute;inset:0;border-radius:50%;
+  background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.95) 0 2%,rgba(170,215,255,.9) 6%,#3d7bff 30%,#1636b8 58%,#0a1450 78%,#050a2a 100%);
+  box-shadow:0 0 0 1px rgba(150,190,255,.35),0 0 60px rgba(61,123,255,.9),0 0 140px rgba(61,123,255,.5),inset 0 -20px 40px rgba(0,0,30,.7),inset 0 10px 30px rgba(180,220,255,.35)}
+.core__ring{position:absolute;inset:-6px;border-radius:50%;border:1.5px solid transparent;
+  background:conic-gradient(from 0deg,transparent 0 55%,rgba(95,227,255,.95) 70%,rgba(255,255,255,.9) 74%,transparent 80%) border-box;
+  -webkit-mask:linear-gradient(#000 0 0) padding-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:spin 6s linear infinite}
+.core__ring--2{inset:18px;animation-duration:9s;animation-direction:reverse;opacity:.8;
+  background:conic-gradient(from 90deg,transparent 0 60%,rgba(183,155,255,.95) 75%,transparent 82%) border-box}
+.core__swirl{position:absolute;inset:12%;border-radius:50%;border:1px solid rgba(200,230,255,.35);transform:rotateX(70deg);animation:tilt 7s linear infinite}
+.core__swirl--2{transform:rotateY(70deg);animation-duration:10s}
+.core__label{position:absolute;inset:0;display:grid;place-content:center;text-align:center;font-family:var(--head)}
+.core__label b{font-size:36px;font-weight:500;letter-spacing:-.02em;text-shadow:0 2px 20px rgba(0,20,80,.8)}
+.core__label small{font-size:12.5px;color:#cfe0ff;opacity:.9}
 @keyframes spin{to{transform:rotate(360deg)}}
-@media (prefers-reduced-motion:reduce){.orbit__spin,.agent-dot{animation:none}}
+@keyframes tilt{to{transform:rotateX(70deg) rotateZ(360deg)}}
+@keyframes breathe{50%{opacity:.7;transform:scale(.96)}}
+
+.panel{position:absolute;width:290px;padding:18px;text-align:start;border-radius:20px}
+.panel h4{font-family:var(--head);font-weight:500;font-size:15px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.panel h4 i{width:7px;height:7px;border-radius:50%;background:var(--cyan);box-shadow:0 0 10px var(--cyan)}
+.panel--tl{left:0;top:30px}.panel--bl{left:0;bottom:20px}.panel--tr{right:0;top:30px}.panel--br{right:0;bottom:20px}
+:root[dir="rtl"] .panel--tl,:root[dir="rtl"] .panel--bl{left:auto;right:0}
+:root[dir="rtl"] .panel--tr,:root[dir="rtl"] .panel--br{right:auto;left:0}
+.pill{display:inline-flex;align-items:center;gap:7px;padding:6px 11px;border-radius:999px;font-size:12.5px;color:var(--ink2);margin:0 6px 7px 0;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1)}
+.pill svg{width:14px;height:14px}
+.pill--on{color:#dfe9ff;border-color:rgba(110,162,255,.55);background:linear-gradient(180deg,rgba(61,123,255,.3),rgba(61,123,255,.08))}
+.pill--done svg{color:var(--ok)}
+.bars{display:flex;align-items:flex-end;gap:8px;height:70px;padding-top:6px}
+.bars i{flex:1;border-radius:6px 6px 3px 3px;background:linear-gradient(180deg,#7fb0ff,#2a5ef0);box-shadow:0 0 16px -2px rgba(61,123,255,.7);opacity:.9}
+.bars i:nth-child(odd){background:linear-gradient(180deg,#c4b0ff,#7048e8)}
+.meter{height:8px;border-radius:999px;background:rgba(255,255,255,.07);overflow:hidden;margin:10px 0 8px}
+.meter i{display:block;height:100%;width:62%;border-radius:inherit;background:linear-gradient(90deg,#3d7bff,#5fe3ff);box-shadow:0 0 14px rgba(95,227,255,.8)}
+.kv{display:flex;justify-content:space-between;font-size:12.5px;color:var(--ink3)}
+.kv b{color:var(--ink);font-weight:500;font-family:var(--mono);font-size:12px}
+
+/* integrations strip */
+.with{padding:30px 0 10px}
+.with p{text-align:center;color:var(--ink3);font-size:13px;margin-bottom:22px}
+.with__row{display:flex;flex-wrap:wrap;justify-content:center;gap:14px 44px;font-family:var(--head);font-size:19px;font-weight:600;color:rgba(255,255,255,.55);letter-spacing:-.01em}
+.with__row span{transition:color .2s}.with__row span:hover{color:#fff}
+
+/* ---------- the big rounded glowing slab (Neo, pricing) ---------- */
+.slab{position:relative;border-radius:36px;overflow:hidden;padding:90px 0 100px;isolation:isolate;
+  background:radial-gradient(120% 70% at 50% 115%,#9d8cff 0%,#5b3df5 22%,#2a1d8f 42%,#0d0d2e 66%,#060814 85%);
+  border:1px solid rgba(183,155,255,.18);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 40px 120px -40px rgba(91,61,245,.55)}
+.slab--navy{background:radial-gradient(120% 70% at 50% 115%,#6ea2ff 0%,#35577d 26%,#141e30 52%,#070b16 80%);border-color:rgba(110,162,255,.2);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 40px 120px -40px rgba(53,87,125,.7)}
+.slab::before{content:"";position:absolute;inset:0;z-index:-1;opacity:.5;
+  background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);background-size:56px 56px;
+  mask-image:linear-gradient(180deg,transparent,#000 40%,#000 70%,transparent)}
+.slab-wrap{width:min(1260px,100% - 24px);margin-inline:auto}
+
+/* Neo console */
+.console{overflow:hidden;border-radius:24px}
+.console__bar{display:flex;align-items:center;gap:7px;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.08);font-size:12.5px;color:var(--ink3);font-family:var(--mono)}
+.console__bar i{width:11px;height:11px;border-radius:50%;background:rgba(255,255,255,.14)}
+.console__bar i:first-child{background:#ff6b6b}.console__bar i:nth-child(2){background:#ffc65a}.console__bar i:nth-child(3){background:#3ee08f}
+.console__body{display:grid;grid-template-columns:250px minmax(0,1fr)}
+.console__side{padding:14px;border-inline-end:1px solid rgba(255,255,255,.07);display:grid;gap:3px;align-content:start}
+.console__agent{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:10px;font-size:13px;color:var(--ink3)}
+.console__agent .ic{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08)}
+.console__agent .ic svg{width:14px;height:14px}
+.console__agent em{margin-inline-start:auto;width:7px;height:7px;border-radius:50%}
+.console__agent.is-on{color:var(--ink);background:linear-gradient(90deg,rgba(61,123,255,.22),rgba(61,123,255,.04));box-shadow:inset 0 0 0 1px rgba(110,162,255,.25)}
+.console__agent.is-on .ic{color:var(--cyan);border-color:rgba(95,227,255,.4);box-shadow:0 0 14px -4px var(--cyan)}
+.console__agent.is-on em{background:var(--cyan);box-shadow:0 0 10px var(--cyan);animation:breathe 1.4s infinite}
+.console__main{padding:26px;display:grid;gap:16px;align-content:start}
+.msg{max-width:560px;padding:14px 18px;border-radius:18px;font-size:15px;line-height:1.6}
+.msg--me{justify-self:end;background:linear-gradient(180deg,#5d92ff,#2f66f5);color:#fff;border-end-end-radius:6px;box-shadow:0 10px 30px -10px rgba(61,123,255,.8),inset 0 1px 0 rgba(255,255,255,.35)}
+.msg--neo{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-end-start-radius:6px}
+.steps{display:grid;gap:9px;margin-top:12px}
+.step{display:flex;gap:10px;align-items:flex-start;font-size:14px;color:var(--ink2)}
+.step b{color:var(--ink);font-weight:600}
+.st{flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11px;margin-top:1px}
+.st--done{background:rgba(62,224,143,.15);color:var(--ok);border:1px solid rgba(62,224,143,.4)}
+.st--run{background:rgba(95,227,255,.15);color:var(--cyan);border:1px solid rgba(95,227,255,.4);animation:breathe 1.4s infinite}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{padding:6px 12px;border-radius:999px;font-size:12px;color:var(--ink2);font-family:var(--mono);background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1)}
+
 /* cards */
 .grid{display:grid;gap:16px}
-.grid>*,.plans>*,.flow>*,.form>*{min-width:0}
-.form input,.form select,.form textarea{width:100%;min-width:0}
-.grid--4{grid-template-columns:repeat(4,1fr)}.grid--3{grid-template-columns:repeat(3,1fr)}.grid--2{grid-template-columns:repeat(2,1fr)}
-@media(max-width:1000px){.grid--4{grid-template-columns:repeat(2,1fr)}.grid--3{grid-template-columns:1fr 1fr}}
-@media(max-width:640px){.grid--4,.grid--3,.grid--2{grid-template-columns:1fr}}
-.card{background:linear-gradient(180deg,var(--panel),var(--bg2));border:1px solid var(--line);border-radius:var(--r);padding:22px;transition:border-color .2s,transform .2s}
-.card:hover{border-color:var(--line2);transform:translateY(-2px)}
-.card h3{font-size:18px;margin:12px 0 6px}
-.card p{color:var(--ink2);font-size:14.5px}
-.ico{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;font-size:20px;background:rgba(124,58,237,.14);border:1px solid rgba(167,139,250,.25)}
-.tag{display:inline-block;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:999px;border:1px solid var(--line2);color:var(--ink2);margin-top:10px}
-.tag--net{color:var(--cyan2);border-color:rgba(6,182,212,.4)}
-.tag--local{color:#86efac;border-color:rgba(52,211,153,.35)}
-/* section heads */
-.head{max-width:780px;margin-bottom:40px}
-.head--center{margin-inline:auto;text-align:center}.head--center .lead{margin-inline:auto}
-/* neo console mock */
-.console{border:1px solid var(--line2);border-radius:24px;background:linear-gradient(180deg,#0f0f1c,#0a0a14);box-shadow:0 40px 120px -40px rgba(124,58,237,.5);overflow:hidden}
-.console__bar{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--line);font-size:13px;color:var(--ink3)}
-.console__bar i{width:10px;height:10px;border-radius:50%;background:#2b2b44}
-.console__body{display:grid;grid-template-columns:240px 1fr;min-height:360px}
-@media(max-width:760px){.console__body{grid-template-columns:1fr}.console__side{display:none}}
-.console__side{border-inline-end:1px solid var(--line);padding:14px;display:grid;gap:6px;align-content:start}
-.console__agent{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;font-size:13.5px;color:var(--ink2)}
-.console__agent.is-on{background:rgba(124,58,237,.16);color:var(--ink)}
-.console__agent em{margin-inline-start:auto;font-style:normal;font-size:11px;color:var(--ink3)}
-.console__main{padding:18px;display:grid;gap:12px;align-content:start}
-.msg{max-width:88%;padding:12px 14px;border-radius:14px;font-size:14.5px;line-height:1.55}
-.msg--me{justify-self:end;background:var(--grad);color:#fff;border-end-end-radius:4px}
-.msg--neo{background:var(--panel2);border:1px solid var(--line);border-end-start-radius:4px}
-.steps{display:grid;gap:6px;margin-top:10px}
-.step{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--ink2)}
-.step b{color:var(--ink);font-weight:600}
-.step .st{width:18px;height:18px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:11px}
-.st--done{background:rgba(52,211,153,.18);color:var(--ok)}.st--run{background:rgba(251,191,36,.16);color:var(--warn)}
-.chips{display:flex;flex-wrap:wrap;gap:8px}
-.chip{font-size:12.5px;padding:6px 11px;border-radius:999px;background:rgba(255,255,255,.04);border:1px solid var(--line2);color:var(--ink2)}
-/* flow */
-.flow{display:grid;grid-template-columns:1fr 40px 1fr 40px 1fr;align-items:stretch;gap:0}
-.flow .card{display:flex;flex-direction:column}
-.flow__arrow{display:grid;place-items:center;color:var(--ink3);font-size:22px}
-html[dir=rtl] .flow__arrow{transform:scaleX(-1)}
-@media(max-width:900px){.flow{grid-template-columns:1fr}.flow__arrow{transform:rotate(90deg);height:36px}html[dir=rtl] .flow__arrow{transform:rotate(90deg)}}
-.list{list-style:none;display:grid;gap:9px;margin-top:14px}
+.grid>*,.flow>*{min-width:0}
+.grid--2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.grid--3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.grid--4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.card{padding:26px;display:grid;gap:10px;align-content:start;transition:transform .35s cubic-bezier(.2,.7,.2,1),border-color .3s,box-shadow .3s}
+.card:hover{transform:translateY(-4px);border-color:rgba(110,162,255,.35);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 30px 70px -25px rgba(0,0,0,.8),0 0 40px -18px rgba(61,123,255,.6)}
+.card p{color:var(--ink2);font-size:14.5px;line-height:1.6}
+.ico{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;margin-bottom:6px;color:#dbe7ff;
+  background:linear-gradient(180deg,rgba(110,162,255,.35),rgba(61,123,255,.08));border:1px solid rgba(140,180,255,.4);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 8px 24px -8px rgba(61,123,255,.8)}
+.ico svg{width:22px;height:22px}
+.ico--violet{color:#eee6ff;background:linear-gradient(180deg,rgba(183,155,255,.4),rgba(139,92,246,.1));border-color:rgba(183,155,255,.45);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 8px 24px -8px rgba(139,92,246,.8)}
+.ico--cyan{color:#e1fbff;background:linear-gradient(180deg,rgba(95,227,255,.35),rgba(95,227,255,.06));border-color:rgba(95,227,255,.45);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 8px 24px -8px rgba(95,227,255,.7)}
+.tag{justify-self:start;margin-top:4px;padding:4px 10px;border-radius:999px;font-size:11.5px;font-weight:500;border:1px solid rgba(255,255,255,.14);color:var(--ink2)}
+.tag--net{color:#e0d4ff;border-color:rgba(183,155,255,.45);background:rgba(139,92,246,.15)}
+.tag--local{color:#c9f7e0;border-color:rgba(62,224,143,.4);background:rgba(62,224,143,.1)}
+.list{list-style:none;display:grid;gap:10px;margin-top:6px}
 .list li{display:flex;gap:10px;font-size:14.5px;color:var(--ink2)}
-.list li::before{content:"✓";color:var(--ok);font-weight:800;flex:none}
-.list--no li::before{content:"✕";color:#f87171}
-/* devices */
-.device{display:flex;gap:16px;align-items:flex-start}
-.device__big{font-size:30px;font-weight:800;letter-spacing:-.03em}
+.list li::before{content:"";flex:none;width:18px;height:18px;margin-top:3px;border-radius:50%;
+  background:rgba(62,224,143,.14) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233ee08f' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12.5l4 4L18 8'/%3E%3C/svg%3E") center/11px no-repeat;border:1px solid rgba(62,224,143,.35)}
+
+/* agent grid in the slab */
+.agents{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:22px}
+.agent{display:grid;grid-template-columns:40px minmax(0,1fr);gap:4px 12px;padding:16px;border-radius:18px;align-items:start}
+.agent .ico{width:40px;height:40px;border-radius:12px;margin:0;grid-row:span 2}
+.agent .ico svg{width:19px;height:19px}
+.agent h3{font-size:15px}
+.agent p{font-size:13px;color:var(--ink3);line-height:1.5;grid-column:2}
+.agent .tag{grid-column:2;margin-top:6px;font-size:10.5px}
+
+/* local-first flow */
+.flow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;position:relative}
+.flow__line{position:absolute;top:58px;inset-inline:16%;height:2px;background:linear-gradient(90deg,transparent,rgba(95,227,255,.7),rgba(183,155,255,.7),transparent);box-shadow:0 0 14px rgba(95,227,255,.6);z-index:0}
+.flow__line::after{content:"";position:absolute;top:-3px;width:8px;height:8px;border-radius:50%;background:#fff;box-shadow:0 0 14px #5fe3ff,0 0 30px #5fe3ff;animation:run 4s linear infinite}
+@keyframes run{from{inset-inline-start:0}to{inset-inline-start:100%}}
+.flow .card{z-index:1}
+.device{grid-template-columns:auto minmax(0,1fr);align-items:start;gap:16px}
+.device .ico{margin:0}
+.device__big{font-family:var(--head);font-size:19px;font-weight:500;margin-bottom:4px}
+
+/* MCP grid */
+.mcp{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.mcp .card{padding:20px}
+.mcp h3{display:flex;align-items:center;gap:10px;font-size:16px}
+.mcp h3 .ic{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:var(--blue2)}
+.mcp h3 .ic svg{width:16px;height:16px}
+
 /* pricing */
-.plans{display:grid;grid-template-columns:1.1fr .9fr;gap:20px;align-items:stretch}
-@media(max-width:900px){.plans{grid-template-columns:1fr}}
-.plan{border:1px solid var(--line2);border-radius:26px;padding:30px;background:var(--panel);display:flex;flex-direction:column}
-.plan--feature{background:linear-gradient(var(--panel),var(--panel)) padding-box,var(--grad) border-box;border:1.5px solid transparent;box-shadow:0 30px 90px -40px rgba(124,58,237,.7)}
-.plan__name{font-size:14px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--violet2)}
-html[lang=ar] .plan__name{letter-spacing:0}
-.plan__price{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 10px;margin:14px 0 4px}
-.plan__price b{font-size:46px;font-weight:800;letter-spacing:-.04em}
-.plan__price span{color:var(--ink2)}
-.plan__plus{color:var(--ink2);font-size:15px}
-.plan__plus b{color:var(--ink);font-size:22px}
-.plan .list{flex:1;margin:22px 0 26px}
-.note{color:var(--ink3);font-size:13px;margin-top:14px}
-/* provider */
-.code{min-width:0;display:flex;align-items:center;gap:12px;background:#05050a;border:1px solid var(--line2);border-radius:14px;padding:14px 16px;font:14px/1.5 ui-monospace,"SF Mono",Menlo,monospace;color:#c4b5fd;direction:ltr;overflow-x:auto}
-.code button{margin-inline-start:auto;flex:none}
+.plans{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;max-width:980px;margin:0 auto}
+.plan{position:relative;padding:34px;border-radius:28px;display:grid;gap:16px;align-content:start;overflow:hidden}
+.plan__art{position:absolute;inset-inline-end:-40px;top:-40px;width:260px;height:260px;opacity:.6;pointer-events:none}
+.plan__badge{position:absolute;inset-inline-end:22px;top:22px;padding:5px 12px;border-radius:999px;font-size:12px;color:#fff;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);backdrop-filter:blur(8px)}
+.plan__logo{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;box-shadow:0 10px 30px -8px rgba(61,123,255,.9),inset 0 2px 4px rgba(255,255,255,.6);
+  background:radial-gradient(circle at 35% 30%,#fff 0 6%,#9cc0ff 20%,#3d7bff 55%,#1a3dbf)}
+.plan__logo--v{background:radial-gradient(circle at 35% 30%,#fff 0 6%,#d9c9ff 20%,#8b5cf6 55%,#4b25b8);box-shadow:0 10px 30px -8px rgba(139,92,246,.9),inset 0 2px 4px rgba(255,255,255,.6)}
+.plan__logo svg{width:24px;height:24px;color:#fff}
+.plan__name{font-family:var(--head);font-size:26px;font-weight:500}
+.plan__price{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.plan__price b{font-family:var(--head);font-size:46px;font-weight:400;letter-spacing:-.03em;line-height:1}
+.plan__price span{color:var(--ink3);font-size:15px}
+.plan__plus{color:var(--ink2);font-size:15px;padding:10px 14px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08)}
+.plan__plus b{color:var(--ink);font-weight:600}
+.plan .btn{width:100%;margin-top:6px}
+.plan--business{background:linear-gradient(160deg,rgba(61,123,255,.28),rgba(20,30,48,.55) 45%,rgba(10,14,28,.7));border-color:rgba(110,162,255,.35)}
+.plan--personal{background:linear-gradient(160deg,rgba(139,92,246,.3),rgba(30,20,60,.55) 45%,rgba(10,10,28,.7));border-color:rgba(183,155,255,.3)}
+.note{color:var(--ink3);font-size:13.5px;margin-top:26px}
+
+/* providers */
+.netviz{position:relative;aspect-ratio:1/1;max-width:520px;width:100%;margin-inline:auto}
+.netviz canvas{width:100%;height:100%}
+.netviz__glow{position:absolute;inset:25%;border-radius:50%;background:radial-gradient(circle,rgba(95,227,255,.45),rgba(61,123,255,.15) 50%,transparent 70%);filter:blur(20px);pointer-events:none}
+.code{min-width:0;max-width:100%;display:flex;align-items:center;gap:12px;justify-content:space-between;padding:12px 12px 12px 18px;border-radius:16px;font-family:var(--mono);font-size:13.5px;
+  background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.1);box-shadow:inset 0 1px 0 rgba(255,255,255,.06);direction:ltr;text-align:left}
+.code span{overflow:auto;white-space:nowrap;color:#bfe9ff}
+.code span::before{content:"$ ";color:var(--ink4)}
+
 /* faq */
-details{border:1px solid var(--line);border-radius:16px;padding:16px 20px;background:var(--panel)}
-details+details{margin-top:10px}
-summary{cursor:pointer;font-weight:700;list-style:none;display:flex;justify-content:space-between;gap:12px}
-summary::after{content:"+";color:var(--ink3);font-size:20px;line-height:1}
-details[open] summary::after{content:"–"}
-details p{color:var(--ink2);margin-top:10px;font-size:15px}
-/* form */
-.form{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.form label{display:grid;gap:6px;font-size:13.5px;color:var(--ink2);font-weight:600}
+details{border-radius:18px;margin-bottom:10px;padding:0 22px}
+summary{list-style:none;cursor:pointer;padding:20px 0;font-family:var(--head);font-size:17px;font-weight:500;display:flex;justify-content:space-between;gap:16px;align-items:center}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";flex:none;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:18px;color:var(--cyan);border:1px solid rgba(95,227,255,.3);background:rgba(95,227,255,.06);transition:transform .3s}
+details[open] summary::after{transform:rotate(45deg)}
+details p{color:var(--ink2);padding-bottom:20px;font-size:15px}
+
+/* start form: glass fields with a lit underline */
+.startcard{padding:44px;border-radius:32px}
+.form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:28px}
+.form label{display:grid;gap:8px;font-size:13.5px;color:var(--ink2)}
 .form .wide{grid-column:1/-1}
-.form input,.form select,.form textarea{height:48px;border-radius:12px;border:1px solid var(--line2);background:#0b0b15;color:var(--ink);padding:0 14px;font:inherit;font-size:15px}
-.form textarea{height:96px;padding:12px 14px;resize:vertical}
-.form input:focus,.form select:focus,.form textarea:focus{outline:2px solid var(--violet);outline-offset:1px}
-@media(max-width:640px){.form{grid-template-columns:1fr}}
-.alert{padding:12px 14px;border-radius:12px;font-size:14px;margin-top:12px}
-.alert--ok{background:rgba(52,211,153,.12);color:#a7f3d0;border:1px solid rgba(52,211,153,.3)}
-.alert--bad{background:rgba(248,113,113,.1);color:#fecaca;border:1px solid rgba(248,113,113,.3)}
-footer{border-top:1px solid var(--line);padding:36px 0 48px;color:var(--ink3);font-size:14px}
-footer .wrap{display:flex;flex-wrap:wrap;gap:16px 28px;align-items:center}
+.form input,.form select,.form textarea{width:100%;padding:14px 16px;border-radius:14px;font-size:15px;color:var(--ink);
+  background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.12);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08),inset 0 -2px 0 rgba(61,123,255,0);transition:border-color .2s,box-shadow .2s}
+.form input:focus,.form select:focus,.form textarea:focus{outline:none;border-color:rgba(110,162,255,.6);box-shadow:inset 0 1px 0 rgba(255,255,255,.1),inset 0 -2px 0 #5fe3ff,0 0 0 4px rgba(61,123,255,.15),0 10px 30px -10px rgba(61,123,255,.6)}
+.form select option{background:#0b1222}
+.form textarea{min-height:110px;resize:vertical}
+.form .wide:last-child{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.alert{font-size:14px;padding:10px 14px;border-radius:12px}
+.alert--ok{color:#c9f7e0;background:rgba(62,224,143,.1);border:1px solid rgba(62,224,143,.35)}
+.alert--bad{color:#ffd0d0;background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.35)}
+
+footer{padding:50px 0 60px;border-top:1px solid rgba(255,255,255,.06);margin-top:40px}
+footer .wrap{display:flex;align-items:center;gap:22px;flex-wrap:wrap;color:var(--ink3);font-size:14px}
+footer .brand img{height:22px}
 footer nav{display:flex;gap:18px;margin-inline-start:auto}
-.reveal{opacity:0;transform:translateY(16px);transition:opacity .6s ease,transform .6s ease}
+footer nav a:hover{color:var(--ink)}
+
+/* reveal */
+.reveal{opacity:0;transform:translateY(24px);transition:opacity .9s cubic-bezier(.2,.7,.2,1),transform .9s cubic-bezier(.2,.7,.2,1)}
 .reveal.is-in{opacity:1;transform:none}
-@media (prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}}
-.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+/* ---------- responsive ---------- */
+@media (max-width:1080px){
+  .nav__links{display:none}
+  .grid--4,.agents,.mcp{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .stage{height:auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding-top:290px}
+  .stage svg.wires{display:none}
+  .core{top:130px}
+  .panel{position:relative;inset:auto !important;width:auto}
+}
+@media (max-width:760px){
+  section{padding:80px 0}
+  .hero{padding-top:130px}
+  .nav{top:10px}.nav .wrap{height:56px;width:calc(100% - 20px)}
+  .nav .btn--sm{display:none}
+  .grid--2,.grid--3,.grid--4,.agents,.mcp,.plans,.flow,.form{grid-template-columns:minmax(0,1fr)}
+  .flow__line{display:none}
+  .stage{grid-template-columns:minmax(0,1fr);padding-top:250px}
+  .core{width:200px;height:200px;top:110px}
+  .core__label b{font-size:28px}
+  .console__body{grid-template-columns:minmax(0,1fr)}
+  .console__side{grid-template-columns:repeat(2,minmax(0,1fr));border-inline-end:0;border-bottom:1px solid rgba(255,255,255,.07)}
+  .console__main{padding:18px}
+  .slab{border-radius:26px;padding:64px 0 70px}
+  .startcard{padding:26px}
+  .plan{padding:26px}
+  .plan__price b{font-size:38px}
+  .with__row{gap:10px 26px;font-size:16px}
+  .hero__ctas .btn{flex:1 1 200px}
+  .card:hover{transform:none}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none !important;transition:none !important}
+  .reveal{opacity:1;transform:none}
+  html{scroll-behavior:auto}
+}
 </style>
 </head>
 <body>
@@ -183,98 +370,166 @@ footer nav{display:flex;gap:18px;margin-inline-start:auto}
 <main id="top">
 <!-- HERO -->
 <section class="hero">
-  <div class="hero__glow"></div>
+  <div class="streaks" aria-hidden="true">
+    <svg viewBox="0 0 1600 900" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="sk1" x1="0" x2="1"><stop offset="0" stop-color="#8b5cf6" stop-opacity="0"/><stop offset=".35" stop-color="#8b5cf6" stop-opacity=".85"/><stop offset=".7" stop-color="#c9b5ff" stop-opacity=".9"/><stop offset="1" stop-color="#5fe3ff" stop-opacity="0"/></linearGradient>
+        <linearGradient id="sk2" x1="0" x2="1"><stop offset="0" stop-color="#3d7bff" stop-opacity="0"/><stop offset=".5" stop-color="#3d7bff" stop-opacity=".8"/><stop offset="1" stop-color="#8b5cf6" stop-opacity="0"/></linearGradient>
+        <filter id="b40" filterUnits="userSpaceOnUse" x="-400" y="-400" width="2400" height="1700"><feGaussianBlur stdDeviation="40"/></filter><filter id="b12" filterUnits="userSpaceOnUse" x="-400" y="-400" width="2400" height="1700"><feGaussianBlur stdDeviation="12"/></filter><filter id="b2" filterUnits="userSpaceOnUse" x="-400" y="-400" width="2400" height="1700"><feGaussianBlur stdDeviation="1.4"/></filter>
+      </defs>
+      <path d="M-100 640 C 300 520, 600 820, 1000 600 S 1500 380, 1750 470" stroke="url(#sk1)" stroke-width="120" fill="none" filter="url(#b40)" opacity=".55"/>
+      <path d="M-100 690 C 320 560, 620 860, 1020 640 S 1520 420, 1750 520" stroke="url(#sk1)" stroke-width="26" fill="none" filter="url(#b12)" opacity=".8"/>
+      <path d="M-100 700 C 330 572, 630 868, 1030 650 S 1530 430, 1750 530" stroke="url(#sk1)" stroke-width="2" fill="none" filter="url(#b2)"/>
+      <path d="M-100 720 C 340 600, 650 880, 1040 672 S 1540 456, 1750 556" stroke="url(#sk2)" stroke-width="1.4" fill="none" opacity=".9"/>
+      <path d="M-100 300 C 400 160, 900 360, 1750 160" stroke="url(#sk2)" stroke-width="90" fill="none" filter="url(#b40)" opacity=".35"/>
+    </svg>
+  </div>
   <div class="wrap">
-    <div>
-      <span class="eyebrow"><i></i><span data-i18n="heroEyebrow">Neo AI · 12 agents · local-first</span></span>
-      <h1><span data-i18n="heroTitle1">Your company, run by</span> <span class="grad-text" data-i18n="heroTitle2">Neo AI</span> — <span data-i18n="heroTitle3">on your own computers.</span></h1>
-      <p class="lead" data-i18n="heroSub">MeshNet Workspace is the workspace for companies: projects, tenders, pricing, procurement, HR and sales in one place. Neo AI and its 12 agents do the work, on AI that runs on your own PCs. When a job needs more, the MeshNet network adds Claude — for tender analysis and deep research.</p>
-      <div class="hero__ctas">
-        <a class="btn btn--primary" href="#pricing" data-i18n="heroCta1">See the plans</a>
-        <a class="btn" href="#start" data-i18n="heroCta2">Book a demo →</a>
-      </div>
-      <div class="hero__trust">
-        <span data-i18n="trust1">Unlimited users</span><span data-i18n="trust2">Arabic and English</span><span data-i18n="trust3">Your data stays yours</span>
-      </div>
+    <span class="eyebrow"><b data-i18n="heroBadge">New</b><span data-i18n="heroEyebrow">Neo AI · 12 agents · local-first</span></span>
+    <h1><span class="fade" data-i18n="heroTitle1">Your company, run by</span> <span class="grad-text" data-i18n="heroTitle2">Neo AI</span> <span class="fade" data-i18n="heroTitle3">on your own computers.</span></h1>
+    <p class="lead" data-i18n="heroSub">MeshNet Workspace is the workspace for companies: projects, tenders, pricing, procurement, HR and sales in one place. Neo AI and its 12 agents do the work, on AI that runs on your own PCs. When a job needs more, the MeshNet network adds Claude — for tender analysis and deep research.</p>
+    <div class="hero__ctas">
+      <a class="btn btn--primary" href="#pricing" data-i18n="heroCta1">See the plans</a>
+      <a class="btn" href="#start"><span class="sr">Demo</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9.5v5l4.5-2.5z" fill="currentColor"/></svg><span data-i18n="heroCta2">Book a demo</span></a>
     </div>
-    <div class="orbit" aria-hidden="true">
-      <div class="orbit__ring"></div><div class="orbit__ring orbit__ring--2"></div>
-      <div class="orbit__spin" id="orbit"></div>
-      <div class="orbit__core"><div><b>Neo</b><small data-i18n="coreSub">12 agents online</small></div></div>
+    <div class="hero__trust">
+      <span data-i18n="trust1">Unlimited users</span><span data-i18n="trust2">Arabic and English</span><span data-i18n="trust3">Your data stays yours</span>
+    </div>
+
+    <div class="stage" aria-hidden="true">
+      <svg class="wires" viewBox="0 0 1100 520" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="wg" x1="0" x2="1"><stop offset="0" stop-color="#5fe3ff" stop-opacity=".9"/><stop offset="1" stop-color="#3d7bff" stop-opacity=".5"/></linearGradient>
+          <filter id="wglow" filterUnits="userSpaceOnUse" x="0" y="0" width="1100" height="520"><feGaussianBlur stdDeviation="3"/></filter>
+        </defs>
+        <g fill="none" stroke="url(#wg)" stroke-width="1.6">
+          <path id="w1" d="M290 110 H360 Q395 110 395 145 V215 Q395 250 430 250 H460"/>
+          <path id="w2" d="M290 420 H360 Q395 420 395 385 V285 Q395 250 430 250 H460"/>
+          <path id="w3" d="M810 110 H740 Q705 110 705 145 V215 Q705 250 670 250 H640"/>
+          <path id="w4" d="M810 420 H740 Q705 420 705 385 V285 Q705 250 670 250 H640"/>
+        </g>
+        <g fill="none" stroke="#5fe3ff" stroke-width="5" opacity=".35" filter="url(#wglow)"><use href="#w1"/><use href="#w2"/><use href="#w3"/><use href="#w4"/></g>
+        <g fill="#fff">
+          <circle r="4"><animateMotion dur="3.2s" repeatCount="indefinite"><mpath href="#w1"/></animateMotion></circle>
+          <circle r="4"><animateMotion dur="3.8s" repeatCount="indefinite" begin="-1s"><mpath href="#w2"/></animateMotion></circle>
+          <circle r="4"><animateMotion dur="3.5s" repeatCount="indefinite" begin="-.5s" keyPoints="1;0" keyTimes="0;1" calcMode="linear"><mpath href="#w3"/></animateMotion></circle>
+          <circle r="4"><animateMotion dur="4s" repeatCount="indefinite" begin="-1.6s" keyPoints="1;0" keyTimes="0;1" calcMode="linear"><mpath href="#w4"/></animateMotion></circle>
+        </g>
+        <g fill="#5fe3ff"><circle cx="290" cy="110" r="4"/><circle cx="290" cy="420" r="4"/><circle cx="810" cy="110" r="4"/><circle cx="810" cy="420" r="4"/></g>
+      </svg>
+      <div class="core">
+        <div class="core__glow"></div>
+        <div class="core__orb"></div>
+        <div class="core__swirl"></div><div class="core__swirl core__swirl--2"></div>
+        <div class="core__ring"></div><div class="core__ring core__ring--2"></div>
+        <div class="core__label"><b>Neo</b><small data-i18n="coreSub">12 agents online</small></div>
+      </div>
+      <div class="panel panel--tl glass">
+        <h4><i></i><span data-i18n="pnTasks">Tasks</span></h4>
+        <span class="pill pill--done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12.5l4.5 4.5L19 7"/></svg><span data-i18n="pnT1">Price the stand</span></span>
+        <span class="pill pill--on" data-i18n="pnT2">4 new tenders</span>
+        <span class="pill" data-i18n="pnT3">Leave request</span>
+        <span class="pill pill--done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12.5l4.5 4.5L19 7"/></svg><span data-i18n="pnT4">Supplier quotes</span></span>
+      </div>
+      <div class="panel panel--bl glass">
+        <h4><i></i><span data-i18n="pnAgents">Agents at work</span></h4>
+        <span class="pill pill--on" data-i18n="a1">Tenders analyst</span>
+        <span class="pill pill--on" data-i18n="a4">Pricing</span>
+        <span class="pill" data-i18n="a11">Reports</span>
+        <span class="pill" data-i18n="pnMore">+ 9 more</span>
+      </div>
+      <div class="panel panel--tr glass">
+        <h4><i></i><span data-i18n="pnReport">Weekly report</span></h4>
+        <div class="bars"><i style="height:42%"></i><i style="height:58%"></i><i style="height:50%"></i><i style="height:78%"></i><i style="height:64%"></i><i style="height:92%"></i></div>
+      </div>
+      <div class="panel panel--br glass">
+        <h4><i></i><span data-i18n="pnLocal">Local model</span></h4>
+        <div class="kv"><span data-i18n="pnOn">On this PC</span><b>qwen2.5 · 14B</b></div>
+        <div class="meter"><i></i></div>
+        <div class="kv"><span data-i18n="pnCost">Cost per question</span><b>0 SAR</b></div>
+      </div>
     </div>
   </div>
 </section>
+
+<div class="with">
+  <div class="wrap">
+    <p data-i18n="withTitle">Works with the tools and models you already trust</p>
+    <div class="with__row"><span>Claude</span><span>Ollama</span><span>llama.cpp</span><span>Supabase</span><span>GitHub</span><span>Stripe</span><span>Figma</span><span>Etimad</span></div>
+  </div>
+</div>
 
 <!-- NEO -->
 <section id="neo">
-  <div class="wrap">
-    <div class="head">
-      <span class="eyebrow"><i></i><span data-i18n="neoEyebrow">Neo AI</span></span>
-      <h2 data-i18n="neoTitle">One assistant that leads twelve specialists</h2>
-      <p class="lead" data-i18n="neoSub">Tell Neo what you need in Arabic or English. It splits the job, hands each part to the right agent, follows up, and gives you one report. Every agent works on your real workspace data and your connected tools.</p>
-    </div>
-    <div class="console reveal">
-      <div class="console__bar"><i></i><i></i><i></i><span style="margin-inline-start:10px">MeshNet Workspace · Neo</span></div>
-      <div class="console__body">
-        <div class="console__side" id="consoleAgents"></div>
-        <div class="console__main">
-          <div class="msg msg--me" data-i18n="demoAsk">Which open tenders fit us this week, and are we ready to price them?</div>
-          <div class="msg msg--neo"><span data-i18n="demoReply">On it. Three agents are working:</span>
-            <div class="steps">
-              <div class="step"><span class="st st--done">✓</span><span><b data-i18n="a1">Tenders analyst</b> — <span data-i18n="demoS1">found 4 matching tenders on Etimad</span></span></div>
-              <div class="step"><span class="st st--done">✓</span><span><b data-i18n="a4">Pricing</b> — <span data-i18n="demoS2">matched 3 to past priced projects</span></span></div>
-              <div class="step"><span class="st st--run">●</span><span><b data-i18n="a11">Reports</b> — <span data-i18n="demoS3">writing your one-page brief</span></span></div>
+  <div class="slab-wrap"><div class="slab">
+    <div class="wrap">
+      <div class="head">
+        <span class="eyebrow"><b>Neo</b><span data-i18n="neoEyebrow">Neo AI</span></span>
+        <h2 class="fade" data-i18n="neoTitle">One assistant that leads twelve specialists</h2>
+        <p class="lead" data-i18n="neoSub">Tell Neo what you need in Arabic or English. It splits the job, hands each part to the right agent, follows up, and gives you one report. Every agent works on your real workspace data and your connected tools.</p>
+      </div>
+      <div class="console glass glow-edge reveal">
+        <div class="console__bar"><i></i><i></i><i></i><span style="margin-inline-start:10px">MeshNet Workspace · Neo</span></div>
+        <div class="console__body">
+          <div class="console__side" id="consoleAgents"></div>
+          <div class="console__main">
+            <div class="msg msg--me" data-i18n="demoAsk">Which open tenders fit us this week, and are we ready to price them?</div>
+            <div class="msg msg--neo"><span data-i18n="demoReply">On it. Three agents are working:</span>
+              <div class="steps">
+                <div class="step"><span class="st st--done">✓</span><span><b data-i18n="a1">Tenders analyst</b> — <span data-i18n="demoS1">found 4 matching tenders on Etimad</span></span></div>
+                <div class="step"><span class="st st--done">✓</span><span><b data-i18n="a4">Pricing</b> — <span data-i18n="demoS2">matched 3 to past priced projects</span></span></div>
+                <div class="step"><span class="st st--run">●</span><span><b data-i18n="a11">Reports</b> — <span data-i18n="demoS3">writing your one-page brief</span></span></div>
+              </div>
             </div>
+            <div class="chips"><span class="chip">MCP · Supabase</span><span class="chip">MCP · GitHub</span><span class="chip">MCP · Stripe</span><span class="chip">MCP · Figma</span><span class="chip" data-i18n="chipLocal">Local model · on this PC</span></div>
           </div>
-          <div class="chips"><span class="chip">MCP · Supabase</span><span class="chip">MCP · GitHub</span><span class="chip">MCP · Stripe</span><span class="chip">MCP · Figma</span><span class="chip" data-i18n="chipLocal">Local model · on this PC</span></div>
         </div>
       </div>
+      <div class="agents" id="agentCards"></div>
     </div>
-    <div class="grid grid--4" style="margin-top:28px" id="agentCards"></div>
-  </div>
+  </div></div>
 </section>
 
 <!-- WORKSPACE -->
-<section id="workspace" style="background:linear-gradient(180deg,transparent,rgba(124,58,237,.05),transparent)">
+<section id="workspace">
   <div class="wrap">
     <div class="head">
-      <span class="eyebrow"><i></i><span data-i18n="wsEyebrow">MeshNet Workspace</span></span>
-      <h2 data-i18n="wsTitle">Everything your team works on, in one workspace</h2>
+      <span class="eyebrow"><b data-i18n="wsBadge">Workspace</b><span data-i18n="wsEyebrow">MeshNet Workspace</span></span>
+      <h2 class="fade" data-i18n="wsTitle">Everything your team works on, in one workspace</h2>
       <p class="lead" data-i18n="wsSub">In daily use in Saudi Arabia, and customised to how your business works.</p>
     </div>
     <div class="grid grid--3">
-      <div class="card reveal"><div class="ico">📁</div><h3 data-i18n="w1t">Projects and pricing</h3><p data-i18n="w1p">Projects from lead to delivery, pricing sheets with formulas, Excel import, and price tags on every project.</p></div>
-      <div class="card reveal"><div class="ico">📑</div><h3 data-i18n="w2t">Tenders</h3><p data-i18n="w2p">Etimad tenders and competitor awards in one view, with AI analysis of what to bid on.</p><span class="tag tag--net" data-i18n="tagNet">Network AI</span></div>
-      <div class="card reveal"><div class="ico">🛒</div><h3 data-i18n="w3t">Procurement and production</h3><p data-i18n="w3p">Purchase requests with quantities, photos and supplier quotes; factory production tracking.</p></div>
-      <div class="card reveal"><div class="ico">👥</div><h3 data-i18n="w4t">HR and attendance</h3><p data-i18n="w4p">Fingerprint attendance, leave with printable signed forms, payroll, letters and documents.</p></div>
-      <div class="card reveal"><div class="ico">💬</div><h3 data-i18n="w5t">Team chat and alerts</h3><p data-i18n="w5p">Quick messages between colleagues, task assignment alerts, and who is online now.</p></div>
-      <div class="card reveal"><div class="ico">📊</div><h3 data-i18n="w6t">Reports and insight</h3><p data-i18n="w6p">Pipeline, workload and business highlights — or ask Neo for any report in plain words.</p><span class="tag tag--local" data-i18n="tagLocal">Runs locally</span></div>
+      <div class="card glass reveal"><div class="ico" data-icon="projects"></div><h3 data-i18n="w1t">Projects and pricing</h3><p data-i18n="w1p">Projects from lead to delivery, pricing sheets with formulas, Excel import, and price tags on every project.</p></div>
+      <div class="card glass reveal"><div class="ico ico--violet" data-icon="tenders"></div><h3 data-i18n="w2t">Tenders</h3><p data-i18n="w2p">Etimad tenders and competitor awards in one view, with AI analysis of what to bid on.</p><span class="tag tag--net" data-i18n="tagNet">Network AI</span></div>
+      <div class="card glass reveal"><div class="ico" data-icon="procurement"></div><h3 data-i18n="w3t">Procurement and production</h3><p data-i18n="w3p">Purchase requests with quantities, photos and supplier quotes; factory production tracking.</p></div>
+      <div class="card glass reveal"><div class="ico ico--cyan" data-icon="hr"></div><h3 data-i18n="w4t">HR and attendance</h3><p data-i18n="w4p">Fingerprint attendance, leave with printable signed forms, payroll, letters and documents.</p></div>
+      <div class="card glass reveal"><div class="ico" data-icon="chat"></div><h3 data-i18n="w5t">Team chat and alerts</h3><p data-i18n="w5p">Quick messages between colleagues, task assignment alerts, and who is online now.</p></div>
+      <div class="card glass reveal"><div class="ico ico--violet" data-icon="reports"></div><h3 data-i18n="w6t">Reports and insight</h3><p data-i18n="w6p">Pipeline, workload and business highlights — or ask Neo for any report in plain words.</p><span class="tag tag--local" data-i18n="tagLocal">Runs locally</span></div>
     </div>
   </div>
 </section>
 
 <!-- PRIVACY / HOW -->
-<section id="privacy">
+<section id="privacy" style="padding-top:20px">
   <div class="wrap">
     <div class="head head--center">
-      <span class="eyebrow"><i></i><span data-i18n="pvEyebrow">Local-first AI</span></span>
-      <h2 data-i18n="pvTitle">The AI runs where your data already is</h2>
+      <span class="eyebrow"><b data-i18n="pvBadge">Private</b><span data-i18n="pvEyebrow">Local-first AI</span></span>
+      <h2 class="fade" data-i18n="pvTitle">The AI runs where your data already is</h2>
       <p class="lead" data-i18n="pvSub">Neo uses a model on your own computer first. Your company data never goes to the community GPU network.</p>
     </div>
     <div class="flow">
-      <div class="card reveal"><div class="ico">💻</div><h3 data-i18n="f1t">On your PC</h3><p data-i18n="f1p">Neo and the agents run on a local model through Ollama. Prompts and answers stay on the machine.</p>
+      <div class="flow__line" aria-hidden="true"></div>
+      <div class="card glass reveal"><div class="ico ico--cyan" data-icon="pc"></div><h3 data-i18n="f1t">On your PC</h3><p data-i18n="f1p">Neo and the agents run on a local model through Ollama. Prompts and answers stay on the machine.</p>
         <ul class="list"><li data-i18n="f1a">Works offline for everyday tasks</li><li data-i18n="f1b">No per-question AI bill</li></ul></div>
-      <div class="flow__arrow">→</div>
-      <div class="card reveal"><div class="ico">☁️</div><h3 data-i18n="f2t">Your workspace</h3><p data-i18n="f2p">The workspace keeps your records with row-level access rules: each person sees what their role allows.</p>
+      <div class="card glass reveal"><div class="ico" data-icon="cloud"></div><h3 data-i18n="f2t">Your workspace</h3><p data-i18n="f2p">The workspace keeps your records with row-level access rules: each person sees what their role allows.</p>
         <ul class="list"><li data-i18n="f2a">100 GB cloud storage on Business</li><li data-i18n="f2b">Backup to your own local storage</li></ul></div>
-      <div class="flow__arrow">→</div>
-      <div class="card reveal"><div class="ico">✦</div><h3 data-i18n="f3t">Network AI, when you choose</h3><p data-i18n="f3p">Heavier features — tender analysis, deep research, 70B-class answers — call Claude through MeshNet, only for the features you switch on.</p>
+      <div class="card glass reveal"><div class="ico ico--violet" data-icon="spark"></div><h3 data-i18n="f3t">Network AI, when you choose</h3><p data-i18n="f3p">Heavier features — tender analysis, deep research, 70B-class answers — call Claude through MeshNet, only for the features you switch on.</p>
         <ul class="list"><li data-i18n="f3a">Business data is never used to train models</li><li data-i18n="f3b">Never sent to community GPUs</li></ul></div>
     </div>
-    <div class="grid grid--3" style="margin-top:28px">
-      <div class="card reveal device"><div><div class="device__big" data-i18n="d1n">PC / Mac</div><p data-i18n="d1p">Runs Neo locally. Machines with 48 GB+ of memory run a 70B model fully on the device.</p></div></div>
-      <div class="card reveal device"><div><div class="device__big">iPad Air M4</div><p data-i18n="d2p">A compact model runs fully on the iPad (12 GB memory). Jobs that need 70B go to the network, and Neo tells you when.</p><span class="tag" data-i18n="preview">Preview</span></div></div>
-      <div class="card reveal device"><div><div class="device__big" data-i18n="d3n">Phone / browser</div><p data-i18n="d3p">The full workspace in any browser; Neo answers through your PC or the network.</p></div></div>
+    <div class="grid grid--3" style="margin-top:16px">
+      <div class="card glass reveal device"><div class="ico" data-icon="pc"></div><div><div class="device__big" data-i18n="d1n">PC / Mac</div><p data-i18n="d1p">Runs Neo locally. Machines with 48 GB+ of memory run a 70B model fully on the device.</p></div></div>
+      <div class="card glass reveal device"><div class="ico ico--violet" data-icon="tablet"></div><div><div class="device__big">iPad Air M4</div><p data-i18n="d2p">A compact model runs fully on the iPad (12 GB memory). Jobs that need 70B go to the network, and Neo tells you when.</p><span class="tag" data-i18n="preview">Preview</span></div></div>
+      <div class="card glass reveal device"><div class="ico ico--cyan" data-icon="globe"></div><div><div class="device__big" data-i18n="d3n">Phone / browser</div><p data-i18n="d3p">The full workspace in any browser; Neo answers through your PC or the network.</p></div></div>
     </div>
   </div>
 </section>
@@ -283,72 +538,79 @@ footer nav{display:flex;gap:18px;margin-inline-start:auto}
 <section id="tools" style="padding-top:20px">
   <div class="wrap">
     <div class="head">
-      <span class="eyebrow"><i></i><span data-i18n="mcpEyebrow">Tools through MCP</span></span>
-      <h2 data-i18n="mcpTitle">Neo works inside the tools you already use</h2>
+      <span class="eyebrow"><b>MCP</b><span data-i18n="mcpEyebrow">Tools through MCP</span></span>
+      <h2 class="fade" data-i18n="mcpTitle">Neo works inside the tools you already use</h2>
       <p class="lead" data-i18n="mcpSub">Agents call your tools through the Model Context Protocol — each connection approved by an admin, each action logged.</p>
     </div>
-    <div class="grid grid--4">
-      <div class="card reveal"><h3>GitHub</h3><p data-i18n="m1">Issues, pull requests, releases and workflows.</p></div>
-      <div class="card reveal"><h3>Supabase · Postgres</h3><p data-i18n="m2">Your database, sign-in and storage, as tools.</p></div>
-      <div class="card reveal"><h3>Stripe</h3><p data-i18n="m3">Payments, invoices and refunds on your account.</p></div>
-      <div class="card reveal"><h3>Figma</h3><p data-i18n="m4">Designs read as structured layouts.</p></div>
-      <div class="card reveal"><h3 data-i18n="m5t">Files and Git</h3><p data-i18n="m5">Folders and repositories on your machine.</p></div>
-      <div class="card reveal"><h3 data-i18n="m6t">Web fetch</h3><p data-i18n="m6">Reads pages and documents for research.</p></div>
-      <div class="card reveal"><h3 data-i18n="m7t">Memory</h3><p data-i18n="m7">Remembers your company's facts and preferences.</p></div>
-      <div class="card reveal"><h3 data-i18n="m8t">Your own tools</h3><p data-i18n="m8">Any MCP server, built in a day with FastMCP.</p></div>
+    <div class="mcp">
+      <div class="card glass reveal"><h3><span class="ic" data-icon="code"></span>GitHub</h3><p data-i18n="m1">Issues, pull requests, releases and workflows.</p></div>
+      <div class="card glass reveal"><h3><span class="ic" data-icon="db"></span>Supabase</h3><p data-i18n="m2">Your database, sign-in and storage, as tools.</p></div>
+      <div class="card glass reveal"><h3><span class="ic" data-icon="card"></span>Stripe</h3><p data-i18n="m3">Payments, invoices and refunds on your account.</p></div>
+      <div class="card glass reveal"><h3><span class="ic" data-icon="pen"></span>Figma</h3><p data-i18n="m4">Designs read as structured layouts.</p></div>
+      <div class="card glass reveal"><h3><span class="ic" data-icon="projects"></span><span data-i18n="m5t">Files and Git</span></h3><p data-i18n="m5">Folders and repositories on your machine.</p></div>
+      <div class="card glass reveal"><h3><span class="ic" data-icon="globe"></span><span data-i18n="m6t">Web fetch</span></h3><p data-i18n="m6">Reads pages and documents for research.</p></div>
+      <div class="card glass reveal"><h3><span class="ic" data-icon="bulb"></span><span data-i18n="m7t">Memory</span></h3><p data-i18n="m7">Remembers your company's facts and preferences.</p></div>
+      <div class="card glass reveal"><h3><span class="ic" data-icon="plug"></span><span data-i18n="m8t">Your own tools</span></h3><p data-i18n="m8">Any MCP server, built in a day with FastMCP.</p></div>
     </div>
   </div>
 </section>
 
 <!-- PRICING -->
 <section id="pricing">
-  <div class="wrap">
-    <div class="head head--center">
-      <span class="eyebrow"><i></i><span data-i18n="prEyebrow">Pricing</span></span>
-      <h2 data-i18n="prTitle">Two plans. Unlimited people.</h2>
-      <p class="lead" data-i18n="prSub">Prices in Saudi riyals. VAT added where it applies.</p>
-    </div>
-    <div class="plans">
-      <div class="plan plan--feature reveal">
-        <span class="plan__name" data-i18n="bName">Business</span>
-        <div class="plan__price"><b data-i18n="bPrice">20,000 SAR</b><span data-i18n="bPer">per year</span></div>
-        <div class="plan__plus">+ <b data-i18n="bMonthly">1,500 SAR</b> <span data-i18n="bPerMonth">per month subscription</span></div>
-        <ul class="list">
-          <li data-i18n="b1">The full MeshNet Workspace, customised to your business</li>
-          <li data-i18n="b2">Unlimited users</li>
-          <li data-i18n="b3">Neo AI with all 12 agents</li>
-          <li data-i18n="b4">Local AI on your company's PCs</li>
-          <li data-i18n="b5">Network AI features powered by Claude: tender analysis, research, reports</li>
-          <li data-i18n="b6">100 GB cloud storage, with backup to your local storage</li>
-          <li data-i18n="b7">MCP tool connections and onboarding</li>
-        </ul>
-        <a class="btn btn--primary" href="#start" data-plan="business" data-i18n="bCta">Talk to us about Business</a>
+  <div class="slab-wrap"><div class="slab slab--navy">
+    <div class="wrap">
+      <div class="head head--center">
+        <span class="eyebrow"><b>SAR</b><span data-i18n="prEyebrow">Pricing</span></span>
+        <h2 class="fade" data-i18n="prTitle">Two plans. Unlimited people.</h2>
+        <p class="lead" data-i18n="prSub">Prices in Saudi riyals. VAT added where it applies.</p>
       </div>
-      <div class="plan reveal">
-        <span class="plan__name" data-i18n="pName">Personal</span>
-        <div class="plan__price"><b data-i18n="pPrice">200 SAR</b><span data-i18n="pPer">per month</span></div>
-        <div class="plan__plus" data-i18n="pPlus">For one person</div>
-        <ul class="list">
-          <li data-i18n="p1">The same workspace features</li>
-          <li data-i18n="p2">Neo AI with the 12 agents</li>
-          <li data-i18n="p3">Local inference up to 70B parameters, on hardware that can hold it</li>
-          <li data-i18n="p4">Supported by Claude AI for the heavy jobs</li>
-          <li data-i18n="p5">Works on PC, Mac and iPad</li>
-        </ul>
-        <a class="btn" href="#start" data-plan="personal" data-i18n="pCta">Start Personal</a>
+      <div class="plans">
+        <div class="plan plan--business glass glow-edge reveal">
+          <svg class="plan__art" viewBox="0 0 200 200" fill="none" stroke="rgba(150,190,255,.35)" stroke-width="10" stroke-linecap="round" aria-hidden="true"><path d="M30 170 C30 90 90 90 90 30"/><path d="M80 180 C80 110 140 110 140 40"/><path d="M130 190 C130 140 180 130 180 80"/></svg>
+          <span class="plan__badge" data-i18n="bBadge">For companies</span>
+          <div class="plan__logo" data-icon="team"></div>
+          <span class="plan__name" data-i18n="bName">Business</span>
+          <div class="plan__price"><b data-i18n="bPrice">20,000 SAR</b><span data-i18n="bPer">per year</span></div>
+          <div class="plan__plus">+ <b data-i18n="bMonthly">1,500 SAR</b> <span data-i18n="bPerMonth">per month subscription</span></div>
+          <a class="btn btn--primary" href="#start" data-plan="business" data-i18n="bCta">Talk to us about Business</a>
+          <ul class="list">
+            <li data-i18n="b1">The full MeshNet Workspace, customised to your business</li>
+            <li data-i18n="b2">Unlimited users</li>
+            <li data-i18n="b3">Neo AI with all 12 agents</li>
+            <li data-i18n="b4">Local AI on your company's PCs</li>
+            <li data-i18n="b5">Network AI features powered by Claude: tender analysis, research, reports</li>
+            <li data-i18n="b6">100 GB cloud storage, with backup to your local storage</li>
+            <li data-i18n="b7">MCP tool connections and onboarding</li>
+          </ul>
+        </div>
+        <div class="plan plan--personal glass reveal">
+          <svg class="plan__art" viewBox="0 0 200 200" fill="none" stroke="rgba(200,180,255,.35)" stroke-width="10" stroke-linecap="round" aria-hidden="true"><path d="M30 170 C30 90 90 90 90 30"/><path d="M80 180 C80 110 140 110 140 40"/></svg>
+          <div class="plan__logo plan__logo--v" data-icon="me"></div>
+          <span class="plan__name" data-i18n="pName">Personal</span>
+          <div class="plan__price"><b data-i18n="pPrice">200 SAR</b><span data-i18n="pPer">per month</span></div>
+          <div class="plan__plus" data-i18n="pPlus">For one person</div>
+          <a class="btn btn--violet" href="#start" data-plan="personal" data-i18n="pCta">Start Personal</a>
+          <ul class="list">
+            <li data-i18n="p1">The same workspace features</li>
+            <li data-i18n="p2">Neo AI with the 12 agents</li>
+            <li data-i18n="p3">Local inference up to 70B parameters, on hardware that can hold it</li>
+            <li data-i18n="p4">Supported by Claude AI for the heavy jobs</li>
+            <li data-i18n="p5">Works on PC, Mac and iPad</li>
+          </ul>
+        </div>
       </div>
+      <p class="note" style="text-align:center" data-i18n="prNote">A 70B model needs about 40 GB of memory. On smaller devices Neo uses a compact local model and the network for 70B-class answers.</p>
     </div>
-    <p class="note" style="text-align:center" data-i18n="prNote">A 70B model needs about 40 GB of memory. On smaller devices Neo uses a compact local model and the network for 70B-class answers.</p>
-  </div>
+  </div></div>
 </section>
 
 <!-- PROVIDERS -->
-<section id="providers" style="background:linear-gradient(180deg,transparent,rgba(6,182,212,.05),transparent)">
+<section id="providers">
   <div class="wrap">
-    <div class="grid grid--2" style="align-items:center;gap:40px">
-      <div>
-        <span class="eyebrow"><i></i><span data-i18n="gpEyebrow">MeshNet GPU network</span></span>
-        <h2 data-i18n="gpTitle">Have a GPU? Join the network and earn.</h2>
+    <div class="grid grid--2" style="align-items:center;gap:48px">
+      <div style="display:grid;gap:20px">
+        <span class="eyebrow" style="justify-self:start"><b>GPU</b><span data-i18n="gpEyebrow">MeshNet GPU network</span></span>
+        <h2 class="fade" data-i18n="gpTitle">Have a GPU? Join the network and earn.</h2>
         <p class="lead" data-i18n="gpSub">Anyone can join. The installer checks your machine and picks the largest model it can hold — from an 8B model on an 8 GB card to 70B across several GPUs.</p>
         <ul class="list">
           <li data-i18n="g1">NVIDIA, AMD and Apple Silicon Macs</li>
@@ -357,16 +619,17 @@ footer nav{display:flex;gap:18px;margin-inline-start:auto}
           <li data-i18n="g4">RAM-only mode: nothing but model files touches the disk</li>
           <li data-i18n="g5">Community nodes serve public jobs only — never company data</li>
         </ul>
-      </div>
-      <div class="card reveal" style="padding:26px">
-        <h3 style="margin-top:0" data-i18n="gpInstall">Install in one line</h3>
-        <p data-i18n="gpInstallSub">macOS, Linux and Windows (WSL2). It asks for your provider token, then runs in the background.</p>
-        <div class="code" style="margin-top:14px"><span id="cmd">curl -sSL https://install.beta.meshnet.co | bash</span><button class="btn btn--sm" data-copy type="button" data-i18n="copy">Copy</button></div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
-          <a class="btn btn--primary btn--sm" href="https://beta.meshnet.co/host" data-i18n="gpCta">Get a provider token</a>
-          <a class="btn btn--sm" href="https://beta.meshnet.co/host-dashboard" data-i18n="gpDash">Provider dashboard</a>
+        <div class="glass" style="padding:22px;border-radius:22px;display:grid;gap:14px">
+          <h3 data-i18n="gpInstall">Install in one line</h3>
+          <p style="color:var(--ink2);font-size:14.5px" data-i18n="gpInstallSub">macOS, Linux and Windows (WSL2). It asks for your provider token, then runs in the background.</p>
+          <div class="code"><span id="cmd">curl -sSL https://install.beta.meshnet.co | bash</span><button class="btn btn--sm" data-copy type="button" data-i18n="copy">Copy</button></div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <a class="btn btn--primary btn--sm" href="https://beta.meshnet.co/host" data-i18n="gpCta">Get a provider token</a>
+            <a class="btn btn--sm" href="https://beta.meshnet.co/host-dashboard" data-i18n="gpDash">Provider dashboard</a>
+          </div>
         </div>
       </div>
+      <div class="netviz" aria-hidden="true"><div class="netviz__glow"></div><canvas id="net"></canvas></div>
     </div>
   </div>
 </section>
@@ -374,21 +637,21 @@ footer nav{display:flex;gap:18px;margin-inline-start:auto}
 <!-- FAQ -->
 <section id="faq" style="padding-top:40px">
   <div class="wrap" style="max-width:860px">
-    <div class="head head--center"><h2 data-i18n="faqTitle">Questions</h2></div>
-    <details><summary data-i18n="q1">Does my company data leave our computers?</summary><p data-i18n="a1x">Everyday Neo work runs on a local model on your PCs. Your records live in your workspace under access rules. Only the network features you switch on (such as tender analysis) send the needed text to Claude, and nothing goes to community GPUs.</p></details>
-    <details><summary data-i18n="q2">Can Neo really run a 70B model locally?</summary><p data-i18n="a2x">Yes, on a machine with enough memory — about 40 GB for a 70B model (for example a Mac with 48 GB or more, or two 24 GB GPUs). On smaller machines and the iPad, Neo runs a compact model locally and uses the network for 70B-class answers.</p></details>
-    <details><summary data-i18n="q3">What does "unlimited users" mean?</summary><p data-i18n="a3x">Add your whole team on the Business plan at no extra cost per person. Each person signs in with their own account and sees what their role allows.</p></details>
-    <details><summary data-i18n="q4">What are the 12 agents?</summary><p data-i18n="a4x">Tenders, sales, projects, pricing, procurement, production, HR, finance, documents, research, reports and an executive assistant. Neo assigns the work between them and reports back.</p></details>
+    <div class="head head--center"><h2 class="fade" data-i18n="faqTitle">Questions</h2></div>
+    <details class="glass"><summary data-i18n="q1">Does my company data leave our computers?</summary><p data-i18n="a1x">Everyday Neo work runs on a local model on your PCs. Your records live in your workspace under access rules. Only the network features you switch on (such as tender analysis) send the needed text to Claude, and nothing goes to community GPUs.</p></details>
+    <details class="glass"><summary data-i18n="q2">Can Neo really run a 70B model locally?</summary><p data-i18n="a2x">Yes, on a machine with enough memory — about 40 GB for a 70B model (for example a Mac with 48 GB or more, or two 24 GB GPUs). On smaller machines and the iPad, Neo runs a compact model locally and uses the network for 70B-class answers.</p></details>
+    <details class="glass"><summary data-i18n="q3">What does "unlimited users" mean?</summary><p data-i18n="a3x">Add your whole team on the Business plan at no extra cost per person. Each person signs in with their own account and sees what their role allows.</p></details>
+    <details class="glass"><summary data-i18n="q4">What are the 12 agents?</summary><p data-i18n="a4x">Tenders, sales, projects, pricing, procurement, production, HR, finance, documents, research, reports and an executive assistant. Neo assigns the work between them and reports back.</p></details>
   </div>
 </section>
 
 <!-- START -->
 <section id="start">
-  <div class="wrap" style="max-width:860px">
-    <div class="card" style="padding:32px">
-      <span class="eyebrow"><i></i><span data-i18n="stEyebrow">Get started</span></span>
-      <h2 style="font-size:clamp(26px,3.4vw,36px)" data-i18n="stTitle">Tell us who you are and we'll set you up</h2>
-      <p class="lead" style="margin-bottom:22px" data-i18n="stSub">We will set up your workspace with you, and have it running for your team.</p>
+  <div class="wrap" style="max-width:900px">
+    <div class="startcard glass glow-edge">
+      <span class="eyebrow"><b data-i18n="stBadge">Start</b><span data-i18n="stEyebrow">Get started</span></span>
+      <h2 class="fade" style="font-size:clamp(28px,3.6vw,42px);margin-top:16px" data-i18n="stTitle">Tell us who you are and we'll set you up</h2>
+      <p class="lead" style="margin-top:12px" data-i18n="stSub">We will set up your workspace with you, and have it running for your team.</p>
       <form class="form" id="startForm" novalidate>
         <label><span data-i18n="fName">Full name</span><input name="name" required maxlength="120" autocomplete="name"></label>
         <label><span data-i18n="fEmail">Work email</span><input name="email" type="email" required maxlength="200" autocomplete="email"></label>
@@ -410,19 +673,51 @@ footer nav{display:flex;gap:18px;margin-inline-start:auto}
 
 <script>
 (function () {
+  /* Line icons, one stroke weight, drawn inline so the page stays one file. */
+  var IC = {
+    tenders: 'M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h4',
+    sales: 'M3 17l6-6 4 4 8-8M15 7h6v6',
+    projects: 'M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2.5h7.5A2.5 2.5 0 0 1 21 10v7.5a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z',
+    pricing: 'M6 3h12v18H6zM9 7h6M9 11h.01M12 11h.01M15 11h.01M9 14.5h.01M12 14.5h.01M15 14.5h.01M9 18h6',
+    procurement: 'M3 4h2l2.5 11h10l2-8H6.5M9.5 20h.01M16.5 20h.01',
+    production: 'M3 21V11l5 3v-3l5 3v-3l5 3V4h3v17zM3 21h18',
+    hr: 'M16 20v-1.5a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4V20M9 10.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7M22 20v-1.5a4 4 0 0 0-3-3.9M16 3.6a4 4 0 0 1 0 7.7',
+    finance: 'M12 3v18M16.5 7.5C16 5.9 14.3 5 12 5s-4.5 1.2-4.5 3S9 10.6 12 11s4.5 1.2 4.5 3-2.2 3-4.5 3-4-1-4.5-2.5',
+    documents: 'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13h6M9 17h4',
+    research: 'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM21 21l-4.3-4.3',
+    reports: 'M4 20V10M10 20V4M16 20v-7M22 20H2',
+    assistant: 'M4 6h16v15H4zM4 10h16M8 3v4M16 3v4M8 14h3',
+    chat: 'M4 5h16v11H9l-5 4z',
+    pc: 'M3 5h18v11H3zM8 20h8M12 16v4',
+    cloud: 'M7 18a4 4 0 0 1-.6-8A6 6 0 0 1 18 9a4.5 4.5 0 0 1-.5 9z',
+    spark: 'M12 3l1.9 5.6 5.6 1.9-5.6 1.9L12 18l-1.9-5.6L4.5 10.5l5.6-1.9zM19 16l.8 2.2 2.2.8-2.2.8L19 22l-.8-2.2-2.2-.8 2.2-.8z',
+    tablet: 'M6 3h12v18H6zM11 18h2',
+    globe: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3',
+    code: 'M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16',
+    db: 'M12 3c4.4 0 8 1.3 8 3s-3.6 3-8 3-8-1.3-8-3 3.6-3 8-3zM4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3',
+    card: 'M3 6h18v12H3zM3 10h18M7 15h4',
+    pen: 'M4 20l4-1 11-11-3-3L5 16zM14 6l3 3',
+    bulb: 'M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3',
+    plug: 'M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0zM12 17v4',
+    team: 'M17 20v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2M10 10a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7M21 20v-2a4 4 0 0 0-3-3.9',
+    me: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4.5 20a7.5 7.5 0 0 1 15 0',
+  };
+  var svg = function (k) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="' + (IC[k] || IC.spark) + '"/></svg>'; };
+  document.querySelectorAll('[data-icon]').forEach(function (el) { el.innerHTML = svg(el.dataset.icon); });
+
   var AGENTS = [
-    ['📑', 'a1', 'Tenders analyst', 'تحليل المناقصات', 'net'],
-    ['🤝', 'a2', 'Sales and leads', 'المبيعات والعملاء', 'local'],
-    ['📁', 'a3', 'Project manager', 'مدير المشاريع', 'local'],
-    ['🧮', 'a4', 'Pricing', 'التسعير', 'local'],
-    ['🛒', 'a5', 'Procurement', 'المشتريات', 'local'],
-    ['🏭', 'a6', 'Production', 'الإنتاج', 'local'],
-    ['👥', 'a7', 'HR', 'الموارد البشرية', 'local'],
-    ['💰', 'a8', 'Finance', 'المالية', 'local'],
-    ['📄', 'a9', 'Documents and letters', 'المستندات والخطابات', 'local'],
-    ['🔎', 'a10', 'Research', 'البحث', 'net'],
-    ['📊', 'a11', 'Reports', 'التقارير', 'local'],
-    ['🗓️', 'a12', 'Executive assistant', 'المساعد التنفيذي', 'local'],
+    ['tenders', 'a1', 'Tenders analyst', 'تحليل المناقصات', 'net'],
+    ['sales', 'a2', 'Sales and leads', 'المبيعات والعملاء', 'local'],
+    ['projects', 'a3', 'Project manager', 'مدير المشاريع', 'local'],
+    ['pricing', 'a4', 'Pricing', 'التسعير', 'local'],
+    ['procurement', 'a5', 'Procurement', 'المشتريات', 'local'],
+    ['production', 'a6', 'Production', 'الإنتاج', 'local'],
+    ['hr', 'a7', 'HR', 'الموارد البشرية', 'local'],
+    ['finance', 'a8', 'Finance', 'المالية', 'local'],
+    ['documents', 'a9', 'Documents and letters', 'المستندات والخطابات', 'local'],
+    ['research', 'a10', 'Research', 'البحث', 'net'],
+    ['reports', 'a11', 'Reports', 'التقارير', 'local'],
+    ['assistant', 'a12', 'Executive assistant', 'المساعد التنفيذي', 'local'],
   ];
   var ROLE = {
     en: { a1: 'Finds tenders that fit, reads the terms, flags risks and deadlines.', a2: 'Scores leads, drafts follow-ups and keeps the pipeline moving.', a3: 'Tracks stages, owners and dates; warns before anything slips.', a4: 'Builds pricing from past projects and checks margins.', a5: 'Turns needs into purchase requests and compares supplier quotes.', a6: 'Follows factory work and what is waiting on materials.', a7: 'Leave, attendance and HR letters, ready for signature.', a8: 'Payroll checks, wallets, spend and what is owed.', a9: 'Drafts letters, contracts and certificates in Arabic and English.', a10: 'Researches markets, companies and competitors.', a11: 'Writes the weekly and monthly reports from live data.', a12: 'Your day, your follow-ups, and what needs you now.' },
@@ -430,19 +725,20 @@ footer nav{display:flex;gap:18px;margin-inline-start:auto}
   };
   var AR = {
     navNeo: 'Neo AI', navWorkspace: 'مساحة العمل', navPrivacy: 'محلي أولاً', navPricing: 'الأسعار', navProviders: 'مزودو المعالجات', navStart: 'ابدأ الآن',
-    heroEyebrow: 'Neo AI · 12 وكيلاً · محلي أولاً', heroTitle1: 'شركتك يديرها', heroTitle2: 'Neo AI', heroTitle3: 'على أجهزتك أنت.',
+    heroBadge: 'جديد', heroEyebrow: 'Neo AI · 12 وكيلاً · محلي أولاً', heroTitle1: 'شركتك يديرها', heroTitle2: 'Neo AI', heroTitle3: 'على أجهزتك أنت.',
     heroSub: 'مساحة عمل MeshNet للشركات: المشاريع والمناقصات والتسعير والمشتريات والموارد البشرية والمبيعات في مكان واحد. ينجز Neo AI ووكلاؤه الاثنا عشر العمل بذكاء اصطناعي يعمل على أجهزتك. وعندما تحتاج المهمة أكثر، تضيف شبكة MeshNet قدرات Claude لتحليل المناقصات والبحث المعمق.',
-    heroCta1: 'شاهد الباقات', heroCta2: 'احجز عرضاً توضيحياً ←', trust1: 'مستخدمون بلا حدود', trust2: 'العربية والإنجليزية', trust3: 'بياناتك ملكك', coreSub: '12 وكيلاً متصلاً',
+    heroCta1: 'شاهد الباقات', heroCta2: 'احجز عرضاً توضيحياً', trust1: 'مستخدمون بلا حدود', trust2: 'العربية والإنجليزية', trust3: 'بياناتك ملكك', coreSub: '12 وكيلاً متصلاً',
+    pnTasks: 'المهام', pnT1: 'تسعير الجناح', pnT2: '4 مناقصات جديدة', pnT3: 'طلب إجازة', pnT4: 'عروض الموردين', pnAgents: 'وكلاء يعملون الآن', pnMore: '+ 9 آخرون', pnReport: 'التقرير الأسبوعي', pnLocal: 'النموذج المحلي', pnOn: 'على هذا الجهاز', pnCost: 'تكلفة السؤال', withTitle: 'يعمل مع الأدوات والنماذج التي تثق بها',
     neoEyebrow: 'Neo AI', neoTitle: 'مساعد واحد يقود اثني عشر متخصصاً', neoSub: 'اطلب من Neo ما تحتاجه بالعربية أو الإنجليزية، فيقسم المهمة ويسند كل جزء للوكيل المناسب ويتابعه ويعطيك تقريراً واحداً. كل وكيل يعمل على بيانات مساحة عملك الحقيقية وأدواتك المتصلة.',
     demoAsk: 'ما المناقصات المفتوحة المناسبة لنا هذا الأسبوع، وهل نحن جاهزون لتسعيرها؟', demoReply: 'جارٍ العمل. ثلاثة وكلاء يعملون الآن:', demoS1: 'وجد 4 مناقصات مناسبة في اعتماد', demoS2: 'طابق 3 منها مع مشاريع مسعّرة سابقاً', demoS3: 'يكتب ملخصاً في صفحة واحدة', chipLocal: 'نموذج محلي · على هذا الجهاز',
-    wsEyebrow: 'مساحة عمل MeshNet', wsTitle: 'كل ما يعمل عليه فريقك في مساحة عمل واحدة', wsSub: 'قيد الاستخدام اليومي في السعودية، وتُخصص حسب طريقة عمل شركتك.',
+    wsBadge: 'مساحة العمل', wsEyebrow: 'مساحة عمل MeshNet', wsTitle: 'كل ما يعمل عليه فريقك في مساحة عمل واحدة', wsSub: 'قيد الاستخدام اليومي في السعودية، وتُخصص حسب طريقة عمل شركتك.',
     w1t: 'المشاريع والتسعير', w1p: 'المشاريع من العميل المحتمل حتى التسليم، وجداول تسعير بمعادلات، واستيراد من Excel، وسعر على كل مشروع.', w2t: 'المناقصات', w2p: 'مناقصات اعتماد وترسيات المنافسين في مكان واحد، مع تحليل بالذكاء الاصطناعي لما يستحق التقديم.', w3t: 'المشتريات والإنتاج', w3p: 'طلبات شراء بالكميات والصور وعروض الموردين، ومتابعة إنتاج المصنع.', w4t: 'الموارد البشرية والحضور', w4p: 'حضور بالبصمة، وإجازات بنماذج موقعة قابلة للطباعة، ورواتب وخطابات ومستندات.', w5t: 'محادثة الفريق والتنبيهات', w5p: 'رسائل سريعة بين الزملاء وتنبيهات إسناد المهام ومن متصل الآن.', w6t: 'التقارير والتحليل', w6p: 'مسار المبيعات وأعباء العمل وأبرز مؤشرات العمل — أو اطلب من Neo أي تقرير بكلماتك.', tagNet: 'ذكاء الشبكة', tagLocal: 'يعمل محلياً',
-    pvEyebrow: 'ذكاء اصطناعي محلي أولاً', pvTitle: 'الذكاء الاصطناعي يعمل حيث توجد بياناتك', pvSub: 'يستخدم Neo نموذجاً على جهازك أولاً. بيانات شركتك لا تذهب أبداً إلى شبكة المعالجات المجتمعية.',
+    pvBadge: 'خاص', pvEyebrow: 'ذكاء اصطناعي محلي أولاً', pvTitle: 'الذكاء الاصطناعي يعمل حيث توجد بياناتك', pvSub: 'يستخدم Neo نموذجاً على جهازك أولاً. بيانات شركتك لا تذهب أبداً إلى شبكة المعالجات المجتمعية.',
     f1t: 'على جهازك', f1p: 'يعمل Neo والوكلاء على نموذج محلي عبر Ollama، وتبقى الأسئلة والإجابات على الجهاز.', f1a: 'يعمل دون إنترنت للمهام اليومية', f1b: 'لا فاتورة على كل سؤال', f2t: 'مساحة عملك', f2p: 'تحفظ مساحة العمل سجلاتك بقواعد وصول على مستوى السجل: كل شخص يرى ما يسمح به دوره.', f2a: '100 جيجابايت تخزين سحابي في باقة الأعمال', f2b: 'نسخة احتياطية على تخزينك المحلي', f3t: 'ذكاء الشبكة عند اختيارك', f3p: 'الميزات الأثقل — تحليل المناقصات والبحث المعمق وإجابات بحجم 70B — تستخدم Claude عبر MeshNet، فقط للميزات التي تفعّلها.', f3a: 'بيانات الشركات لا تُستخدم لتدريب النماذج', f3b: 'لا تُرسل أبداً لمعالجات المجتمع',
     d1n: 'كمبيوتر / ماك', d1p: 'يشغّل Neo محلياً. الأجهزة بذاكرة 48 جيجابايت فأكثر تشغّل نموذج 70B كاملاً على الجهاز.', d2p: 'يعمل نموذج مدمج بالكامل على الآيباد (ذاكرة 12 جيجابايت). المهام التي تحتاج 70B تذهب للشبكة ويخبرك Neo بذلك.', preview: 'معاينة', d3n: 'الجوال / المتصفح', d3p: 'مساحة العمل كاملة في أي متصفح، ويجيب Neo عبر جهازك أو الشبكة.',
     mcpEyebrow: 'الأدوات عبر MCP', mcpTitle: 'يعمل Neo داخل الأدوات التي تستخدمها', mcpSub: 'يستدعي الوكلاء أدواتك عبر بروتوكول MCP — كل اتصال يعتمده مدير، وكل إجراء يُسجّل.', m1: 'المشكلات وطلبات الدمج والإصدارات وسير العمل.', m2: 'قاعدة بياناتك وتسجيل الدخول والتخزين كأدوات.', m3: 'المدفوعات والفواتير والاستردادات على حسابك.', m4: 'التصاميم تُقرأ كتخطيطات منظمة.', m5t: 'الملفات وGit', m5: 'المجلدات والمستودعات على جهازك.', m6t: 'جلب الويب', m6: 'يقرأ الصفحات والمستندات للبحث.', m7t: 'الذاكرة', m7: 'يتذكر حقائق شركتك وتفضيلاتها.', m8t: 'أدواتك الخاصة', m8: 'أي خادم MCP، يُبنى في يوم واحد مع FastMCP.',
     prEyebrow: 'الأسعار', prTitle: 'باقتان. أشخاص بلا حدود.', prSub: 'الأسعار بالريال السعودي، وتضاف ضريبة القيمة المضافة حيث تنطبق.',
-    bName: 'الأعمال', bPrice: '20,000 ريال', bPer: 'سنوياً', bMonthly: '1,500 ريال', bPerMonth: 'اشتراك شهري', b1: 'مساحة عمل MeshNet كاملة ومخصصة لشركتك', b2: 'مستخدمون بلا حدود', b3: 'Neo AI بوكلائه الاثني عشر', b4: 'ذكاء اصطناعي محلي على أجهزة شركتك', b5: 'ميزات ذكاء الشبكة بتقنية Claude: تحليل المناقصات والبحث والتقارير', b6: '100 جيجابايت تخزين سحابي مع نسخ احتياطي على تخزينك المحلي', b7: 'ربط الأدوات عبر MCP والتهيئة', bCta: 'تحدث معنا عن باقة الأعمال',
+    bBadge: 'للشركات', bName: 'الأعمال', bPrice: '20,000 ريال', bPer: 'سنوياً', bMonthly: '1,500 ريال', bPerMonth: 'اشتراك شهري', b1: 'مساحة عمل MeshNet كاملة ومخصصة لشركتك', b2: 'مستخدمون بلا حدود', b3: 'Neo AI بوكلائه الاثني عشر', b4: 'ذكاء اصطناعي محلي على أجهزة شركتك', b5: 'ميزات ذكاء الشبكة بتقنية Claude: تحليل المناقصات والبحث والتقارير', b6: '100 جيجابايت تخزين سحابي مع نسخ احتياطي على تخزينك المحلي', b7: 'ربط الأدوات عبر MCP والتهيئة', bCta: 'تحدث معنا عن باقة الأعمال',
     pName: 'الشخصية', pPrice: '200 ريال', pPer: 'شهرياً', pPlus: 'لشخص واحد', p1: 'ميزات مساحة العمل نفسها', p2: 'Neo AI بالوكلاء الاثني عشر', p3: 'تشغيل محلي حتى 70 مليار معامل على الأجهزة التي تتسع له', p4: 'بدعم Claude AI للمهام الثقيلة', p5: 'يعمل على الكمبيوتر والماك والآيباد', pCta: 'ابدأ الباقة الشخصية',
     prNote: 'يحتاج نموذج 70B نحو 40 جيجابايت من الذاكرة. على الأجهزة الأصغر يستخدم Neo نموذجاً محلياً مدمجاً والشبكة لإجابات بحجم 70B.',
     gpEyebrow: 'شبكة معالجات MeshNet', gpTitle: 'لديك معالج رسوميات؟ انضم للشبكة واربح.', gpSub: 'الانضمام متاح للجميع. يفحص المثبّت جهازك ويختار أكبر نموذج يتسع له — من نموذج 8B على بطاقة 8 جيجابايت حتى 70B عبر عدة معالجات.',
@@ -451,59 +747,102 @@ footer nav{display:flex;gap:18px;margin-inline-start:auto}
     faqTitle: 'أسئلة', q1: 'هل تخرج بيانات شركتي من أجهزتنا؟', a1x: 'عمل Neo اليومي يتم على نموذج محلي على أجهزتك، وسجلاتك في مساحة عملك تحت قواعد الوصول. فقط ميزات الشبكة التي تفعّلها (مثل تحليل المناقصات) ترسل النص اللازم إلى Claude، ولا شيء يذهب لمعالجات المجتمع.',
     q2: 'هل يشغّل Neo نموذج 70B محلياً فعلاً؟', a2x: 'نعم، على جهاز بذاكرة كافية — نحو 40 جيجابايت لنموذج 70B (مثل ماك بذاكرة 48 جيجابايت أو أكثر، أو معالجين بذاكرة 24 جيجابايت). وعلى الأجهزة الأصغر والآيباد يشغّل Neo نموذجاً مدمجاً محلياً ويستخدم الشبكة لإجابات بحجم 70B.',
     q3: 'ماذا يعني «مستخدمون بلا حدود»؟', a3x: 'أضف فريقك كله في باقة الأعمال دون تكلفة إضافية لكل شخص. كل شخص يدخل بحسابه ويرى ما يسمح به دوره.', q4: 'ما الوكلاء الاثنا عشر؟', a4x: 'المناقصات والمبيعات والمشاريع والتسعير والمشتريات والإنتاج والموارد البشرية والمالية والمستندات والبحث والتقارير والمساعد التنفيذي. يوزع Neo العمل بينهم ويعود إليك بالنتيجة.',
-    stEyebrow: 'ابدأ الآن', stTitle: 'أخبرنا من أنت وسنجهز لك كل شيء', stSub: 'نجهز مساحة عملك معك ونشغلها لفريقك.',
+    stBadge: 'ابدأ', stEyebrow: 'ابدأ الآن', stTitle: 'أخبرنا من أنت وسنجهز لك كل شيء', stSub: 'نجهز مساحة عملك معك ونشغلها لفريقك.',
     fName: 'الاسم الكامل', fEmail: 'البريد الإلكتروني للعمل', fCompany: 'الشركة', fPlan: 'الباقة', optB: 'الأعمال — 20,000 ريال سنوياً + 1,500 ريال شهرياً', optP: 'الشخصية — 200 ريال شهرياً', fNotes: 'ما الذي تريد أن يتولاه Neo عنك؟', fSend: 'أرسل',
     sent: 'وصلنا طلبك وسنتواصل معك قريباً.', failed: 'تعذّر الإرسال. حاول مرة أخرى بعد دقيقة.', needName: 'أدخل اسمك وبريدك الإلكتروني.',
     foot: '© 2026 MeshNet · الرياض', terms: 'الشروط', privacyLink: 'الخصوصية',
     a1: 'تحليل المناقصات', a4: 'التسعير', a11: 'التقارير',
   };
-  var EN = { copied: 'Copied', sent: 'Thank you — we have your request and will be in touch shortly.', failed: 'Could not send. Please try again in a minute.', needName: 'Please enter your name and email.' };
+  var EN = { tagNet: 'Network AI', tagLocal: 'Runs locally', copied: 'Copied', sent: 'Thank you — we have your request and will be in touch shortly.', failed: 'Could not send. Please try again in a minute.', needName: 'Please enter your name and email.' };
 
-  // Remember the English text of every translatable element.
   var nodes = Array.prototype.slice.call(document.querySelectorAll('[data-i18n]'));
   nodes.forEach(function (n) { n.dataset.en = n.innerHTML; });
   var lang = 'en';
   try { lang = localStorage.getItem('mn_lang') || ((navigator.language || '').indexOf('ar') === 0 ? 'ar' : 'en'); } catch (e) {}
   var T = function (k) { return lang === 'ar' ? (AR[k] || EN[k] || k) : (EN[k] || k); };
+  var BUSY = [0, 3, 10];
 
   function agentsHTML() {
-    var cards = '', side = '', orbit = '';
+    var cards = '', side = '';
     AGENTS.forEach(function (a, i) {
-      var name = lang === 'ar' ? a[3] : a[2];
-      var role = ROLE[lang][a[1]];
-      cards += '<div class="card reveal is-in"><div class="ico">' + a[0] + '</div><h3>' + name + '</h3><p>' + role + '</p><span class="tag ' + (a[4] === 'net' ? 'tag--net' : 'tag--local') + '">' + (a[4] === 'net' ? T('tagNet') : T('tagLocal')) + '</span></div>';
-      side += '<div class="console__agent' + ([0, 3, 10].indexOf(i) >= 0 ? ' is-on' : '') + '"><span>' + a[0] + '</span>' + name + '<em>' + ([0, 3, 10].indexOf(i) >= 0 ? '●' : '') + '</em></div>';
-      var ang = (i / AGENTS.length) * 2 * Math.PI - Math.PI / 2;
-      var x = 50 + 44 * Math.cos(ang), y = 50 + 44 * Math.sin(ang);
-      orbit += '<div class="agent-dot' + ([0, 3, 10].indexOf(i) >= 0 ? ' is-busy' : '') + '" style="left:' + x.toFixed(2) + '%;top:' + y.toFixed(2) + '%" title="' + name + '">' + a[0] + '</div>';
+      var name = lang === 'ar' ? a[3] : a[2], role = ROLE[lang][a[1]], net = a[4] === 'net';
+      cards += '<div class="agent glass reveal is-in"><div class="ico' + (net ? ' ico--violet' : (i % 3 === 2 ? ' ico--cyan' : '')) + '">' + svg(a[0]) + '</div><h3>' + name + '</h3><p>' + role + '</p><span class="tag ' + (net ? 'tag--net' : 'tag--local') + '">' + (net ? T('tagNet') : T('tagLocal')) + '</span></div>';
+      side += '<div class="console__agent' + (BUSY.indexOf(i) >= 0 ? ' is-on' : '') + '"><span class="ic">' + svg(a[0]) + '</span>' + name + '<em></em></div>';
     });
     document.getElementById('agentCards').innerHTML = cards;
     document.getElementById('consoleAgents').innerHTML = side;
-    document.getElementById('orbit').innerHTML = orbit;
   }
   function apply() {
     document.documentElement.lang = lang; document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
-    nodes.forEach(function (n) {
-      var k = n.dataset.i18n;
-      n.innerHTML = lang === 'ar' && AR[k] ? AR[k] : n.dataset.en;
-    });
+    nodes.forEach(function (n) { var k = n.dataset.i18n; n.innerHTML = lang === 'ar' && AR[k] ? AR[k] : n.dataset.en; });
     document.querySelector('[data-lang]').textContent = lang === 'ar' ? 'English' : 'العربية';
     agentsHTML();
   }
   document.querySelector('[data-lang]').onclick = function () { lang = lang === 'ar' ? 'en' : 'ar'; try { localStorage.setItem('mn_lang', lang); } catch (e) {} apply(); };
   apply();
 
-  // Plan buttons pick the plan in the form.
   document.querySelectorAll('[data-plan]').forEach(function (b) { b.addEventListener('click', function () { document.querySelector('#startForm [name=plan]').value = b.dataset.plan; }); });
-  // Copy the install line.
   document.querySelector('[data-copy]').onclick = function (e) {
     var b = e.currentTarget; navigator.clipboard && navigator.clipboard.writeText(document.getElementById('cmd').textContent).then(function () { b.textContent = T('copied'); setTimeout(function () { b.textContent = lang === 'ar' ? AR.copy : 'Copy'; }, 1500); });
   };
-  // Reveal on scroll.
   if ('IntersectionObserver' in window) {
-    var io = new IntersectionObserver(function (es) { es.forEach(function (x) { if (x.isIntersecting) { x.target.classList.add('is-in'); io.unobserve(x.target); } }); }, { threshold: .12 });
+    var io = new IntersectionObserver(function (es) { es.forEach(function (x) { if (x.isIntersecting) { x.target.classList.add('is-in'); io.unobserve(x.target); } }); }, { threshold: .1 });
     document.querySelectorAll('.reveal').forEach(function (el) { io.observe(el); });
   } else document.querySelectorAll('.reveal').forEach(function (el) { el.classList.add('is-in'); });
+
+  /* The GPU network: a slowly turning wireframe of nodes, drawn on canvas.
+     Pauses off-screen; one still frame when motion is reduced. */
+  (function () {
+    var cv = document.getElementById('net'); if (!cv || !cv.getContext) return;
+    var cx = cv.getContext('2d'), still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var P = [], E = [], N = 64, seed = 7;
+    var rnd = function () { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+    for (var i = 0; i < N; i++) {
+      var u = rnd() * 2 - 1, t = rnd() * Math.PI * 2, r = 0.55 + rnd() * 0.45, s = Math.sqrt(1 - u * u);
+      P.push([r * s * Math.cos(t), r * u, r * s * Math.sin(t)]);
+    }
+    for (var a = 0; a < N; a++) {
+      var d = P.map(function (q, b) { return [b, Math.hypot(q[0] - P[a][0], q[1] - P[a][1], q[2] - P[a][2])]; }).sort(function (x, y) { return x[1] - y[1]; });
+      for (var k = 1; k <= 3; k++) if (a < d[k][0]) E.push([a, d[k][0]]);
+      if (rnd() < .25) E.push([a, -1]);  // a spoke to the core
+    }
+    var W, H, ang = 0, on = true, dpr = Math.min(2, window.devicePixelRatio || 1);
+    function size() { var b = cv.getBoundingClientRect(); W = b.width; H = b.height; cv.width = W * dpr; cv.height = H * dpr; cx.setTransform(dpr, 0, 0, dpr, 0, 0); }
+    function proj(p) {
+      var c = Math.cos(ang), s = Math.sin(ang), c2 = Math.cos(.35), s2 = Math.sin(.35);
+      var x = p[0] * c - p[2] * s, z = p[0] * s + p[2] * c, y = p[1] * c2 - z * s2; z = p[1] * s2 + z * c2;
+      var f = 2.6 / (2.6 + z), R = Math.min(W, H) * .4;
+      return [W / 2 + x * R * f, H / 2 + y * R * f, z, f];
+    }
+    function frame() {
+      cx.clearRect(0, 0, W, H);
+      var Q = P.map(proj), C = [W / 2, H / 2, 0, 1];
+      cx.lineCap = 'round';
+      E.forEach(function (e) {
+        var p = Q[e[0]], q = e[1] < 0 ? C : Q[e[1]], depth = (2 - (p[2] + q[2]) / 2) / 3;
+        cx.strokeStyle = e[1] < 0 ? 'rgba(95,227,255,' + (.10 + .25 * depth) + ')' : 'rgba(170,190,230,' + (.12 + .45 * depth) + ')';
+        cx.lineWidth = e[1] < 0 ? .8 : 1 + depth;
+        cx.beginPath(); cx.moveTo(p[0], p[1]); cx.lineTo(q[0], q[1]); cx.stroke();
+      });
+      Q.map(function (q, i) { return [q, i]; }).sort(function (x, y) { return y[0][2] - x[0][2]; }).forEach(function (o) {
+        var q = o[0], rr = 2.2 + 3.6 * q[3] * (1.4 - q[2] * .4);
+        var g = cx.createRadialGradient(q[0] - rr * .35, q[1] - rr * .35, rr * .1, q[0], q[1], rr);
+        var lit = o[1] % 9 === 0;
+        g.addColorStop(0, lit ? '#e9fbff' : '#8a93a8'); g.addColorStop(.5, lit ? '#5fe3ff' : '#2a3142'); g.addColorStop(1, lit ? '#1b5fff' : '#0b0f18');
+        cx.fillStyle = g; cx.beginPath(); cx.arc(q[0], q[1], rr, 0, 7); cx.fill();
+        if (lit) { cx.shadowColor = '#5fe3ff'; cx.shadowBlur = 16; cx.fill(); cx.shadowBlur = 0; }
+      });
+      var cg = cx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.min(W, H) * .16);
+      cg.addColorStop(0, 'rgba(255,255,255,.95)'); cg.addColorStop(.25, 'rgba(150,230,255,.8)'); cg.addColorStop(.6, 'rgba(61,123,255,.35)'); cg.addColorStop(1, 'rgba(61,123,255,0)');
+      cx.fillStyle = cg; cx.beginPath(); cx.arc(W / 2, H / 2, Math.min(W, H) * .16, 0, 7); cx.fill();
+    }
+    function loop() { if (on) { ang += .0025; frame(); } requestAnimationFrame(loop); }
+    size(); frame(); addEventListener('resize', function () { size(); frame(); });
+    if (!still) {
+      if ('IntersectionObserver' in window) new IntersectionObserver(function (es) { on = es[0].isIntersecting; }).observe(cv);
+      requestAnimationFrame(loop);
+    }
+  })();
 
   // The start form goes to the waitlist (insert-only for visitors).
   var SUPABASE_URL = 'https://hsvzciskkwgokhtbsyfe.supabase.co';

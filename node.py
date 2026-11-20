@@ -7,6 +7,9 @@ import time
 import logging
 from pathlib import Path
 
+import json
+import platform
+
 import ollama
 import requests
 
@@ -20,7 +23,18 @@ NODE_MODELS = [
 ]
 POLL_INTERVAL_SECONDS = 3
 POLL_JITTER_SECONDS = 1
-MIN_FREE_VRAM_MB = 22 * 1024
+MIN_FREE_VRAM_MB = 6 * 1024
+# Where the model runs. "ollama" (default): Ollama on this machine, using every
+# GPU it has. "openai": a llama.cpp llama-server at MESHNET_OPENAI_URL — used
+# by a pool head that spreads one big model over several of the provider's own
+# machines on their LAN (llama.cpp RPC; see install.sh --pool-head).
+BACKEND = os.environ.get("MESHNET_BACKEND", "ollama").strip().lower()
+OPENAI_URL = os.environ.get("MESHNET_OPENAI_URL", "http://127.0.0.1:8080/v1").rstrip("/")
+# RAM-only mode: this node runs its own Ollama server whose model folder lives
+# in memory (OLLAMA_MODELS on a RAM disk), so nothing but the public model
+# files ever sits there, and they vanish on reboot. Prompts and answers are
+# never written to disk in any mode: logs carry job ids and timings only.
+OWN_OLLAMA = os.environ.get("MESHNET_OWN_OLLAMA") == "1"
 DEFAULT_API_BASE_URL = "https://api.beta.meshnet.co"
 CREDENTIALS_FILE = Path(os.environ.get("MESHNET_CREDENTIALS_FILE", "~/.meshnet/credentials")).expanduser()
 
@@ -48,6 +62,8 @@ def _list_models():
 
 
 def check_ollama_models():
+    if BACKEND == "openai":
+        return bool(installed_models())
     try:
         installed = _model_names(_list_models())
     except Exception as error:
@@ -62,6 +78,8 @@ def check_ollama_models():
 
 
 def check_gpu_memory():
+    if get_gpu_info().get("accel") in ("apple", "amd"):
+        return True
     try:
         result = subprocess.run(
             [
@@ -84,7 +102,7 @@ def check_gpu_memory():
         return False
     max_free_mb = max(free_values)
     if max_free_mb < MIN_FREE_VRAM_MB:
-        logger.warning("Free GPU VRAM is below 22GB: %.2fGB", max_free_mb / 1024)
+        logger.warning("Free GPU memory is below 6GB: %.2fGB", max_free_mb / 1024)
     return True
 
 
@@ -100,6 +118,12 @@ def startup_self_check():
 def installed_models():
     """The configured models that Ollama already has, or [] when Ollama is
     not installed or not running yet."""
+    if BACKEND == "openai":
+        try:
+            requests.get(f"{OPENAI_URL}/models", timeout=5).raise_for_status()
+            return list(NODE_MODELS)
+        except Exception:
+            return []
     try:
         have = _model_names(_list_models())
     except Exception:
@@ -134,6 +158,8 @@ class ModelFetcher:
         self.serve_proc = None
 
     def tick(self, ready):
+        if BACKEND == "openai":
+            return "waiting_for_pool"      # the pool head's llama-server loads the model itself
         if self.proc is not None:
             if self.proc.poll() is None:
                 return "downloading"
@@ -218,6 +244,31 @@ def _ollama_options(params):
     return options
 
 
+def _openai_stream(model, messages, params):
+    """Stream from an OpenAI-compatible server (llama.cpp llama-server)."""
+    body = {"model": model, "messages": messages, "stream": True}
+    if isinstance(params, dict):
+        for k in ("temperature", "top_p", "max_tokens"):
+            if params.get(k) is not None:
+                body[k] = params[k]
+    with requests.post(f"{OPENAI_URL}/chat/completions", json=body, stream=True, timeout=(10, 600)) as r:
+        r.raise_for_status()
+        for line in r.iter_lines(decode_unicode=True):
+            if not line or not line.startswith("data:"):
+                continue
+            data = line[5:].strip()
+            if data == "[DONE]":
+                break
+            try:
+                obj = json.loads(data)
+            except ValueError:
+                continue
+            delta = ((obj.get("choices") or [{}])[0].get("delta") or {}).get("content") or ""
+            usage = obj.get("usage") or {}
+            yield {"message": {"content": delta}, "done": bool(usage),
+                   "prompt_eval_count": usage.get("prompt_tokens", 0), "eval_count": usage.get("completion_tokens", 0)}
+
+
 def run_inference(job, on_chunk=None):
     """Generate the answer for one job, streaming pieces to `on_chunk(seq, text)`
     as they arrive so the user sees tokens while the node is still working."""
@@ -229,7 +280,9 @@ def run_inference(job, on_chunk=None):
     prompt_tokens = 0
     completion_tokens = 0
     seq = 0
-    for part in ollama.chat(model=model, messages=messages, options=options or None, stream=True):
+    stream = (_openai_stream(model, messages, job.get("params")) if BACKEND == "openai"
+              else ollama.chat(model=model, messages=messages, options=options or None, stream=True))
+    for part in stream:
         piece = (part.get("message") or {}).get("content") or ""
         if piece:
             content_parts.append(piece)
@@ -368,7 +421,39 @@ def process_job(session, api_base_url, job):
     )
 
 
+def _apple_info():
+    if platform.system() != "Darwin" or platform.machine() != "arm64":
+        return {}
+    try:
+        mem = int(subprocess.run(["sysctl", "-n", "hw.memsize"], capture_output=True, text=True, timeout=5).stdout.strip())
+        chip = subprocess.run(["sysctl", "-n", "machdep.cpu.brand_string"], capture_output=True, text=True, timeout=5).stdout.strip()
+    except Exception:
+        return {}
+    # macOS lets the GPU use about 70% of unified memory by default.
+    return {"vram_mib": int(mem / 1048576 * 0.7), "gpu_model": chip or "Apple Silicon", "gpu_count": 1, "accel": "apple"}
+
+
+def _amd_info():
+    if not shutil.which("rocm-smi"):
+        return {}
+    try:
+        out = subprocess.run(["rocm-smi", "--showmeminfo", "vram", "--json"], capture_output=True, text=True, timeout=10).stdout
+        cards = json.loads(out)
+        totals = [int(v.get("VRAM Total Memory (B)", 0)) for v in cards.values() if isinstance(v, dict)]
+        totals = [t for t in totals if t > 0]
+        if not totals:
+            return {}
+        return {"vram_mib": int(sum(totals) / 1048576), "gpu_model": "AMD GPU", "gpu_count": len(totals), "accel": "amd"}
+    except Exception:
+        return {}
+
+
 def get_gpu_info():
+    """What this machine brings: the memory the model can use, summed over
+    every GPU (Ollama spreads one model across the cards in a machine)."""
+    apple = _apple_info() or _amd_info()
+    if apple:
+        return apple
     try:
         result = subprocess.run(
             [
@@ -381,9 +466,11 @@ def get_gpu_info():
             text=True,
             timeout=5,
         )
-        first = result.stdout.strip().splitlines()[0]
-        total_str, name = [part.strip() for part in first.split(",", 1)]
-        return {"vram_mib": int(total_str), "gpu_model": name}
+        rows = [line.split(",", 1) for line in result.stdout.strip().splitlines() if line.strip()]
+        totals = [int(r[0].strip()) for r in rows]
+        name = rows[0][1].strip()
+        return {"vram_mib": sum(totals), "gpu_model": name, "gpu_count": len(totals), "accel": "nvidia",
+                "pool": os.environ.get("MESHNET_POOL_WORKERS") or None}
     except Exception as error:
         logger.error("Failed to read GPU info: %s", error)
         return {}
@@ -450,5 +537,8 @@ if __name__ == "__main__":
     if not acquire_single_instance():
         logger.info("Another MeshNet node agent is already running on this machine; exiting")
         raise SystemExit(0)
+    if OWN_OLLAMA and BACKEND == "ollama":
+        ModelFetcher()._start_server()   # our own server, models in RAM (OLLAMA_MODELS)
+        time.sleep(3)
     startup_self_check()
     poll_for_jobs()

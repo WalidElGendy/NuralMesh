@@ -99,13 +99,16 @@ class Decision:
 # capacity
 # --------------------------------------------------------------------------
 
-def _eligible_nodes(supabase, model: str) -> tuple[list[dict], str | None]:
-    """Nodes that could serve `model` right now, and why not if none can."""
+def _eligible_nodes(supabase, model: str, privacy: str = "private") -> tuple[list[dict], str | None]:
+    """Nodes that could serve `model` right now, and why not if none can.
+
+    Anyone may run a node. Such an 'open' node is a stranger's machine, so it
+    is only ever offered public work; private turns need a 'trusted' node."""
     try:
         res = (
             supabase.table("providers")
             .select("node_id,status,models,success_rate,latency_p50_ms,latency_p95_ms,"
-                    "last_seen_at,max_concurrent,cooldown_until,accepts")
+                    "last_seen_at,max_concurrent,cooldown_until,accepts,trust")
             .eq("status", "online")
             .limit(200)
             .execute()
@@ -132,6 +135,10 @@ def _eligible_nodes(supabase, model: str) -> tuple[list[dict], str | None]:
             return False
 
     live = [r for r in rows if fresh(r) and r.get("accepts", True)]
+    if privacy != "public":
+        live = [r for r in live if (r.get("trust") or "open") == "trusted"]
+        if not live:
+            return [], "no_trusted_nodes"
     if not live:
         return [], "unhealthy"
 
@@ -223,14 +230,14 @@ def _recent_mesh_share(supabase, window_minutes: int = 60) -> float:
 # the decision
 # --------------------------------------------------------------------------
 
-def decide(supabase, model: str | None = None) -> Decision:
+def decide(supabase, model: str | None = None, privacy: str = "private") -> Decision:
     """Should this turn go to the mesh?"""
     model = model or MESH_MODEL
 
     if not MESH_ENABLED:
         return Decision("fallback", "disabled")
 
-    nodes, why = _eligible_nodes(supabase, model)
+    nodes, why = _eligible_nodes(supabase, model, privacy)
     if why:
         return Decision("fallback", why)
 
@@ -247,7 +254,7 @@ def decide(supabase, model: str | None = None) -> Decision:
 # dispatch
 # --------------------------------------------------------------------------
 
-def enqueue(supabase, *, messages, model, params, user_id, conversation_id) -> str:
+def enqueue(supabase, *, messages, model, params, user_id, conversation_id, privacy="private") -> str:
     from datetime import UTC, datetime, timedelta
     job_id = str(uuid.uuid4())
     deadline = (datetime.now(UTC) + timedelta(seconds=DISPATCH_DEADLINE_S)).isoformat()
@@ -259,6 +266,7 @@ def enqueue(supabase, *, messages, model, params, user_id, conversation_id) -> s
         "messages": messages,
         "params": params,
         "dispatch_deadline": deadline,
+        "privacy": "public" if privacy == "public" else "private",
     }).execute()
     return job_id
 

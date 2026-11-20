@@ -296,6 +296,9 @@ class AgentTurnRequest(BaseModel):
     # owning the search stack.
     mode: str = Field(default="ask")
     context: dict | None = None
+    # Open (community) GPU nodes only ever see turns marked public. Default:
+    # private — served by vetted nodes or the provider fallback.
+    public: bool = False
 
 
 class AgentTurnResponse(BaseModel):
@@ -747,6 +750,7 @@ def _route_and_stream(
     max_tokens: int,
     user_id: str | None = None,
     conversation_id: str | None = None,
+    privacy: str = "private",
 ) -> Iterator[tuple[str, str, dict]]:
     """Offer the turn to the mesh first, buy it only if the mesh cannot take it.
 
@@ -759,7 +763,7 @@ def _route_and_stream(
     what makes `select * from fallback_reasons_7d` a provider-recruitment
     backlog rather than a guess.
     """
-    decision = mesh_router.decide(supabase)
+    decision = mesh_router.decide(supabase, privacy=privacy)
 
     if decision.target == "mesh":
         job_id = None
@@ -771,6 +775,7 @@ def _route_and_stream(
                 params={"temperature": temperature, "max_tokens": max_tokens, "stream": True},
                 user_id=user_id,
                 conversation_id=conversation_id,
+                privacy=privacy,
             )
             for kind, payload, meta in mesh_router.stream_job(supabase, job_id):
                 # Settlement for a mesh job is recorded server-side in
@@ -1027,6 +1032,7 @@ def agent_turn(
             supabase, messages,
             temperature=cfg["temperature"], max_tokens=cfg["max_tokens"],
             user_id=user_id, conversation_id=agent_id,
+            privacy="public" if body.public else "private",
         ):
             if kind == "delta":
                 parts.append(payload)
@@ -1108,6 +1114,7 @@ def agent_turn_stream(
                 max_tokens=cfg["max_tokens"],
                 user_id=user_id,
                 conversation_id=agent_id,
+                privacy="public" if body.public else "private",
             ):
                 if kind == "delta":
                     yield frame({"type": "delta", "v": payload})

@@ -1188,8 +1188,11 @@ def node_heartbeat(
 # "24 GB" cards report slightly less than 24576 MiB through nvidia-smi (an
 # RTX 4090 shows 24564), so a strict 24576 check turned every 4090 and 3090
 # away from jobs. 23 GiB still rules out the 16 and 20 GB cards.
-MIN_VRAM_MIB = 23 * 1024
-SUPPORTED_GPUS = ("rtx 3090", "rtx 4090", "a6000", "a5000", "l40s", "a100")
+# Anyone may join: any NVIDIA or AMD GPU, or an Apple Silicon Mac, with at
+# least 6 GB of memory for the model. The node advertises only the models it
+# has pulled (sized to its memory by the installer), and claim_next_job hands
+# it only those, so a small card simply serves a smaller model.
+MIN_VRAM_MIB = 6 * 1024
 
 
 def node_meets_requirements(gpu_info: Any) -> bool:
@@ -1199,8 +1202,7 @@ def node_meets_requirements(gpu_info: Any) -> bool:
         if not isinstance(gpu_info, dict):
             return False
         vram = int(gpu_info.get("vram_mib") or 0)
-        model = str(gpu_info.get("gpu_model") or "").lower()
-        return vram >= MIN_VRAM_MIB and any(g in model for g in SUPPORTED_GPUS)
+        return vram >= MIN_VRAM_MIB
     except (ValueError, TypeError, AttributeError):
         return False
 

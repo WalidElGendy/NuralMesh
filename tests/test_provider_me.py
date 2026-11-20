@@ -85,4 +85,7 @@ def test_no_nodes_yet(monkeypatch):
 def test_a_24gb_card_counts_as_24gb():
     # nvidia-smi reports an RTX 4090 as 24564 MiB, a little under 24576.
     assert api.node_meets_requirements({"gpu_model": "NVIDIA GeForce RTX 4090", "vram_mib": 24564})
-    assert not api.node_meets_requirements({"gpu_model": "NVIDIA GeForce RTX 4080", "vram_mib": 16376})
+    # Anyone may join now: any 6 GB+ GPU or Apple Silicon Mac, sized to a model it can hold.
+    assert api.node_meets_requirements({"gpu_model": "NVIDIA GeForce RTX 4080", "vram_mib": 16376})
+    assert api.node_meets_requirements({"gpu_model": "Apple M4 Pro", "vram_mib": 33456, "accel": "apple"})
+    assert not api.node_meets_requirements({"gpu_model": "NVIDIA GeForce GTX 1050", "vram_mib": 4096})

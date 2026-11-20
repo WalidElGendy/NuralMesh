@@ -1,363 +1,531 @@
-<!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
+<!doctype html>
+<html lang="en" dir="ltr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NeuralNet — Decentralized AI. Real Money.</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ["Space Grotesk", "sans-serif"],
-                    },
-                    colors: {
-                        mesh: {
-                            black: "#000000",
-                            users: "#0A0A0F",
-                            providers: "#080810",
-                            trust: "#050508",
-                            purple: "#7C3AED",
-                            violet: "#A855F7",
-                            muted: "#A1A1AA",
-                        },
-                    },
-                    animation: {
-                        float: "float 9s ease-in-out infinite",
-                        pulseGlow: "pulseGlow 4s ease-in-out infinite",
-                    },
-                    keyframes: {
-                        float: {
-                            "0%, 100%": { transform: "translateY(0)" },
-                            "50%": { transform: "translateY(-18px)" },
-                        },
-                        pulseGlow: {
-                            "0%, 100%": { opacity: "0.45", transform: "scale(1)" },
-                            "50%": { opacity: "0.8", transform: "scale(1.08)" },
-                        },
-                    },
-                    boxShadow: {
-                        purple: "0 0 90px rgba(124, 58, 237, 0.32)",
-                        violet: "0 0 120px rgba(168, 85, 247, 0.22)",
-                    },
-                },
-            },
-        };
-    </script>
-    <style>
-        .reveal {
-            opacity: 0;
-            transform: translateY(22px);
-            transition: opacity 700ms ease, transform 700ms ease;
-        }
-
-        .reveal.is-visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MeshNet — Neo AI and the Expand workspace</title>
+<meta name="description" content="Expand is the workspace for companies, run by Neo AI and 12 agents on AI that works on your own computers. Business and personal plans.">
+<meta name="theme-color" content="#07070d">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#07070d; --bg2:#0d0d18; --panel:#11111d; --panel2:#171727; --line:#24243a; --line2:#34345a;
+  --ink:#f5f6fb; --ink2:#b7b8cc; --ink3:#7f8199;
+  --violet:#7c3aed; --violet2:#a78bfa; --cyan:#06b6d4; --cyan2:#67e8f9; --ok:#34d399; --warn:#fbbf24;
+  --grad:linear-gradient(120deg,#7c3aed 0%,#4f46e5 45%,#06b6d4 100%);
+  --r:20px; --sans:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; --ar:"IBM Plex Sans Arabic",var(--sans);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font:16px/1.6 var(--sans);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+html[lang=ar] body{font-family:var(--ar)}
+a{color:inherit;text-decoration:none}
+img,svg{display:block;max-width:100%}
+.wrap{width:min(1180px,100% - 40px);margin-inline:auto}
+.grad-text{white-space:nowrap;unicode-bidi:isolate;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:700;letter-spacing:.04em;color:var(--cyan2);text-transform:uppercase}
+html[lang=ar] .eyebrow{letter-spacing:0}
+.eyebrow i{width:6px;height:6px;border-radius:50%;background:var(--cyan);box-shadow:0 0 12px var(--cyan)}
+h1,h2,h3{letter-spacing:-.025em;line-height:1.08}
+html[lang=ar] h1,html[lang=ar] h2,html[lang=ar] h3{letter-spacing:0;line-height:1.3}
+h2{font-size:clamp(30px,4.4vw,48px);font-weight:800;margin:14px 0 14px}
+.lead{color:var(--ink2);font-size:clamp(16px,1.6vw,19px);max-width:720px}
+section{padding:96px 0;position:relative}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:48px;padding:0 22px;border-radius:999px;font-weight:700;font-size:15px;border:1px solid var(--line2);background:rgba(255,255,255,.03);color:var(--ink);cursor:pointer;transition:transform .15s,background .15s,border-color .15s}
+.btn:hover{transform:translateY(-1px);border-color:#4b4b7a;background:rgba(255,255,255,.06)}
+.btn--primary{background:var(--grad);border:0;color:#fff;box-shadow:0 10px 40px -10px rgba(124,58,237,.7)}
+.btn--primary:hover{background:var(--grad);filter:brightness(1.08)}
+.btn--sm{height:38px;padding:0 16px;font-size:14px}
+/* nav */
+.nav{position:sticky;top:0;z-index:50;background:rgba(7,7,13,.72);backdrop-filter:blur(16px);border-bottom:1px solid rgba(255,255,255,.06)}
+.nav .wrap{display:flex;align-items:center;gap:22px;height:68px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:19px;letter-spacing:-.03em}
+.brand img{width:32px;height:32px;border-radius:9px}
+.nav__links{display:flex;gap:22px;margin-inline-start:auto;font-size:14.5px;color:var(--ink2)}
+.nav__links a:hover{color:var(--ink)}
+.lang{font-size:14px;color:var(--ink2);border:1px solid var(--line2);border-radius:999px;height:36px;padding:0 14px;background:none;cursor:pointer}
+@media(max-width:960px){.nav__links{display:none}.nav .wrap>.lang{margin-inline-start:auto}}
+/* hero */
+.hero{padding:72px 0 64px;overflow:hidden}
+.hero__glow{position:absolute;inset:-200px 0 auto;height:760px;background:radial-gradient(closest-side,rgba(124,58,237,.33),transparent 70%),radial-gradient(closest-side at 70% 40%,rgba(6,182,212,.22),transparent 70%);filter:blur(30px);pointer-events:none;z-index:-1}
+.hero .wrap{display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center}
+.hero h1{font-size:clamp(40px,6.2vw,74px);font-weight:800;margin:18px 0 20px}
+.hero__ctas{display:flex;flex-wrap:wrap;gap:12px;margin-top:30px}
+.hero__trust{display:flex;flex-wrap:wrap;gap:10px 22px;margin-top:30px;color:var(--ink3);font-size:14px}
+.hero__trust span{display:flex;align-items:center;gap:8px}
+.hero__trust span::before{content:"";width:16px;height:16px;border-radius:50%;background:rgba(52,211,153,.15) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4.5 8.2l2.2 2.2 4.8-5' fill='none' stroke='%2334d399' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/16px}
+@media(max-width:960px){.hero .wrap{grid-template-columns:1fr}.orbit{max-width:440px;margin-inline:auto}}
+/* orbit */
+.orbit{position:relative;aspect-ratio:1;width:100%}
+.orbit__ring{position:absolute;inset:6%;border-radius:50%;border:1px dashed rgba(167,139,250,.28)}
+.orbit__ring--2{inset:22%;border-style:solid;border-color:rgba(6,182,212,.18)}
+.orbit__core{position:absolute;inset:36%;border-radius:50%;background:radial-gradient(circle at 35% 30%,#a78bfa,#5b21b6 55%,#1e1b4b);box-shadow:0 0 80px rgba(124,58,237,.55),inset 0 0 30px rgba(255,255,255,.12);display:grid;place-items:center;text-align:center}
+.orbit__core b{font-size:clamp(20px,2.6vw,30px);font-weight:800;letter-spacing:-.03em}
+.orbit__core small{display:block;font-size:12px;color:#ddd6fe;margin-top:2px}
+.orbit__spin{position:absolute;inset:0;animation:spin 60s linear infinite}
+.agent-dot{position:absolute;width:15%;aspect-ratio:1;margin:-7.5%;border-radius:18px;background:var(--panel2);border:1px solid var(--line2);display:grid;place-items:center;font-size:clamp(16px,2vw,22px);box-shadow:0 8px 30px -8px rgba(0,0,0,.6);animation:spin 60s linear infinite reverse}
+.agent-dot::after{content:"";position:absolute;top:8%;inset-inline-end:8%;width:9px;height:9px;border-radius:50%;background:var(--ok);box-shadow:0 0 10px var(--ok)}
+.agent-dot.is-busy::after{background:var(--warn);box-shadow:0 0 10px var(--warn)}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.orbit__spin,.agent-dot{animation:none}}
+/* cards */
+.grid{display:grid;gap:16px}
+.grid>*,.plans>*,.flow>*,.form>*{min-width:0}
+.form input,.form select,.form textarea{width:100%;min-width:0}
+.grid--4{grid-template-columns:repeat(4,1fr)}.grid--3{grid-template-columns:repeat(3,1fr)}.grid--2{grid-template-columns:repeat(2,1fr)}
+@media(max-width:1000px){.grid--4{grid-template-columns:repeat(2,1fr)}.grid--3{grid-template-columns:1fr 1fr}}
+@media(max-width:640px){.grid--4,.grid--3,.grid--2{grid-template-columns:1fr}}
+.card{background:linear-gradient(180deg,var(--panel),var(--bg2));border:1px solid var(--line);border-radius:var(--r);padding:22px;transition:border-color .2s,transform .2s}
+.card:hover{border-color:var(--line2);transform:translateY(-2px)}
+.card h3{font-size:18px;margin:12px 0 6px}
+.card p{color:var(--ink2);font-size:14.5px}
+.ico{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;font-size:20px;background:rgba(124,58,237,.14);border:1px solid rgba(167,139,250,.25)}
+.tag{display:inline-block;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:999px;border:1px solid var(--line2);color:var(--ink2);margin-top:10px}
+.tag--net{color:var(--cyan2);border-color:rgba(6,182,212,.4)}
+.tag--local{color:#86efac;border-color:rgba(52,211,153,.35)}
+/* section heads */
+.head{max-width:780px;margin-bottom:40px}
+.head--center{margin-inline:auto;text-align:center}.head--center .lead{margin-inline:auto}
+/* neo console mock */
+.console{border:1px solid var(--line2);border-radius:24px;background:linear-gradient(180deg,#0f0f1c,#0a0a14);box-shadow:0 40px 120px -40px rgba(124,58,237,.5);overflow:hidden}
+.console__bar{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--line);font-size:13px;color:var(--ink3)}
+.console__bar i{width:10px;height:10px;border-radius:50%;background:#2b2b44}
+.console__body{display:grid;grid-template-columns:240px 1fr;min-height:360px}
+@media(max-width:760px){.console__body{grid-template-columns:1fr}.console__side{display:none}}
+.console__side{border-inline-end:1px solid var(--line);padding:14px;display:grid;gap:6px;align-content:start}
+.console__agent{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;font-size:13.5px;color:var(--ink2)}
+.console__agent.is-on{background:rgba(124,58,237,.16);color:var(--ink)}
+.console__agent em{margin-inline-start:auto;font-style:normal;font-size:11px;color:var(--ink3)}
+.console__main{padding:18px;display:grid;gap:12px;align-content:start}
+.msg{max-width:88%;padding:12px 14px;border-radius:14px;font-size:14.5px;line-height:1.55}
+.msg--me{justify-self:end;background:var(--grad);color:#fff;border-end-end-radius:4px}
+.msg--neo{background:var(--panel2);border:1px solid var(--line);border-end-start-radius:4px}
+.steps{display:grid;gap:6px;margin-top:10px}
+.step{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--ink2)}
+.step b{color:var(--ink);font-weight:600}
+.step .st{width:18px;height:18px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:11px}
+.st--done{background:rgba(52,211,153,.18);color:var(--ok)}.st--run{background:rgba(251,191,36,.16);color:var(--warn)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font-size:12.5px;padding:6px 11px;border-radius:999px;background:rgba(255,255,255,.04);border:1px solid var(--line2);color:var(--ink2)}
+/* flow */
+.flow{display:grid;grid-template-columns:1fr 40px 1fr 40px 1fr;align-items:stretch;gap:0}
+.flow .card{display:flex;flex-direction:column}
+.flow__arrow{display:grid;place-items:center;color:var(--ink3);font-size:22px}
+html[dir=rtl] .flow__arrow{transform:scaleX(-1)}
+@media(max-width:900px){.flow{grid-template-columns:1fr}.flow__arrow{transform:rotate(90deg);height:36px}html[dir=rtl] .flow__arrow{transform:rotate(90deg)}}
+.list{list-style:none;display:grid;gap:9px;margin-top:14px}
+.list li{display:flex;gap:10px;font-size:14.5px;color:var(--ink2)}
+.list li::before{content:"✓";color:var(--ok);font-weight:800;flex:none}
+.list--no li::before{content:"✕";color:#f87171}
+/* devices */
+.device{display:flex;gap:16px;align-items:flex-start}
+.device__big{font-size:30px;font-weight:800;letter-spacing:-.03em}
+/* pricing */
+.plans{display:grid;grid-template-columns:1.1fr .9fr;gap:20px;align-items:stretch}
+@media(max-width:900px){.plans{grid-template-columns:1fr}}
+.plan{border:1px solid var(--line2);border-radius:26px;padding:30px;background:var(--panel);display:flex;flex-direction:column}
+.plan--feature{background:linear-gradient(var(--panel),var(--panel)) padding-box,var(--grad) border-box;border:1.5px solid transparent;box-shadow:0 30px 90px -40px rgba(124,58,237,.7)}
+.plan__name{font-size:14px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--violet2)}
+html[lang=ar] .plan__name{letter-spacing:0}
+.plan__price{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 10px;margin:14px 0 4px}
+.plan__price b{font-size:46px;font-weight:800;letter-spacing:-.04em}
+.plan__price span{color:var(--ink2)}
+.plan__plus{color:var(--ink2);font-size:15px}
+.plan__plus b{color:var(--ink);font-size:22px}
+.plan .list{flex:1;margin:22px 0 26px}
+.note{color:var(--ink3);font-size:13px;margin-top:14px}
+/* provider */
+.code{min-width:0;display:flex;align-items:center;gap:12px;background:#05050a;border:1px solid var(--line2);border-radius:14px;padding:14px 16px;font:14px/1.5 ui-monospace,"SF Mono",Menlo,monospace;color:#c4b5fd;direction:ltr;overflow-x:auto}
+.code button{margin-inline-start:auto;flex:none}
+/* faq */
+details{border:1px solid var(--line);border-radius:16px;padding:16px 20px;background:var(--panel)}
+details+details{margin-top:10px}
+summary{cursor:pointer;font-weight:700;list-style:none;display:flex;justify-content:space-between;gap:12px}
+summary::after{content:"+";color:var(--ink3);font-size:20px;line-height:1}
+details[open] summary::after{content:"–"}
+details p{color:var(--ink2);margin-top:10px;font-size:15px}
+/* form */
+.form{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form label{display:grid;gap:6px;font-size:13.5px;color:var(--ink2);font-weight:600}
+.form .wide{grid-column:1/-1}
+.form input,.form select,.form textarea{height:48px;border-radius:12px;border:1px solid var(--line2);background:#0b0b15;color:var(--ink);padding:0 14px;font:inherit;font-size:15px}
+.form textarea{height:96px;padding:12px 14px;resize:vertical}
+.form input:focus,.form select:focus,.form textarea:focus{outline:2px solid var(--violet);outline-offset:1px}
+@media(max-width:640px){.form{grid-template-columns:1fr}}
+.alert{padding:12px 14px;border-radius:12px;font-size:14px;margin-top:12px}
+.alert--ok{background:rgba(52,211,153,.12);color:#a7f3d0;border:1px solid rgba(52,211,153,.3)}
+.alert--bad{background:rgba(248,113,113,.1);color:#fecaca;border:1px solid rgba(248,113,113,.3)}
+footer{border-top:1px solid var(--line);padding:36px 0 48px;color:var(--ink3);font-size:14px}
+footer .wrap{display:flex;flex-wrap:wrap;gap:16px 28px;align-items:center}
+footer nav{display:flex;gap:18px;margin-inline-start:auto}
+.reveal{opacity:0;transform:translateY(16px);transition:opacity .6s ease,transform .6s ease}
+.reveal.is-in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+</style>
 </head>
-<body class="bg-mesh-black font-sans text-white antialiased">
-    <div id="beta-launch-banner" class="fixed inset-x-0 top-0 z-[60] bg-mesh-purple px-4 py-2 text-center text-sm font-bold text-white">
-        Beta launched: invite-only signup is open. <a class="underline" href="/signup.html">Join the beta</a>
-        <button class="ml-4 rounded-full bg-black/20 px-3 py-1 text-xs" onclick="document.getElementById('beta-launch-banner').remove(); document.querySelector('nav').classList.remove('top-10'); document.querySelector('nav').classList.add('top-0'); document.querySelector('main').classList.remove('pt-28'); document.querySelector('main').classList.add('pt-20');">Dismiss</button>
+<body>
+<header class="nav"><div class="wrap">
+  <a class="brand" href="#top"><img src="logo.svg" alt=""><span>MeshNet</span></a>
+  <nav class="nav__links" aria-label="Main">
+    <a href="#neo" data-i18n="navNeo">Neo AI</a>
+    <a href="#workspace" data-i18n="navWorkspace">Workspace</a>
+    <a href="#privacy" data-i18n="navPrivacy">Local-first</a>
+    <a href="#pricing" data-i18n="navPricing">Pricing</a>
+    <a href="#providers" data-i18n="navProviders">GPU providers</a>
+  </nav>
+  <button class="lang" data-lang type="button">العربية</button>
+  <a class="btn btn--primary btn--sm" href="#start" data-i18n="navStart">Get started</a>
+</div></header>
+
+<main id="top">
+<!-- HERO -->
+<section class="hero">
+  <div class="hero__glow"></div>
+  <div class="wrap">
+    <div>
+      <span class="eyebrow"><i></i><span data-i18n="heroEyebrow">Neo AI · 12 agents · local-first</span></span>
+      <h1><span data-i18n="heroTitle1">Your company, run by</span> <span class="grad-text" data-i18n="heroTitle2">Neo AI</span> — <span data-i18n="heroTitle3">on your own computers.</span></h1>
+      <p class="lead" data-i18n="heroSub">Expand is the workspace for companies: projects, tenders, pricing, procurement, HR and sales in one place. Neo AI and its 12 agents do the work, on AI that runs on your own PCs. When a job needs more, the MeshNet network adds Claude — for tender analysis and deep research.</p>
+      <div class="hero__ctas">
+        <a class="btn btn--primary" href="#pricing" data-i18n="heroCta1">See the plans</a>
+        <a class="btn" href="https://expand.meshnet.co/" data-i18n="heroCta2">Open the workspace →</a>
+      </div>
+      <div class="hero__trust">
+        <span data-i18n="trust1">Unlimited users</span><span data-i18n="trust2">Arabic and English</span><span data-i18n="trust3">Your data stays yours</span>
+      </div>
     </div>
-    <nav class="fixed inset-x-0 top-10 z-50 border-b border-white/10 bg-black/70 backdrop-blur-2xl">
-        <div class="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 lg:px-8">
-            <a href="#top" class="flex items-center gap-2 text-xl font-bold tracking-[-0.04em] text-mesh-purple"><img src="logo.jpg" alt="NeuralNet logo" style="height:36px;width:36px;object-fit:contain;" /><span>NeuralNet</span></a>
-            <div class="hidden items-center gap-7 text-sm font-medium text-zinc-400 md:flex">
-                <a href="#for-users" class="transition hover:text-white">For Users</a>
-                <a href="#for-providers" class="transition hover:text-white">For Providers</a>
-                <a href="#how-it-works" class="transition hover:text-white">How It Works</a>
-                <a href="#about" class="transition hover:text-white">About</a>
+    <div class="orbit" aria-hidden="true">
+      <div class="orbit__ring"></div><div class="orbit__ring orbit__ring--2"></div>
+      <div class="orbit__spin" id="orbit"></div>
+      <div class="orbit__core"><div><b>Neo</b><small data-i18n="coreSub">12 agents online</small></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- NEO -->
+<section id="neo">
+  <div class="wrap">
+    <div class="head">
+      <span class="eyebrow"><i></i><span data-i18n="neoEyebrow">Neo AI</span></span>
+      <h2 data-i18n="neoTitle">One assistant that leads twelve specialists</h2>
+      <p class="lead" data-i18n="neoSub">Tell Neo what you need in Arabic or English. It splits the job, hands each part to the right agent, follows up, and gives you one report. Every agent works on your real workspace data and your connected tools.</p>
+    </div>
+    <div class="console reveal">
+      <div class="console__bar"><i></i><i></i><i></i><span style="margin-inline-start:10px">expand.meshnet.co · Neo</span></div>
+      <div class="console__body">
+        <div class="console__side" id="consoleAgents"></div>
+        <div class="console__main">
+          <div class="msg msg--me" data-i18n="demoAsk">Which open tenders fit us this week, and are we ready to price them?</div>
+          <div class="msg msg--neo"><span data-i18n="demoReply">On it. Three agents are working:</span>
+            <div class="steps">
+              <div class="step"><span class="st st--done">✓</span><span><b data-i18n="a1">Tenders analyst</b> — <span data-i18n="demoS1">found 4 matching tenders on Etimad</span></span></div>
+              <div class="step"><span class="st st--done">✓</span><span><b data-i18n="a4">Pricing</b> — <span data-i18n="demoS2">matched 3 to past priced projects</span></span></div>
+              <div class="step"><span class="st st--run">●</span><span><b data-i18n="a11">Reports</b> — <span data-i18n="demoS3">writing your one-page brief</span></span></div>
             </div>
-            <a href="#user-waitlist" class="rounded-full bg-mesh-purple px-4 py-2 text-sm font-bold text-white shadow-purple transition hover:bg-mesh-violet">Join Waitlist</a>
+          </div>
+          <div class="chips"><span class="chip">MCP · Supabase</span><span class="chip">MCP · GitHub</span><span class="chip">MCP · Stripe</span><span class="chip">MCP · Figma</span><span class="chip" data-i18n="chipLocal">Local model · on this PC</span></div>
         </div>
-    </nav>
+      </div>
+    </div>
+    <div class="grid grid--4" style="margin-top:28px" id="agentCards"></div>
+  </div>
+</section>
 
-    <main id="top" class="overflow-hidden pt-28">
-        <section class="relative min-h-[calc(100vh-5rem)] border-b border-white/10 bg-black">
-            <div class="pointer-events-none absolute inset-0">
-                <div class="absolute left-1/2 top-[-220px] h-[660px] w-[900px] -translate-x-1/2 rounded-full bg-mesh-purple/35 blur-[170px] animate-pulseGlow"></div>
-                <div class="absolute bottom-[-220px] left-[-160px] h-[520px] w-[520px] rounded-full bg-mesh-violet/20 blur-[150px] animate-float"></div>
-                <div class="absolute right-[-180px] top-1/3 h-[520px] w-[520px] rounded-full bg-mesh-purple/20 blur-[150px]"></div>
-                <div class="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.055)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.055)_1px,transparent_1px)] bg-[size:76px_76px] opacity-[0.12]"></div>
-                <div class="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(168,85,247,0.24),transparent_34rem)]"></div>
-            </div>
+<!-- WORKSPACE -->
+<section id="workspace" style="background:linear-gradient(180deg,transparent,rgba(124,58,237,.05),transparent)">
+  <div class="wrap">
+    <div class="head">
+      <span class="eyebrow"><i></i><span data-i18n="wsEyebrow">The Expand workspace</span></span>
+      <h2 data-i18n="wsTitle">Everything your team works on, in one workspace</h2>
+      <p class="lead" data-i18n="wsSub">Built with a Saudi exhibitions and fit-out company, used every day. Customised to how your business works.</p>
+    </div>
+    <div class="grid grid--3">
+      <div class="card reveal"><div class="ico">📁</div><h3 data-i18n="w1t">Projects and pricing</h3><p data-i18n="w1p">Projects from lead to delivery, pricing sheets with formulas, Excel import, and price tags on every project.</p></div>
+      <div class="card reveal"><div class="ico">📑</div><h3 data-i18n="w2t">Tenders</h3><p data-i18n="w2p">Etimad tenders and competitor awards in one view, with AI analysis of what to bid on.</p><span class="tag tag--net" data-i18n="tagNet">Network AI</span></div>
+      <div class="card reveal"><div class="ico">🛒</div><h3 data-i18n="w3t">Procurement and production</h3><p data-i18n="w3p">Purchase requests with quantities, photos and supplier quotes; factory production tracking.</p></div>
+      <div class="card reveal"><div class="ico">👥</div><h3 data-i18n="w4t">HR and attendance</h3><p data-i18n="w4p">Fingerprint attendance, leave with printable signed forms, payroll, letters and documents.</p></div>
+      <div class="card reveal"><div class="ico">💬</div><h3 data-i18n="w5t">Team chat and alerts</h3><p data-i18n="w5p">Quick messages between colleagues, task assignment alerts, and who is online now.</p></div>
+      <div class="card reveal"><div class="ico">📊</div><h3 data-i18n="w6t">Reports and insight</h3><p data-i18n="w6p">Pipeline, workload and business highlights — or ask Neo for any report in plain words.</p><span class="tag tag--local" data-i18n="tagLocal">Runs locally</span></div>
+    </div>
+  </div>
+</section>
 
-            <div class="relative mx-auto flex max-w-7xl flex-col items-center px-5 pb-20 pt-24 text-center lg:px-8 lg:pt-32">
-                <div class="reveal mb-8 inline-flex items-center gap-2 rounded-full border border-mesh-violet/30 bg-mesh-violet/10 px-4 py-2 text-sm font-semibold text-purple-100">
-                    <span class="h-2 w-2 rounded-full bg-mesh-violet"></span>
-                    Verified compute. USD payments. No tokens.
-                </div>
-                <h1 class="reveal max-w-6xl text-5xl font-bold tracking-[-0.075em] text-white sm:text-6xl lg:text-8xl">
-                    The Decentralized AI Network That Pays You Both Ways
-                </h1>
-                <p class="reveal mt-7 max-w-3xl text-lg leading-8 text-zinc-300 sm:text-xl">
-                    Save 10x on AI inference costs. Or earn cash from your idle GPU. NeuralNet connects them both — verified by blockchain, powered by everyone.
-                </p>
-                <div class="reveal mt-10 flex flex-col gap-4 sm:flex-row">
-                    <a href="#user-waitlist" class="rounded-full bg-mesh-purple px-7 py-4 text-sm font-bold text-white shadow-purple transition hover:bg-mesh-violet">Access Cheap AI →</a>
-                    <a href="#provider-waitlist" class="rounded-full border border-mesh-violet/50 bg-white/[0.03] px-7 py-4 text-sm font-bold text-white transition hover:bg-mesh-purple/20">Earn with My GPU →</a>
-                </div>
+<!-- PRIVACY / HOW -->
+<section id="privacy">
+  <div class="wrap">
+    <div class="head head--center">
+      <span class="eyebrow"><i></i><span data-i18n="pvEyebrow">Local-first AI</span></span>
+      <h2 data-i18n="pvTitle">The AI runs where your data already is</h2>
+      <p class="lead" data-i18n="pvSub">Neo uses a model on your own computer first. Your company data never goes to the community GPU network.</p>
+    </div>
+    <div class="flow">
+      <div class="card reveal"><div class="ico">💻</div><h3 data-i18n="f1t">On your PC</h3><p data-i18n="f1p">Neo and the agents run on a local model through Ollama. Prompts and answers stay on the machine.</p>
+        <ul class="list"><li data-i18n="f1a">Works offline for everyday tasks</li><li data-i18n="f1b">No per-question AI bill</li></ul></div>
+      <div class="flow__arrow">→</div>
+      <div class="card reveal"><div class="ico">☁️</div><h3 data-i18n="f2t">Your workspace</h3><p data-i18n="f2p">Expand keeps your records with row-level access rules: each person sees what their role allows.</p>
+        <ul class="list"><li data-i18n="f2a">100 GB cloud storage on Business</li><li data-i18n="f2b">Backup to your own local storage</li></ul></div>
+      <div class="flow__arrow">→</div>
+      <div class="card reveal"><div class="ico">✦</div><h3 data-i18n="f3t">Network AI, when you choose</h3><p data-i18n="f3p">Heavier features — tender analysis, deep research, 70B-class answers — call Claude through MeshNet, only for the features you switch on.</p>
+        <ul class="list"><li data-i18n="f3a">Business data is never used to train models</li><li data-i18n="f3b">Never sent to community GPUs</li></ul></div>
+    </div>
+    <div class="grid grid--3" style="margin-top:28px">
+      <div class="card reveal device"><div><div class="device__big" data-i18n="d1n">PC / Mac</div><p data-i18n="d1p">Runs Neo locally. Machines with 48 GB+ of memory run a 70B model fully on the device.</p></div></div>
+      <div class="card reveal device"><div><div class="device__big">iPad Air M4</div><p data-i18n="d2p">A compact model runs fully on the iPad (12 GB memory). Jobs that need 70B go to the network, and Neo tells you when.</p><span class="tag" data-i18n="preview">Preview</span></div></div>
+      <div class="card reveal device"><div><div class="device__big" data-i18n="d3n">Phone / browser</div><p data-i18n="d3p">The full workspace in any browser; Neo answers through your PC or the network.</p></div></div>
+    </div>
+  </div>
+</section>
 
-                <div class="reveal mt-16 grid w-full max-w-5xl gap-3 rounded-[2rem] border border-white/10 bg-white/[0.035] p-3 backdrop-blur-xl sm:grid-cols-2 lg:grid-cols-4">
-                    <div class="rounded-3xl border border-white/10 bg-black/40 p-5">
-                        <p class="text-3xl font-bold tracking-tight">2,400+</p>
-                        <p class="mt-2 text-sm text-zinc-500">GPUs Registered</p>
-                    </div>
-                    <div class="rounded-3xl border border-white/10 bg-black/40 p-5">
-                        <p class="text-3xl font-bold tracking-tight">10x</p>
-                        <p class="mt-2 text-sm text-zinc-500">Cost Reduction</p>
-                    </div>
-                    <div class="rounded-3xl border border-white/10 bg-black/40 p-5">
-                        <p class="text-3xl font-bold tracking-tight">99.97%</p>
-                        <p class="mt-2 text-sm text-zinc-500">Uptime</p>
-                    </div>
-                    <div class="rounded-3xl border border-white/10 bg-black/40 p-5">
-                        <p class="text-3xl font-bold tracking-tight">USD</p>
-                        <p class="mt-2 text-sm text-zinc-500">Payouts Only</p>
-                    </div>
-                </div>
-            </div>
-        </section>
+<!-- MCP -->
+<section id="tools" style="padding-top:20px">
+  <div class="wrap">
+    <div class="head">
+      <span class="eyebrow"><i></i><span data-i18n="mcpEyebrow">Tools through MCP</span></span>
+      <h2 data-i18n="mcpTitle">Neo works inside the tools you already use</h2>
+      <p class="lead" data-i18n="mcpSub">Agents call your tools through the Model Context Protocol — each connection approved by an admin, each action logged.</p>
+    </div>
+    <div class="grid grid--4">
+      <div class="card reveal"><h3>GitHub</h3><p data-i18n="m1">Issues, pull requests, releases and workflows.</p></div>
+      <div class="card reveal"><h3>Supabase · Postgres</h3><p data-i18n="m2">Your database, sign-in and storage, as tools.</p></div>
+      <div class="card reveal"><h3>Stripe</h3><p data-i18n="m3">Payments, invoices and refunds on your account.</p></div>
+      <div class="card reveal"><h3>Figma</h3><p data-i18n="m4">Designs read as structured layouts.</p></div>
+      <div class="card reveal"><h3 data-i18n="m5t">Files and Git</h3><p data-i18n="m5">Folders and repositories on your machine.</p></div>
+      <div class="card reveal"><h3 data-i18n="m6t">Web fetch</h3><p data-i18n="m6">Reads pages and documents for research.</p></div>
+      <div class="card reveal"><h3 data-i18n="m7t">Memory</h3><p data-i18n="m7">Remembers your company's facts and preferences.</p></div>
+      <div class="card reveal"><h3 data-i18n="m8t">Your own tools</h3><p data-i18n="m8">Any MCP server, built in a day with FastMCP.</p></div>
+    </div>
+  </div>
+</section>
 
-        <section id="how-it-works" class="bg-black px-5 py-24 lg:px-8">
-            <div class="mx-auto max-w-7xl">
-                <div class="reveal mx-auto max-w-3xl text-center">
-                    <p class="text-sm font-bold uppercase tracking-[0.28em] text-mesh-violet">How it works</p>
-                    <h2 class="mt-4 text-4xl font-bold tracking-[-0.055em] sm:text-6xl">Two sides of the same network</h2>
-                </div>
-                <div class="mt-12 grid gap-6 lg:grid-cols-2">
-                    <article class="reveal rounded-[2rem] border border-mesh-violet/20 bg-mesh-purple/10 p-7 shadow-purple">
-                        <p class="text-sm font-bold uppercase tracking-[0.22em] text-purple-200">For Users</p>
-                        <h3 class="mt-4 text-2xl font-bold">Cheap, verified AI inference on demand.</h3>
-                        <div class="mt-8 grid gap-3">
-                            <div class="rounded-2xl border border-white/10 bg-black/30 p-4">Submit job</div>
-                            <div class="rounded-2xl border border-white/10 bg-black/30 p-4">Network routes to best GPU</div>
-                            <div class="rounded-2xl border border-white/10 bg-black/30 p-4">Blockchain verifies result</div>
-                            <div class="rounded-2xl border border-white/10 bg-black/30 p-4">You get accurate output, billed to subscription</div>
-                        </div>
-                    </article>
-                    <article class="reveal rounded-[2rem] border border-white/10 bg-white/[0.035] p-7">
-                        <p class="text-sm font-bold uppercase tracking-[0.22em] text-zinc-400">For Providers</p>
-                        <h3 class="mt-4 text-2xl font-bold">Idle hardware becomes recurring cash flow.</h3>
-                        <div class="mt-8 grid gap-3">
-                            <div class="rounded-2xl border border-white/10 bg-black/40 p-4">GPU idles</div>
-                            <div class="rounded-2xl border border-white/10 bg-black/40 p-4">Node client picks up job</div>
-                            <div class="rounded-2xl border border-white/10 bg-black/40 p-4">Proof-of-Compute verified</div>
-                            <div class="rounded-2xl border border-white/10 bg-black/40 p-4">USD deposited to your account</div>
-                        </div>
-                    </article>
-                </div>
-            </div>
-        </section>
+<!-- PRICING -->
+<section id="pricing">
+  <div class="wrap">
+    <div class="head head--center">
+      <span class="eyebrow"><i></i><span data-i18n="prEyebrow">Pricing</span></span>
+      <h2 data-i18n="prTitle">Two plans. Unlimited people.</h2>
+      <p class="lead" data-i18n="prSub">Prices in Saudi riyals. VAT added where it applies.</p>
+    </div>
+    <div class="plans">
+      <div class="plan plan--feature reveal">
+        <span class="plan__name" data-i18n="bName">Business</span>
+        <div class="plan__price"><b data-i18n="bPrice">20,000 SAR</b><span data-i18n="bPer">per year</span></div>
+        <div class="plan__plus">+ <b data-i18n="bMonthly">1,500 SAR</b> <span data-i18n="bPerMonth">per month subscription</span></div>
+        <ul class="list">
+          <li data-i18n="b1">The full Expand workspace, customised to your business</li>
+          <li data-i18n="b2">Unlimited users</li>
+          <li data-i18n="b3">Neo AI with all 12 agents</li>
+          <li data-i18n="b4">Local AI on your company's PCs</li>
+          <li data-i18n="b5">Network AI features powered by Claude: tender analysis, research, reports</li>
+          <li data-i18n="b6">100 GB cloud storage, with backup to your local storage</li>
+          <li data-i18n="b7">MCP tool connections and onboarding</li>
+        </ul>
+        <a class="btn btn--primary" href="#start" data-plan="business" data-i18n="bCta">Talk to us about Business</a>
+      </div>
+      <div class="plan reveal">
+        <span class="plan__name" data-i18n="pName">Personal</span>
+        <div class="plan__price"><b data-i18n="pPrice">200 SAR</b><span data-i18n="pPer">per month</span></div>
+        <div class="plan__plus" data-i18n="pPlus">For one person</div>
+        <ul class="list">
+          <li data-i18n="p1">The same workspace features</li>
+          <li data-i18n="p2">Neo AI with the 12 agents</li>
+          <li data-i18n="p3">Local inference up to 70B parameters, on hardware that can hold it</li>
+          <li data-i18n="p4">Supported by Claude AI for the heavy jobs</li>
+          <li data-i18n="p5">Works on PC, Mac and iPad</li>
+        </ul>
+        <a class="btn" href="#start" data-plan="personal" data-i18n="pCta">Start Personal</a>
+      </div>
+    </div>
+    <p class="note" style="text-align:center" data-i18n="prNote">A 70B model needs about 40 GB of memory. On smaller devices Neo uses a compact local model and the network for 70B-class answers.</p>
+  </div>
+</section>
 
-        <section id="for-users" class="bg-mesh-users px-5 py-24 lg:px-8">
-            <div class="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
-                <div class="reveal">
-                    <p class="text-sm font-bold uppercase tracking-[0.28em] text-mesh-violet">Section A — For AI Users</p>
-                    <h2 class="mt-5 text-4xl font-bold tracking-[-0.06em] sm:text-6xl">Run any LLM at 10x lower cost. No compromise on quality.</h2>
-                    <p class="mt-6 text-lg leading-8 text-zinc-300">NeuralNet routes your AI requests across a global network of verified GPUs — faster, smarter, and up to 10x cheaper than OpenAI or AWS.</p>
-                    <div class="mt-10 grid gap-4">
-                        <article class="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
-                            <h3 class="text-xl font-bold">10x Cheaper</h3>
-                            <p class="mt-2 text-sm leading-6 text-zinc-400">Pay a flat monthly subscription. No per-token surprises. Enterprise-grade LLMs from $9/mo.</p>
-                        </article>
-                        <article class="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
-                            <h3 class="text-xl font-bold">Faster Inference</h3>
-                            <p class="mt-2 text-sm leading-6 text-zinc-400">Requests distributed across hundreds of GPUs globally. Sub-100ms average latency.</p>
-                        </article>
-                        <article class="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
-                            <h3 class="text-xl font-bold">Blockchain-Verified Quality</h3>
-                            <p class="mt-2 text-sm leading-6 text-zinc-400">Every inference job is cryptographically verified. You always get accurate, tamper-proof results.</p>
-                        </article>
-                    </div>
-                </div>
-
-                <form id="user-waitlist" data-table="waitlist_users" class="reveal rounded-[2rem] border border-mesh-violet/20 bg-black/45 p-6 shadow-purple backdrop-blur-xl sm:p-8">
-                    <h3 class="text-2xl font-bold tracking-[-0.03em]">Join the AI User Waitlist</h3>
-                    <div class="mt-6 grid gap-4">
-                        <label class="grid gap-2 text-sm font-medium text-zinc-300">Full Name<input name="full_name" required class="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-white outline-none focus:border-mesh-violet" type="text"></label>
-                        <label class="grid gap-2 text-sm font-medium text-zinc-300">Email<input name="email" required class="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-white outline-none focus:border-mesh-violet" type="email"></label>
-                        <label class="grid gap-2 text-sm font-medium text-zinc-300">Company<input name="company" class="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-white outline-none focus:border-mesh-violet" type="text"></label>
-                        <label class="grid gap-2 text-sm font-medium text-zinc-300">Primary Use Case<select name="primary_use_case" required class="rounded-2xl border border-white/10 bg-[#11111a] px-4 py-3 text-white outline-none focus:border-mesh-violet"><option>Personal Projects</option><option>Startup</option><option>Enterprise</option><option>Research</option></select></label>
-                        <label class="grid gap-2 text-sm font-medium text-zinc-300">Monthly Budget<select name="monthly_budget" required class="rounded-2xl border border-white/10 bg-[#11111a] px-4 py-3 text-white outline-none focus:border-mesh-violet"><option>Under $50</option><option>$50–$200</option><option>$200–$1000</option><option>$1000+</option></select></label>
-                    </div>
-                    <button class="mt-6 w-full rounded-2xl bg-mesh-purple px-5 py-4 text-sm font-bold text-white transition hover:bg-mesh-violet" type="submit">Request Early Access</button>
-                    <p class="form-message mt-4 min-h-6 text-sm text-zinc-400"></p>
-                </form>
-            </div>
-        </section>
-
-        <section id="about" class="bg-mesh-trust px-5 py-24 lg:px-8">
-            <div class="mx-auto max-w-7xl">
-                <div class="reveal max-w-3xl">
-                    <p class="text-sm font-bold uppercase tracking-[0.28em] text-mesh-violet">Trust layer</p>
-                    <h2 class="mt-4 text-4xl font-bold tracking-[-0.055em] sm:text-6xl">Blockchain as trust infrastructure — not finance</h2>
-                </div>
-                <div class="mt-12 grid gap-5 md:grid-cols-3">
-                    <article class="reveal rounded-[2rem] border border-white/10 bg-white/[0.035] p-6">
-                        <h3 class="text-xl font-bold">Proof-of-Compute</h3>
-                        <p class="mt-3 text-sm leading-6 text-zinc-400">Every job is cryptographically signed by the executing GPU. Results are verifiable and tamper-proof.</p>
-                    </article>
-                    <article class="reveal rounded-[2rem] border border-white/10 bg-white/[0.035] p-6">
-                        <h3 class="text-xl font-bold">No Tokens, No Wallets</h3>
-                        <p class="mt-3 text-sm leading-6 text-zinc-400">Blockchain is our verification layer only. Users pay by card. Providers get paid by bank transfer.</p>
-                    </article>
-                    <article class="reveal rounded-[2rem] border border-white/10 bg-white/[0.035] p-6">
-                        <h3 class="text-xl font-bold">Open Protocol</h3>
-                        <p class="mt-3 text-sm leading-6 text-zinc-400">The NeuralNet node client is open-source. Anyone can verify the code and join the network.</p>
-                    </article>
-                </div>
-            </div>
-        </section>
-
-        <section id="for-providers" class="bg-mesh-providers px-5 py-24 lg:px-8">
-            <div class="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
-                <div class="reveal">
-                    <p class="text-sm font-bold uppercase tracking-[0.28em] text-mesh-violet">Section B — For GPU Providers</p>
-                    <h2 class="mt-5 text-4xl font-bold tracking-[-0.06em] sm:text-6xl">Your idle GPU is a cash machine.</h2>
-                    <p class="mt-6 text-lg leading-8 text-zinc-300">Plug your GPU into NeuralNet and earn real money every time it processes an AI job. We handle everything — routing, verification, payouts.</p>
-                    <div class="mt-10 grid gap-4">
-                        <article class="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
-                            <h3 class="text-xl font-bold">Earn Real Cash</h3>
-                            <p class="mt-2 text-sm leading-6 text-zinc-400">Get paid in USD directly to your bank account. No crypto wallets, no tokens. Just money.</p>
-                        </article>
-                        <article class="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
-                            <h3 class="text-xl font-bold">Any Consumer GPU</h3>
-                            <p class="mt-2 text-sm leading-6 text-zinc-400">RTX 3080, 4090, A100, or anything in between. If it can run inference, it earns.</p>
-                        </article>
-                        <article class="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
-                            <h3 class="text-xl font-bold">Set-and-Forget</h3>
-                            <p class="mt-2 text-sm leading-6 text-zinc-400">Install our open-source node client. It runs in the background and pays you automatically.</p>
-                        </article>
-                    </div>
-                    <div class="mt-10 grid gap-3 md:grid-cols-3">
-                        <div class="rounded-2xl border border-mesh-violet/20 bg-mesh-purple/10 p-4 text-sm font-bold">Step 1: Register your GPU</div>
-                        <div class="rounded-2xl border border-mesh-violet/20 bg-mesh-purple/10 p-4 text-sm font-bold">Step 2: Install the node client</div>
-                        <div class="rounded-2xl border border-mesh-violet/20 bg-mesh-purple/10 p-4 text-sm font-bold">Step 3: Start earning</div>
-                    </div>
-                </div>
-
-                <form id="provider-waitlist" data-table="waitlist_providers" class="reveal rounded-[2rem] border border-white/10 bg-black/45 p-6 backdrop-blur-xl sm:p-8">
-                    <h3 class="text-2xl font-bold tracking-[-0.03em]">List Your GPU — Start Earning</h3>
-                    <div class="mt-6 grid gap-4">
-                        <label class="grid gap-2 text-sm font-medium text-zinc-300">Full Name<input name="full_name" required class="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-white outline-none focus:border-mesh-violet" type="text"></label>
-                        <label class="grid gap-2 text-sm font-medium text-zinc-300">Email<input name="email" required class="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-white outline-none focus:border-mesh-violet" type="email"></label>
-                        <label class="grid gap-2 text-sm font-medium text-zinc-300">GPU Model<input name="gpu_model" required placeholder="e.g. RTX 4090, A100" class="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-white outline-none placeholder:text-zinc-600 focus:border-mesh-violet" type="text"></label>
-                        <label class="grid gap-2 text-sm font-medium text-zinc-300">Number of GPUs<input name="number_of_gpus" required min="1" class="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-white outline-none focus:border-mesh-violet" type="number"></label>
-                        <label class="grid gap-2 text-sm font-medium text-zinc-300">Available Hours Per Day<select name="available_hours_per_day" required class="rounded-2xl border border-white/10 bg-[#11111a] px-4 py-3 text-white outline-none focus:border-mesh-violet"><option>2–6 hours</option><option>6–12 hours</option><option>12–18 hours</option><option>24/7</option></select></label>
-                        <label class="grid gap-2 text-sm font-medium text-zinc-300">Region<select name="region" required class="rounded-2xl border border-white/10 bg-[#11111a] px-4 py-3 text-white outline-none focus:border-mesh-violet"><option>US East</option><option>US West</option><option>EU West</option><option>EU East</option><option>Asia Pacific</option><option>Other</option></select></label>
-                        <label class="grid gap-2 text-sm font-medium text-zinc-300">Expected Monthly Earnings Goal<select name="expected_monthly_earnings_goal" required class="rounded-2xl border border-white/10 bg-[#11111a] px-4 py-3 text-white outline-none focus:border-mesh-violet"><option>$50–$200</option><option>$200–$500</option><option>$500–$2000</option><option>$2000+</option></select></label>
-                    </div>
-                    <button class="mt-6 w-full rounded-2xl border border-mesh-purple px-5 py-4 text-sm font-bold text-purple-100 transition hover:bg-mesh-purple hover:text-white" type="submit">List My GPU</button>
-                    <p class="form-message mt-4 min-h-6 text-sm text-zinc-400"></p>
-                </form>
-            </div>
-        </section>
-    </main>
-
-    <footer class="border-t border-white/10 bg-black px-5 py-10 lg:px-8">
-        <div class="mx-auto flex max-w-7xl flex-col gap-6 md:flex-row md:items-center md:justify-between">
-            <div>
-                <p class="text-xl font-bold tracking-[-0.04em] text-mesh-purple">NeuralNet</p>
-                <p class="mt-2 text-sm text-zinc-500">Decentralized AI. Real Money.</p>
-            </div>
-            <div class="flex flex-wrap gap-5 text-sm text-zinc-500">
-                <a href="#" class="transition hover:text-white">Docs</a>
-                <a href="#" class="transition hover:text-white">GitHub</a>
-                <a href="#" class="transition hover:text-white">Status</a>
-                <a href="#" class="transition hover:text-white">Privacy Policy</a>
-            </div>
-            <p class="text-sm text-zinc-600">© 2026 NeuralNet Inc. All rights reserved.</p>
+<!-- PROVIDERS -->
+<section id="providers" style="background:linear-gradient(180deg,transparent,rgba(6,182,212,.05),transparent)">
+  <div class="wrap">
+    <div class="grid grid--2" style="align-items:center;gap:40px">
+      <div>
+        <span class="eyebrow"><i></i><span data-i18n="gpEyebrow">MeshNet GPU network</span></span>
+        <h2 data-i18n="gpTitle">Have a GPU? Join the network and earn.</h2>
+        <p class="lead" data-i18n="gpSub">Anyone can join. The installer checks your machine and picks the largest model it can hold — from an 8B model on an 8 GB card to 70B across several GPUs.</p>
+        <ul class="list">
+          <li data-i18n="g1">NVIDIA, AMD and Apple Silicon Macs</li>
+          <li data-i18n="g2">Several GPUs in one machine work as one</li>
+          <li data-i18n="g3">Pool your own machines on one network (preview)</li>
+          <li data-i18n="g4">RAM-only mode: nothing but model files touches the disk</li>
+          <li data-i18n="g5">Community nodes serve public jobs only — never company data</li>
+        </ul>
+      </div>
+      <div class="card reveal" style="padding:26px">
+        <h3 style="margin-top:0" data-i18n="gpInstall">Install in one line</h3>
+        <p data-i18n="gpInstallSub">macOS, Linux and Windows (WSL2). It asks for your provider token, then runs in the background.</p>
+        <div class="code" style="margin-top:14px"><span id="cmd">curl -sSL https://install.beta.meshnet.co | bash</span><button class="btn btn--sm" data-copy type="button" data-i18n="copy">Copy</button></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
+          <a class="btn btn--primary btn--sm" href="https://beta.meshnet.co/host" data-i18n="gpCta">Get a provider token</a>
+          <a class="btn btn--sm" href="https://beta.meshnet.co/host-dashboard" data-i18n="gpDash">Provider dashboard</a>
         </div>
-    </footer>
+      </div>
+    </div>
+  </div>
+</section>
 
-    <button id="scroll-top" class="fixed bottom-5 right-5 z-40 hidden h-12 w-12 items-center justify-center rounded-full bg-mesh-purple text-xl font-bold text-white shadow-purple transition hover:bg-mesh-violet" aria-label="Scroll to top">↑</button>
+<!-- FAQ -->
+<section id="faq" style="padding-top:40px">
+  <div class="wrap" style="max-width:860px">
+    <div class="head head--center"><h2 data-i18n="faqTitle">Questions</h2></div>
+    <details><summary data-i18n="q1">Does my company data leave our computers?</summary><p data-i18n="a1x">Everyday Neo work runs on a local model on your PCs. Your records live in your workspace under access rules. Only the network features you switch on (such as tender analysis) send the needed text to Claude, and nothing goes to community GPUs.</p></details>
+    <details><summary data-i18n="q2">Can Neo really run a 70B model locally?</summary><p data-i18n="a2x">Yes, on a machine with enough memory — about 40 GB for a 70B model (for example a Mac with 48 GB or more, or two 24 GB GPUs). On smaller machines and the iPad, Neo runs a compact model locally and uses the network for 70B-class answers.</p></details>
+    <details><summary data-i18n="q3">What does "unlimited users" mean?</summary><p data-i18n="a3x">Add your whole team on the Business plan at no extra cost per person. Each person signs in with their own account and sees what their role allows.</p></details>
+    <details><summary data-i18n="q4">What are the 12 agents?</summary><p data-i18n="a4x">Tenders, sales, projects, pricing, procurement, production, HR, finance, documents, research, reports and an executive assistant. Neo assigns the work between them and reports back.</p></details>
+  </div>
+</section>
 
-    <script>
-        const SUPABASE_URL = "https://hsvzciskkwgokhtbsyfe.supabase.co";
-        // Public anon key was not present in this repository. Replace this value
-        // with the project's Supabase anon key before deploying the static page.
-        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhzdnpjaXNra3dnb2todGJzeWZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczMTQ1NzAsImV4cCI6MjA5Mjg5MDU3MH0.st4YyG3N9tKTlVwZUOVgUNE_MA7KW1_-f2F6EjUo0Js";
+<!-- START -->
+<section id="start">
+  <div class="wrap" style="max-width:860px">
+    <div class="card" style="padding:32px">
+      <span class="eyebrow"><i></i><span data-i18n="stEyebrow">Get started</span></span>
+      <h2 style="font-size:clamp(26px,3.4vw,36px)" data-i18n="stTitle">Tell us who you are and we'll set you up</h2>
+      <p class="lead" style="margin-bottom:22px" data-i18n="stSub">We will set up your workspace with you. Already a customer? <a href="https://expand.meshnet.co/" style="color:var(--cyan2)">Sign in to Expand →</a></p>
+      <form class="form" id="startForm" novalidate>
+        <label><span data-i18n="fName">Full name</span><input name="name" required maxlength="120" autocomplete="name"></label>
+        <label><span data-i18n="fEmail">Work email</span><input name="email" type="email" required maxlength="200" autocomplete="email"></label>
+        <label><span data-i18n="fCompany">Company</span><input name="company" maxlength="160" autocomplete="organization"></label>
+        <label><span data-i18n="fPlan">Plan</span><select name="plan"><option value="business" data-i18n="optB">Business — 20,000 SAR/year + 1,500 SAR/month</option><option value="personal" data-i18n="optP">Personal — 200 SAR/month</option></select></label>
+        <label class="wide"><span data-i18n="fNotes">What should Neo take off your plate?</span><textarea name="notes" maxlength="800"></textarea></label>
+        <div class="wide"><button class="btn btn--primary" type="submit" data-i18n="fSend">Send</button><div id="formMsg" role="status" aria-live="polite"></div></div>
+      </form>
+    </div>
+  </div>
+</section>
+</main>
 
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach((entry) => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add("is-visible");
-                }
-            });
-        }, { threshold: 0.12 });
+<footer><div class="wrap">
+  <a class="brand" href="#top"><img src="logo.svg" alt=""><span>MeshNet</span></a>
+  <span data-i18n="foot">© 2026 MeshNet · Riyadh</span>
+  <nav><a href="https://beta.meshnet.co/terms" data-i18n="terms">Terms</a><a href="https://beta.meshnet.co/privacy" data-i18n="privacyLink">Privacy</a><a href="https://expand.meshnet.co/" data-i18n="signin">Sign in</a></nav>
+</div></footer>
 
-        document.querySelectorAll(".reveal").forEach((element) => observer.observe(element));
+<script>
+(function () {
+  var AGENTS = [
+    ['📑', 'a1', 'Tenders analyst', 'تحليل المناقصات', 'net'],
+    ['🤝', 'a2', 'Sales and leads', 'المبيعات والعملاء', 'local'],
+    ['📁', 'a3', 'Project manager', 'مدير المشاريع', 'local'],
+    ['🧮', 'a4', 'Pricing', 'التسعير', 'local'],
+    ['🛒', 'a5', 'Procurement', 'المشتريات', 'local'],
+    ['🏭', 'a6', 'Production', 'الإنتاج', 'local'],
+    ['👥', 'a7', 'HR', 'الموارد البشرية', 'local'],
+    ['💰', 'a8', 'Finance', 'المالية', 'local'],
+    ['📄', 'a9', 'Documents and letters', 'المستندات والخطابات', 'local'],
+    ['🔎', 'a10', 'Research', 'البحث', 'net'],
+    ['📊', 'a11', 'Reports', 'التقارير', 'local'],
+    ['🗓️', 'a12', 'Executive assistant', 'المساعد التنفيذي', 'local'],
+  ];
+  var ROLE = {
+    en: { a1: 'Finds tenders that fit, reads the terms, flags risks and deadlines.', a2: 'Scores leads, drafts follow-ups and keeps the pipeline moving.', a3: 'Tracks stages, owners and dates; warns before anything slips.', a4: 'Builds pricing from past projects and checks margins.', a5: 'Turns needs into purchase requests and compares supplier quotes.', a6: 'Follows factory work and what is waiting on materials.', a7: 'Leave, attendance and HR letters, ready for signature.', a8: 'Payroll checks, wallets, spend and what is owed.', a9: 'Drafts letters, contracts and certificates in Arabic and English.', a10: 'Researches markets, companies and competitors.', a11: 'Writes the weekly and monthly reports from live data.', a12: 'Your day, your follow-ups, and what needs you now.' },
+    ar: { a1: 'يجد المناقصات المناسبة ويقرأ الشروط وينبه للمخاطر والمواعيد.', a2: 'يقيّم العملاء المحتملين ويكتب المتابعات ويحرك مسار المبيعات.', a3: 'يتابع المراحل والمسؤولين والمواعيد وينبه قبل أي تأخير.', a4: 'يبني التسعير من المشاريع السابقة ويراجع الهوامش.', a5: 'يحول الاحتياجات إلى طلبات شراء ويقارن عروض الموردين.', a6: 'يتابع أعمال المصنع وما ينتظر المواد.', a7: 'الإجازات والحضور وخطابات الموارد البشرية جاهزة للتوقيع.', a8: 'مراجعة الرواتب والمحافظ والإنفاق والمستحقات.', a9: 'يكتب الخطابات والعقود والشهادات بالعربية والإنجليزية.', a10: 'يبحث في الأسواق والشركات والمنافسين.', a11: 'يكتب التقارير الأسبوعية والشهرية من البيانات الحية.', a12: 'يومك ومتابعاتك وما يحتاجك الآن.' },
+  };
+  var AR = {
+    navNeo: 'Neo AI', navWorkspace: 'مساحة العمل', navPrivacy: 'محلي أولاً', navPricing: 'الأسعار', navProviders: 'مزودو المعالجات', navStart: 'ابدأ الآن',
+    heroEyebrow: 'Neo AI · 12 وكيلاً · محلي أولاً', heroTitle1: 'شركتك يديرها', heroTitle2: 'Neo AI', heroTitle3: 'على أجهزتك أنت.',
+    heroSub: 'Expand مساحة عمل الشركات: المشاريع والمناقصات والتسعير والمشتريات والموارد البشرية والمبيعات في مكان واحد. ينجز Neo AI ووكلاؤه الاثنا عشر العمل بذكاء اصطناعي يعمل على أجهزتك. وعندما تحتاج المهمة أكثر، تضيف شبكة MeshNet قدرات Claude لتحليل المناقصات والبحث المعمق.',
+    heroCta1: 'شاهد الباقات', heroCta2: 'افتح مساحة العمل ←', trust1: 'مستخدمون بلا حدود', trust2: 'العربية والإنجليزية', trust3: 'بياناتك ملكك', coreSub: '12 وكيلاً متصلاً',
+    neoEyebrow: 'Neo AI', neoTitle: 'مساعد واحد يقود اثني عشر متخصصاً', neoSub: 'اطلب من Neo ما تحتاجه بالعربية أو الإنجليزية، فيقسم المهمة ويسند كل جزء للوكيل المناسب ويتابعه ويعطيك تقريراً واحداً. كل وكيل يعمل على بيانات مساحة عملك الحقيقية وأدواتك المتصلة.',
+    demoAsk: 'ما المناقصات المفتوحة المناسبة لنا هذا الأسبوع، وهل نحن جاهزون لتسعيرها؟', demoReply: 'جارٍ العمل. ثلاثة وكلاء يعملون الآن:', demoS1: 'وجد 4 مناقصات مناسبة في اعتماد', demoS2: 'طابق 3 منها مع مشاريع مسعّرة سابقاً', demoS3: 'يكتب ملخصاً في صفحة واحدة', chipLocal: 'نموذج محلي · على هذا الجهاز',
+    wsEyebrow: 'مساحة عمل Expand', wsTitle: 'كل ما يعمل عليه فريقك في مساحة عمل واحدة', wsSub: 'بُنيت مع شركة سعودية للمعارض والتجهيزات وتُستخدم يومياً، وتُخصص حسب طريقة عمل شركتك.',
+    w1t: 'المشاريع والتسعير', w1p: 'المشاريع من العميل المحتمل حتى التسليم، وجداول تسعير بمعادلات، واستيراد من Excel، وسعر على كل مشروع.', w2t: 'المناقصات', w2p: 'مناقصات اعتماد وترسيات المنافسين في مكان واحد، مع تحليل بالذكاء الاصطناعي لما يستحق التقديم.', w3t: 'المشتريات والإنتاج', w3p: 'طلبات شراء بالكميات والصور وعروض الموردين، ومتابعة إنتاج المصنع.', w4t: 'الموارد البشرية والحضور', w4p: 'حضور بالبصمة، وإجازات بنماذج موقعة قابلة للطباعة، ورواتب وخطابات ومستندات.', w5t: 'محادثة الفريق والتنبيهات', w5p: 'رسائل سريعة بين الزملاء وتنبيهات إسناد المهام ومن متصل الآن.', w6t: 'التقارير والتحليل', w6p: 'مسار المبيعات وأعباء العمل وأبرز مؤشرات العمل — أو اطلب من Neo أي تقرير بكلماتك.', tagNet: 'ذكاء الشبكة', tagLocal: 'يعمل محلياً',
+    pvEyebrow: 'ذكاء اصطناعي محلي أولاً', pvTitle: 'الذكاء الاصطناعي يعمل حيث توجد بياناتك', pvSub: 'يستخدم Neo نموذجاً على جهازك أولاً. بيانات شركتك لا تذهب أبداً إلى شبكة المعالجات المجتمعية.',
+    f1t: 'على جهازك', f1p: 'يعمل Neo والوكلاء على نموذج محلي عبر Ollama، وتبقى الأسئلة والإجابات على الجهاز.', f1a: 'يعمل دون إنترنت للمهام اليومية', f1b: 'لا فاتورة على كل سؤال', f2t: 'مساحة عملك', f2p: 'يحفظ Expand سجلاتك بقواعد وصول على مستوى السجل: كل شخص يرى ما يسمح به دوره.', f2a: '100 جيجابايت تخزين سحابي في باقة الأعمال', f2b: 'نسخة احتياطية على تخزينك المحلي', f3t: 'ذكاء الشبكة عند اختيارك', f3p: 'الميزات الأثقل — تحليل المناقصات والبحث المعمق وإجابات بحجم 70B — تستخدم Claude عبر MeshNet، فقط للميزات التي تفعّلها.', f3a: 'بيانات الشركات لا تُستخدم لتدريب النماذج', f3b: 'لا تُرسل أبداً لمعالجات المجتمع',
+    d1n: 'كمبيوتر / ماك', d1p: 'يشغّل Neo محلياً. الأجهزة بذاكرة 48 جيجابايت فأكثر تشغّل نموذج 70B كاملاً على الجهاز.', d2p: 'يعمل نموذج مدمج بالكامل على الآيباد (ذاكرة 12 جيجابايت). المهام التي تحتاج 70B تذهب للشبكة ويخبرك Neo بذلك.', preview: 'معاينة', d3n: 'الجوال / المتصفح', d3p: 'مساحة العمل كاملة في أي متصفح، ويجيب Neo عبر جهازك أو الشبكة.',
+    mcpEyebrow: 'الأدوات عبر MCP', mcpTitle: 'يعمل Neo داخل الأدوات التي تستخدمها', mcpSub: 'يستدعي الوكلاء أدواتك عبر بروتوكول MCP — كل اتصال يعتمده مدير، وكل إجراء يُسجّل.', m1: 'المشكلات وطلبات الدمج والإصدارات وسير العمل.', m2: 'قاعدة بياناتك وتسجيل الدخول والتخزين كأدوات.', m3: 'المدفوعات والفواتير والاستردادات على حسابك.', m4: 'التصاميم تُقرأ كتخطيطات منظمة.', m5t: 'الملفات وGit', m5: 'المجلدات والمستودعات على جهازك.', m6t: 'جلب الويب', m6: 'يقرأ الصفحات والمستندات للبحث.', m7t: 'الذاكرة', m7: 'يتذكر حقائق شركتك وتفضيلاتها.', m8t: 'أدواتك الخاصة', m8: 'أي خادم MCP، يُبنى في يوم واحد مع FastMCP.',
+    prEyebrow: 'الأسعار', prTitle: 'باقتان. أشخاص بلا حدود.', prSub: 'الأسعار بالريال السعودي، وتضاف ضريبة القيمة المضافة حيث تنطبق.',
+    bName: 'الأعمال', bPrice: '20,000 ريال', bPer: 'سنوياً', bMonthly: '1,500 ريال', bPerMonth: 'اشتراك شهري', b1: 'مساحة عمل Expand كاملة ومخصصة لشركتك', b2: 'مستخدمون بلا حدود', b3: 'Neo AI بوكلائه الاثني عشر', b4: 'ذكاء اصطناعي محلي على أجهزة شركتك', b5: 'ميزات ذكاء الشبكة بتقنية Claude: تحليل المناقصات والبحث والتقارير', b6: '100 جيجابايت تخزين سحابي مع نسخ احتياطي على تخزينك المحلي', b7: 'ربط الأدوات عبر MCP والتهيئة', bCta: 'تحدث معنا عن باقة الأعمال',
+    pName: 'الشخصية', pPrice: '200 ريال', pPer: 'شهرياً', pPlus: 'لشخص واحد', p1: 'ميزات مساحة العمل نفسها', p2: 'Neo AI بالوكلاء الاثني عشر', p3: 'تشغيل محلي حتى 70 مليار معامل على الأجهزة التي تتسع له', p4: 'بدعم Claude AI للمهام الثقيلة', p5: 'يعمل على الكمبيوتر والماك والآيباد', pCta: 'ابدأ الباقة الشخصية',
+    prNote: 'يحتاج نموذج 70B نحو 40 جيجابايت من الذاكرة. على الأجهزة الأصغر يستخدم Neo نموذجاً محلياً مدمجاً والشبكة لإجابات بحجم 70B.',
+    gpEyebrow: 'شبكة معالجات MeshNet', gpTitle: 'لديك معالج رسوميات؟ انضم للشبكة واربح.', gpSub: 'الانضمام متاح للجميع. يفحص المثبّت جهازك ويختار أكبر نموذج يتسع له — من نموذج 8B على بطاقة 8 جيجابايت حتى 70B عبر عدة معالجات.',
+    g1: 'NVIDIA وAMD وأجهزة ماك بمعالجات Apple', g2: 'عدة معالجات في جهاز واحد تعمل كواحد', g3: 'اجمع أجهزتك على شبكة واحدة (معاينة)', g4: 'وضع الذاكرة فقط: لا شيء غير ملفات النموذج يلمس القرص', g5: 'أجهزة المجتمع تخدم المهام العامة فقط — لا بيانات شركات أبداً',
+    gpInstall: 'التثبيت بسطر واحد', gpInstallSub: 'macOS وLinux وWindows (WSL2). يطلب رمز المزوّد ثم يعمل في الخلفية.', copy: 'نسخ', copied: 'تم النسخ', gpCta: 'احصل على رمز مزوّد', gpDash: 'لوحة المزوّد',
+    faqTitle: 'أسئلة', q1: 'هل تخرج بيانات شركتي من أجهزتنا؟', a1x: 'عمل Neo اليومي يتم على نموذج محلي على أجهزتك، وسجلاتك في مساحة عملك تحت قواعد الوصول. فقط ميزات الشبكة التي تفعّلها (مثل تحليل المناقصات) ترسل النص اللازم إلى Claude، ولا شيء يذهب لمعالجات المجتمع.',
+    q2: 'هل يشغّل Neo نموذج 70B محلياً فعلاً؟', a2x: 'نعم، على جهاز بذاكرة كافية — نحو 40 جيجابايت لنموذج 70B (مثل ماك بذاكرة 48 جيجابايت أو أكثر، أو معالجين بذاكرة 24 جيجابايت). وعلى الأجهزة الأصغر والآيباد يشغّل Neo نموذجاً مدمجاً محلياً ويستخدم الشبكة لإجابات بحجم 70B.',
+    q3: 'ماذا يعني «مستخدمون بلا حدود»؟', a3x: 'أضف فريقك كله في باقة الأعمال دون تكلفة إضافية لكل شخص. كل شخص يدخل بحسابه ويرى ما يسمح به دوره.', q4: 'ما الوكلاء الاثنا عشر؟', a4x: 'المناقصات والمبيعات والمشاريع والتسعير والمشتريات والإنتاج والموارد البشرية والمالية والمستندات والبحث والتقارير والمساعد التنفيذي. يوزع Neo العمل بينهم ويعود إليك بالنتيجة.',
+    stEyebrow: 'ابدأ الآن', stTitle: 'أخبرنا من أنت وسنجهز لك كل شيء', stSub: 'نجهز مساحة عملك معك. عميل حالي؟ <a href="https://expand.meshnet.co/" style="color:var(--cyan2)">ادخل إلى Expand ←</a>',
+    fName: 'الاسم الكامل', fEmail: 'البريد الإلكتروني للعمل', fCompany: 'الشركة', fPlan: 'الباقة', optB: 'الأعمال — 20,000 ريال سنوياً + 1,500 ريال شهرياً', optP: 'الشخصية — 200 ريال شهرياً', fNotes: 'ما الذي تريد أن يتولاه Neo عنك؟', fSend: 'أرسل',
+    sent: 'وصلنا طلبك وسنتواصل معك قريباً.', failed: 'تعذّر الإرسال. حاول مرة أخرى بعد دقيقة.', needName: 'أدخل اسمك وبريدك الإلكتروني.',
+    foot: '© 2026 MeshNet · الرياض', terms: 'الشروط', privacyLink: 'الخصوصية', signin: 'تسجيل الدخول',
+    a1: 'تحليل المناقصات', a4: 'التسعير', a11: 'التقارير',
+  };
+  var EN = { copied: 'Copied', sent: 'Thank you — we have your request and will be in touch shortly.', failed: 'Could not send. Please try again in a minute.', needName: 'Please enter your name and email.' };
 
-        const scrollTopButton = document.getElementById("scroll-top");
-        window.addEventListener("scroll", () => {
-            scrollTopButton.classList.toggle("hidden", window.scrollY < 600);
-            scrollTopButton.classList.toggle("flex", window.scrollY >= 600);
-        });
-        scrollTopButton.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
+  // Remember the English text of every translatable element.
+  var nodes = Array.prototype.slice.call(document.querySelectorAll('[data-i18n]'));
+  nodes.forEach(function (n) { n.dataset.en = n.innerHTML; });
+  var lang = 'en';
+  try { lang = localStorage.getItem('mn_lang') || ((navigator.language || '').indexOf('ar') === 0 ? 'ar' : 'en'); } catch (e) {}
+  var T = function (k) { return lang === 'ar' ? (AR[k] || EN[k] || k) : (EN[k] || k); };
 
-        function formToPayload(form) {
-            return Object.fromEntries(new FormData(form).entries());
-        }
+  function agentsHTML() {
+    var cards = '', side = '', orbit = '';
+    AGENTS.forEach(function (a, i) {
+      var name = lang === 'ar' ? a[3] : a[2];
+      var role = ROLE[lang][a[1]];
+      cards += '<div class="card reveal is-in"><div class="ico">' + a[0] + '</div><h3>' + name + '</h3><p>' + role + '</p><span class="tag ' + (a[4] === 'net' ? 'tag--net' : 'tag--local') + '">' + (a[4] === 'net' ? T('tagNet') : T('tagLocal')) + '</span></div>';
+      side += '<div class="console__agent' + ([0, 3, 10].indexOf(i) >= 0 ? ' is-on' : '') + '"><span>' + a[0] + '</span>' + name + '<em>' + ([0, 3, 10].indexOf(i) >= 0 ? '●' : '') + '</em></div>';
+      var ang = (i / AGENTS.length) * 2 * Math.PI - Math.PI / 2;
+      var x = 50 + 44 * Math.cos(ang), y = 50 + 44 * Math.sin(ang);
+      orbit += '<div class="agent-dot' + ([0, 3, 10].indexOf(i) >= 0 ? ' is-busy' : '') + '" style="left:' + x.toFixed(2) + '%;top:' + y.toFixed(2) + '%" title="' + name + '">' + a[0] + '</div>';
+    });
+    document.getElementById('agentCards').innerHTML = cards;
+    document.getElementById('consoleAgents').innerHTML = side;
+    document.getElementById('orbit').innerHTML = orbit;
+  }
+  function apply() {
+    document.documentElement.lang = lang; document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+    nodes.forEach(function (n) {
+      var k = n.dataset.i18n;
+      n.innerHTML = lang === 'ar' && AR[k] ? AR[k] : n.dataset.en;
+    });
+    document.querySelector('[data-lang]').textContent = lang === 'ar' ? 'English' : 'العربية';
+    agentsHTML();
+  }
+  document.querySelector('[data-lang]').onclick = function () { lang = lang === 'ar' ? 'en' : 'ar'; try { localStorage.setItem('mn_lang', lang); } catch (e) {} apply(); };
+  apply();
 
-        async function insertWaitlistRow(table, payload) {
-            if (!SUPABASE_ANON_KEY || SUPABASE_ANON_KEY === "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhzdnpjaXNra3dnb2todGJzeWZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczMTQ1NzAsImV4cCI6MjA5Mjg5MDU3MH0.st4YyG3N9tKTlVwZUOVgUNE_MA7KW1_-f2F6EjUo0Js") {
-                throw new Error("Supabase anon key is missing. Add the public anon key in landing/index.html.");
-            }
+  // Plan buttons pick the plan in the form.
+  document.querySelectorAll('[data-plan]').forEach(function (b) { b.addEventListener('click', function () { document.querySelector('#startForm [name=plan]').value = b.dataset.plan; }); });
+  // Copy the install line.
+  document.querySelector('[data-copy]').onclick = function (e) {
+    var b = e.currentTarget; navigator.clipboard && navigator.clipboard.writeText(document.getElementById('cmd').textContent).then(function () { b.textContent = T('copied'); setTimeout(function () { b.textContent = lang === 'ar' ? AR.copy : 'Copy'; }, 1500); });
+  };
+  // Reveal on scroll.
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (es) { es.forEach(function (x) { if (x.isIntersecting) { x.target.classList.add('is-in'); io.unobserve(x.target); } }); }, { threshold: .12 });
+    document.querySelectorAll('.reveal').forEach(function (el) { io.observe(el); });
+  } else document.querySelectorAll('.reveal').forEach(function (el) { el.classList.add('is-in'); });
 
-            const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
-                method: "POST",
-                headers: {
-                    "apikey": SUPABASE_ANON_KEY,
-                    "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
-                    "Content-Type": "application/json",
-                    "Prefer": "return=minimal",
-                },
-                body: JSON.stringify(payload),
-            });
-
-            if (!response.ok) {
-                throw new Error("Could not join waitlist. Please try again.");
-            }
-        }
-
-        document.querySelectorAll("form[data-table]").forEach((form) => {
-            form.addEventListener("submit", async (event) => {
-                event.preventDefault();
-                const button = form.querySelector("button[type='submit']");
-                const message = form.querySelector(".form-message");
-                const originalText = button.textContent;
-                const table = form.dataset.table;
-                const successMessage = table === "waitlist_users"
-                    ? "You're on the list! We'll be in touch with early access details."
-                    : "Thanks! We'll review your GPU specs and reach out with onboarding details.";
-
-                button.disabled = true;
-                button.textContent = "Submitting...";
-                message.className = "form-message mt-4 min-h-6 text-sm text-zinc-400";
-                message.textContent = "";
-
-                try {
-                    await insertWaitlistRow(table, formToPayload(form));
-                    form.reset();
-                    message.className = "form-message mt-4 min-h-6 text-sm text-emerald-300";
-                    message.textContent = successMessage;
-                } catch (error) {
-                    message.className = "form-message mt-4 min-h-6 text-sm text-red-300";
-                    message.textContent = error.message;
-                } finally {
-                    button.disabled = false;
-                    button.textContent = originalText;
-                }
-            });
-        });
-    </script>
+  // The start form goes to the waitlist (insert-only for visitors).
+  var SUPABASE_URL = 'https://hsvzciskkwgokhtbsyfe.supabase.co';
+  var ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhzdnpjaXNra3dnb2todGJzeWZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczMTQ1NzAsImV4cCI6MjA5Mjg5MDU3MH0.st4YyG3N9tKTlVwZUOVgUNE_MA7KW1_-f2F6EjUo0Js';
+  var form = document.getElementById('startForm'), msg = document.getElementById('formMsg');
+  form.onsubmit = function (e) {
+    e.preventDefault();
+    var d = new FormData(form), name = (d.get('name') || '').trim(), email = (d.get('email') || '').trim();
+    if (!name || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { msg.className = 'alert alert--bad'; msg.textContent = T('needName'); return; }
+    var btn = form.querySelector('button'); btn.disabled = true;
+    var plan = d.get('plan') === 'personal' ? 'Personal plan (200 SAR/month)' : 'Business plan (20,000 SAR/year + 1,500 SAR/month)';
+    var notes = (d.get('notes') || '').trim();
+    fetch(SUPABASE_URL + '/rest/v1/waitlist_users', {
+      method: 'POST',
+      headers: { apikey: ANON, Authorization: 'Bearer ' + ANON, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ name: name.slice(0, 120), email: email.slice(0, 200), company: (d.get('company') || '').trim().slice(0, 160) || null, use_case: (plan + (notes ? ' — ' + notes : '') + ' · ' + lang).slice(0, 1000) }),
+    }).then(function (r) {
+      if (!r.ok) throw new Error(r.status);
+      msg.className = 'alert alert--ok'; msg.textContent = T('sent'); form.reset();
+    }).catch(function () { msg.className = 'alert alert--bad'; msg.textContent = T('failed'); }).finally(function () { btn.disabled = false; });
+  };
+})();
+</script>
 </body>
 </html>

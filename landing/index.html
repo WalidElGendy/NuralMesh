@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MeshNet — Neo AI and the Expand workspace</title>
-<meta name="description" content="Expand is the workspace for companies, run by Neo AI and 12 agents on AI that works on your own computers. Business and personal plans.">
+<title>MeshNet — Neo AI and the MeshNet Workspace</title>
+<meta name="description" content="MeshNet Workspace is the workspace for companies, run by Neo AI and 12 agents on AI that works on your own computers. Business and personal plans.">
 <meta name="theme-color" content="#07070d">
-<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="icon" href="favicon.png" type="image/png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -42,7 +42,7 @@ section{padding:96px 0;position:relative}
 .nav{position:sticky;top:0;z-index:50;background:rgba(7,7,13,.72);backdrop-filter:blur(16px);border-bottom:1px solid rgba(255,255,255,.06)}
 .nav .wrap{display:flex;align-items:center;gap:22px;height:68px}
 .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:19px;letter-spacing:-.03em}
-.brand img{width:32px;height:32px;border-radius:9px}
+.brand img{height:30px;width:auto;display:block}
 .nav__links{display:flex;gap:22px;margin-inline-start:auto;font-size:14.5px;color:var(--ink2)}
 .nav__links a:hover{color:var(--ink)}
 .lang{font-size:14px;color:var(--ink2);border:1px solid var(--line2);border-radius:999px;height:36px;padding:0 14px;background:none;cursor:pointer}
@@ -168,7 +168,7 @@ footer nav{display:flex;gap:18px;margin-inline-start:auto}
 </head>
 <body>
 <header class="nav"><div class="wrap">
-  <a class="brand" href="#top"><img src="logo.svg" alt=""><span>MeshNet</span></a>
+  <a class="brand" href="#top" aria-label="MeshNet"><img src="meshnet-logo.png" alt="MeshNet" width="281" height="72"></a>
   <nav class="nav__links" aria-label="Main">
     <a href="#neo" data-i18n="navNeo">Neo AI</a>
     <a href="#workspace" data-i18n="navWorkspace">Workspace</a>
@@ -188,10 +188,10 @@ footer nav{display:flex;gap:18px;margin-inline-start:auto}
     <div>
       <span class="eyebrow"><i></i><span data-i18n="heroEyebrow">Neo AI · 12 agents · local-first</span></span>
       <h1><span data-i18n="heroTitle1">Your company, run by</span> <span class="grad-text" data-i18n="heroTitle2">Neo AI</span> — <span data-i18n="heroTitle3">on your own computers.</span></h1>
-      <p class="lead" data-i18n="heroSub">Expand is the workspace for companies: projects, tenders, pricing, procurement, HR and sales in one place. Neo AI and its 12 agents do the work, on AI that runs on your own PCs. When a job needs more, the MeshNet network adds Claude — for tender analysis and deep research.</p>
+      <p class="lead" data-i18n="heroSub">MeshNet Workspace is the workspace for companies: projects, tenders, pricing, procurement, HR and sales in one place. Neo AI and its 12 agents do the work, on AI that runs on your own PCs. When a job needs more, the MeshNet network adds Claude — for tender analysis and deep research.</p>
       <div class="hero__ctas">
         <a class="btn btn--primary" href="#pricing" data-i18n="heroCta1">See the plans</a>
-        <a class="btn" href="https://expand.meshnet.co/" data-i18n="heroCta2">Open the workspace →</a>
+        <a class="btn" href="#start" data-i18n="heroCta2">Book a demo →</a>
       </div>
       <div class="hero__trust">
         <span data-i18n="trust1">Unlimited users</span><span data-i18n="trust2">Arabic and English</span><span data-i18n="trust3">Your data stays yours</span>
@@ -214,7 +214,7 @@ footer nav{display:flex;gap:18px;margin-inline-start:auto}
       <p class="lead" data-i18n="neoSub">Tell Neo what you need in Arabic or English. It splits the job, hands each part to the right agent, follows up, and gives you one report. Every agent works on your real workspace data and your connected tools.</p>
     </div>
     <div class="console reveal">
-      <div class="console__bar"><i></i><i></i><i></i><span style="margin-inline-start:10px">expand.meshnet.co · Neo</span></div>
+      <div class="console__bar"><i></i><i></i><i></i><span style="margin-inline-start:10px">MeshNet Workspace · Neo</span></div>
       <div class="console__body">
         <div class="console__side" id="consoleAgents"></div>
         <div class="console__main">
@@ -238,9 +238,9 @@ footer nav{display:flex;gap:18px;margin-inline-start:auto}
 <section id="workspace" style="background:linear-gradient(180deg,transparent,rgba(124,58,237,.05),transparent)">
   <div class="wrap">
     <div class="head">
-      <span class="eyebrow"><i></i><span data-i18n="wsEyebrow">The Expand workspace</span></span>
+      <span class="eyebrow"><i></i><span data-i18n="wsEyebrow">MeshNet Workspace</span></span>
       <h2 data-i18n="wsTitle">Everything your team works on, in one workspace</h2>
-      <p class="lead" data-i18n="wsSub">Built with a Saudi exhibitions and fit-out company, used every day. Customised to how your business works.</p>
+      <p class="lead" data-i18n="wsSub">In daily use in Saudi Arabia, and customised to how your business works.</p>
     </div>
     <div class="grid grid--3">
       <div class="card reveal"><div class="ico">📁</div><h3 data-i18n="w1t">Projects and pricing</h3><p data-i18n="w1p">Projects from lead to delivery, pricing sheets with formulas, Excel import, and price tags on every project.</p></div>
@@ -265,7 +265,7 @@ footer nav{display:flex;gap:18px;margin-inline-start:auto}
       <div class="card reveal"><div class="ico">💻</div><h3 data-i18n="f1t">On your PC</h3><p data-i18n="f1p">Neo and the agents run on a local model through Ollama. Prompts and answers stay on the machine.</p>
         <ul class="list"><li data-i18n="f1a">Works offline for everyday tasks</li><li data-i18n="f1b">No per-question AI bill</li></ul></div>
       <div class="flow__arrow">→</div>
-      <div class="card reveal"><div class="ico">☁️</div><h3 data-i18n="f2t">Your workspace</h3><p data-i18n="f2p">Expand keeps your records with row-level access rules: each person sees what their role allows.</p>
+      <div class="card reveal"><div class="ico">☁️</div><h3 data-i18n="f2t">Your workspace</h3><p data-i18n="f2p">The workspace keeps your records with row-level access rules: each person sees what their role allows.</p>
         <ul class="list"><li data-i18n="f2a">100 GB cloud storage on Business</li><li data-i18n="f2b">Backup to your own local storage</li></ul></div>
       <div class="flow__arrow">→</div>
       <div class="card reveal"><div class="ico">✦</div><h3 data-i18n="f3t">Network AI, when you choose</h3><p data-i18n="f3p">Heavier features — tender analysis, deep research, 70B-class answers — call Claude through MeshNet, only for the features you switch on.</p>
@@ -314,7 +314,7 @@ footer nav{display:flex;gap:18px;margin-inline-start:auto}
         <div class="plan__price"><b data-i18n="bPrice">20,000 SAR</b><span data-i18n="bPer">per year</span></div>
         <div class="plan__plus">+ <b data-i18n="bMonthly">1,500 SAR</b> <span data-i18n="bPerMonth">per month subscription</span></div>
         <ul class="list">
-          <li data-i18n="b1">The full Expand workspace, customised to your business</li>
+          <li data-i18n="b1">The full MeshNet Workspace, customised to your business</li>
           <li data-i18n="b2">Unlimited users</li>
           <li data-i18n="b3">Neo AI with all 12 agents</li>
           <li data-i18n="b4">Local AI on your company's PCs</li>
@@ -388,7 +388,7 @@ footer nav{display:flex;gap:18px;margin-inline-start:auto}
     <div class="card" style="padding:32px">
       <span class="eyebrow"><i></i><span data-i18n="stEyebrow">Get started</span></span>
       <h2 style="font-size:clamp(26px,3.4vw,36px)" data-i18n="stTitle">Tell us who you are and we'll set you up</h2>
-      <p class="lead" style="margin-bottom:22px" data-i18n="stSub">We will set up your workspace with you. Already a customer? <a href="https://expand.meshnet.co/" style="color:var(--cyan2)">Sign in to Expand →</a></p>
+      <p class="lead" style="margin-bottom:22px" data-i18n="stSub">We will set up your workspace with you, and have it running for your team.</p>
       <form class="form" id="startForm" novalidate>
         <label><span data-i18n="fName">Full name</span><input name="name" required maxlength="120" autocomplete="name"></label>
         <label><span data-i18n="fEmail">Work email</span><input name="email" type="email" required maxlength="200" autocomplete="email"></label>
@@ -403,9 +403,9 @@ footer nav{display:flex;gap:18px;margin-inline-start:auto}
 </main>
 
 <footer><div class="wrap">
-  <a class="brand" href="#top"><img src="logo.svg" alt=""><span>MeshNet</span></a>
+  <a class="brand" href="#top" aria-label="MeshNet"><img src="meshnet-logo.png" alt="MeshNet" width="281" height="72"></a>
   <span data-i18n="foot">© 2026 MeshNet · Riyadh</span>
-  <nav><a href="https://beta.meshnet.co/terms" data-i18n="terms">Terms</a><a href="https://beta.meshnet.co/privacy" data-i18n="privacyLink">Privacy</a><a href="https://expand.meshnet.co/" data-i18n="signin">Sign in</a></nav>
+  <nav><a href="https://beta.meshnet.co/terms" data-i18n="terms">Terms</a><a href="https://beta.meshnet.co/privacy" data-i18n="privacyLink">Privacy</a></nav>
 </div></footer>
 
 <script>
@@ -431,18 +431,18 @@ footer nav{display:flex;gap:18px;margin-inline-start:auto}
   var AR = {
     navNeo: 'Neo AI', navWorkspace: 'مساحة العمل', navPrivacy: 'محلي أولاً', navPricing: 'الأسعار', navProviders: 'مزودو المعالجات', navStart: 'ابدأ الآن',
     heroEyebrow: 'Neo AI · 12 وكيلاً · محلي أولاً', heroTitle1: 'شركتك يديرها', heroTitle2: 'Neo AI', heroTitle3: 'على أجهزتك أنت.',
-    heroSub: 'Expand مساحة عمل الشركات: المشاريع والمناقصات والتسعير والمشتريات والموارد البشرية والمبيعات في مكان واحد. ينجز Neo AI ووكلاؤه الاثنا عشر العمل بذكاء اصطناعي يعمل على أجهزتك. وعندما تحتاج المهمة أكثر، تضيف شبكة MeshNet قدرات Claude لتحليل المناقصات والبحث المعمق.',
-    heroCta1: 'شاهد الباقات', heroCta2: 'افتح مساحة العمل ←', trust1: 'مستخدمون بلا حدود', trust2: 'العربية والإنجليزية', trust3: 'بياناتك ملكك', coreSub: '12 وكيلاً متصلاً',
+    heroSub: 'مساحة عمل MeshNet للشركات: المشاريع والمناقصات والتسعير والمشتريات والموارد البشرية والمبيعات في مكان واحد. ينجز Neo AI ووكلاؤه الاثنا عشر العمل بذكاء اصطناعي يعمل على أجهزتك. وعندما تحتاج المهمة أكثر، تضيف شبكة MeshNet قدرات Claude لتحليل المناقصات والبحث المعمق.',
+    heroCta1: 'شاهد الباقات', heroCta2: 'احجز عرضاً توضيحياً ←', trust1: 'مستخدمون بلا حدود', trust2: 'العربية والإنجليزية', trust3: 'بياناتك ملكك', coreSub: '12 وكيلاً متصلاً',
     neoEyebrow: 'Neo AI', neoTitle: 'مساعد واحد يقود اثني عشر متخصصاً', neoSub: 'اطلب من Neo ما تحتاجه بالعربية أو الإنجليزية، فيقسم المهمة ويسند كل جزء للوكيل المناسب ويتابعه ويعطيك تقريراً واحداً. كل وكيل يعمل على بيانات مساحة عملك الحقيقية وأدواتك المتصلة.',
     demoAsk: 'ما المناقصات المفتوحة المناسبة لنا هذا الأسبوع، وهل نحن جاهزون لتسعيرها؟', demoReply: 'جارٍ العمل. ثلاثة وكلاء يعملون الآن:', demoS1: 'وجد 4 مناقصات مناسبة في اعتماد', demoS2: 'طابق 3 منها مع مشاريع مسعّرة سابقاً', demoS3: 'يكتب ملخصاً في صفحة واحدة', chipLocal: 'نموذج محلي · على هذا الجهاز',
-    wsEyebrow: 'مساحة عمل Expand', wsTitle: 'كل ما يعمل عليه فريقك في مساحة عمل واحدة', wsSub: 'بُنيت مع شركة سعودية للمعارض والتجهيزات وتُستخدم يومياً، وتُخصص حسب طريقة عمل شركتك.',
+    wsEyebrow: 'مساحة عمل MeshNet', wsTitle: 'كل ما يعمل عليه فريقك في مساحة عمل واحدة', wsSub: 'قيد الاستخدام اليومي في السعودية، وتُخصص حسب طريقة عمل شركتك.',
     w1t: 'المشاريع والتسعير', w1p: 'المشاريع من العميل المحتمل حتى التسليم، وجداول تسعير بمعادلات، واستيراد من Excel، وسعر على كل مشروع.', w2t: 'المناقصات', w2p: 'مناقصات اعتماد وترسيات المنافسين في مكان واحد، مع تحليل بالذكاء الاصطناعي لما يستحق التقديم.', w3t: 'المشتريات والإنتاج', w3p: 'طلبات شراء بالكميات والصور وعروض الموردين، ومتابعة إنتاج المصنع.', w4t: 'الموارد البشرية والحضور', w4p: 'حضور بالبصمة، وإجازات بنماذج موقعة قابلة للطباعة، ورواتب وخطابات ومستندات.', w5t: 'محادثة الفريق والتنبيهات', w5p: 'رسائل سريعة بين الزملاء وتنبيهات إسناد المهام ومن متصل الآن.', w6t: 'التقارير والتحليل', w6p: 'مسار المبيعات وأعباء العمل وأبرز مؤشرات العمل — أو اطلب من Neo أي تقرير بكلماتك.', tagNet: 'ذكاء الشبكة', tagLocal: 'يعمل محلياً',
     pvEyebrow: 'ذكاء اصطناعي محلي أولاً', pvTitle: 'الذكاء الاصطناعي يعمل حيث توجد بياناتك', pvSub: 'يستخدم Neo نموذجاً على جهازك أولاً. بيانات شركتك لا تذهب أبداً إلى شبكة المعالجات المجتمعية.',
-    f1t: 'على جهازك', f1p: 'يعمل Neo والوكلاء على نموذج محلي عبر Ollama، وتبقى الأسئلة والإجابات على الجهاز.', f1a: 'يعمل دون إنترنت للمهام اليومية', f1b: 'لا فاتورة على كل سؤال', f2t: 'مساحة عملك', f2p: 'يحفظ Expand سجلاتك بقواعد وصول على مستوى السجل: كل شخص يرى ما يسمح به دوره.', f2a: '100 جيجابايت تخزين سحابي في باقة الأعمال', f2b: 'نسخة احتياطية على تخزينك المحلي', f3t: 'ذكاء الشبكة عند اختيارك', f3p: 'الميزات الأثقل — تحليل المناقصات والبحث المعمق وإجابات بحجم 70B — تستخدم Claude عبر MeshNet، فقط للميزات التي تفعّلها.', f3a: 'بيانات الشركات لا تُستخدم لتدريب النماذج', f3b: 'لا تُرسل أبداً لمعالجات المجتمع',
+    f1t: 'على جهازك', f1p: 'يعمل Neo والوكلاء على نموذج محلي عبر Ollama، وتبقى الأسئلة والإجابات على الجهاز.', f1a: 'يعمل دون إنترنت للمهام اليومية', f1b: 'لا فاتورة على كل سؤال', f2t: 'مساحة عملك', f2p: 'تحفظ مساحة العمل سجلاتك بقواعد وصول على مستوى السجل: كل شخص يرى ما يسمح به دوره.', f2a: '100 جيجابايت تخزين سحابي في باقة الأعمال', f2b: 'نسخة احتياطية على تخزينك المحلي', f3t: 'ذكاء الشبكة عند اختيارك', f3p: 'الميزات الأثقل — تحليل المناقصات والبحث المعمق وإجابات بحجم 70B — تستخدم Claude عبر MeshNet، فقط للميزات التي تفعّلها.', f3a: 'بيانات الشركات لا تُستخدم لتدريب النماذج', f3b: 'لا تُرسل أبداً لمعالجات المجتمع',
     d1n: 'كمبيوتر / ماك', d1p: 'يشغّل Neo محلياً. الأجهزة بذاكرة 48 جيجابايت فأكثر تشغّل نموذج 70B كاملاً على الجهاز.', d2p: 'يعمل نموذج مدمج بالكامل على الآيباد (ذاكرة 12 جيجابايت). المهام التي تحتاج 70B تذهب للشبكة ويخبرك Neo بذلك.', preview: 'معاينة', d3n: 'الجوال / المتصفح', d3p: 'مساحة العمل كاملة في أي متصفح، ويجيب Neo عبر جهازك أو الشبكة.',
     mcpEyebrow: 'الأدوات عبر MCP', mcpTitle: 'يعمل Neo داخل الأدوات التي تستخدمها', mcpSub: 'يستدعي الوكلاء أدواتك عبر بروتوكول MCP — كل اتصال يعتمده مدير، وكل إجراء يُسجّل.', m1: 'المشكلات وطلبات الدمج والإصدارات وسير العمل.', m2: 'قاعدة بياناتك وتسجيل الدخول والتخزين كأدوات.', m3: 'المدفوعات والفواتير والاستردادات على حسابك.', m4: 'التصاميم تُقرأ كتخطيطات منظمة.', m5t: 'الملفات وGit', m5: 'المجلدات والمستودعات على جهازك.', m6t: 'جلب الويب', m6: 'يقرأ الصفحات والمستندات للبحث.', m7t: 'الذاكرة', m7: 'يتذكر حقائق شركتك وتفضيلاتها.', m8t: 'أدواتك الخاصة', m8: 'أي خادم MCP، يُبنى في يوم واحد مع FastMCP.',
     prEyebrow: 'الأسعار', prTitle: 'باقتان. أشخاص بلا حدود.', prSub: 'الأسعار بالريال السعودي، وتضاف ضريبة القيمة المضافة حيث تنطبق.',
-    bName: 'الأعمال', bPrice: '20,000 ريال', bPer: 'سنوياً', bMonthly: '1,500 ريال', bPerMonth: 'اشتراك شهري', b1: 'مساحة عمل Expand كاملة ومخصصة لشركتك', b2: 'مستخدمون بلا حدود', b3: 'Neo AI بوكلائه الاثني عشر', b4: 'ذكاء اصطناعي محلي على أجهزة شركتك', b5: 'ميزات ذكاء الشبكة بتقنية Claude: تحليل المناقصات والبحث والتقارير', b6: '100 جيجابايت تخزين سحابي مع نسخ احتياطي على تخزينك المحلي', b7: 'ربط الأدوات عبر MCP والتهيئة', bCta: 'تحدث معنا عن باقة الأعمال',
+    bName: 'الأعمال', bPrice: '20,000 ريال', bPer: 'سنوياً', bMonthly: '1,500 ريال', bPerMonth: 'اشتراك شهري', b1: 'مساحة عمل MeshNet كاملة ومخصصة لشركتك', b2: 'مستخدمون بلا حدود', b3: 'Neo AI بوكلائه الاثني عشر', b4: 'ذكاء اصطناعي محلي على أجهزة شركتك', b5: 'ميزات ذكاء الشبكة بتقنية Claude: تحليل المناقصات والبحث والتقارير', b6: '100 جيجابايت تخزين سحابي مع نسخ احتياطي على تخزينك المحلي', b7: 'ربط الأدوات عبر MCP والتهيئة', bCta: 'تحدث معنا عن باقة الأعمال',
     pName: 'الشخصية', pPrice: '200 ريال', pPer: 'شهرياً', pPlus: 'لشخص واحد', p1: 'ميزات مساحة العمل نفسها', p2: 'Neo AI بالوكلاء الاثني عشر', p3: 'تشغيل محلي حتى 70 مليار معامل على الأجهزة التي تتسع له', p4: 'بدعم Claude AI للمهام الثقيلة', p5: 'يعمل على الكمبيوتر والماك والآيباد', pCta: 'ابدأ الباقة الشخصية',
     prNote: 'يحتاج نموذج 70B نحو 40 جيجابايت من الذاكرة. على الأجهزة الأصغر يستخدم Neo نموذجاً محلياً مدمجاً والشبكة لإجابات بحجم 70B.',
     gpEyebrow: 'شبكة معالجات MeshNet', gpTitle: 'لديك معالج رسوميات؟ انضم للشبكة واربح.', gpSub: 'الانضمام متاح للجميع. يفحص المثبّت جهازك ويختار أكبر نموذج يتسع له — من نموذج 8B على بطاقة 8 جيجابايت حتى 70B عبر عدة معالجات.',
@@ -451,10 +451,10 @@ footer nav{display:flex;gap:18px;margin-inline-start:auto}
     faqTitle: 'أسئلة', q1: 'هل تخرج بيانات شركتي من أجهزتنا؟', a1x: 'عمل Neo اليومي يتم على نموذج محلي على أجهزتك، وسجلاتك في مساحة عملك تحت قواعد الوصول. فقط ميزات الشبكة التي تفعّلها (مثل تحليل المناقصات) ترسل النص اللازم إلى Claude، ولا شيء يذهب لمعالجات المجتمع.',
     q2: 'هل يشغّل Neo نموذج 70B محلياً فعلاً؟', a2x: 'نعم، على جهاز بذاكرة كافية — نحو 40 جيجابايت لنموذج 70B (مثل ماك بذاكرة 48 جيجابايت أو أكثر، أو معالجين بذاكرة 24 جيجابايت). وعلى الأجهزة الأصغر والآيباد يشغّل Neo نموذجاً مدمجاً محلياً ويستخدم الشبكة لإجابات بحجم 70B.',
     q3: 'ماذا يعني «مستخدمون بلا حدود»؟', a3x: 'أضف فريقك كله في باقة الأعمال دون تكلفة إضافية لكل شخص. كل شخص يدخل بحسابه ويرى ما يسمح به دوره.', q4: 'ما الوكلاء الاثنا عشر؟', a4x: 'المناقصات والمبيعات والمشاريع والتسعير والمشتريات والإنتاج والموارد البشرية والمالية والمستندات والبحث والتقارير والمساعد التنفيذي. يوزع Neo العمل بينهم ويعود إليك بالنتيجة.',
-    stEyebrow: 'ابدأ الآن', stTitle: 'أخبرنا من أنت وسنجهز لك كل شيء', stSub: 'نجهز مساحة عملك معك. عميل حالي؟ <a href="https://expand.meshnet.co/" style="color:var(--cyan2)">ادخل إلى Expand ←</a>',
+    stEyebrow: 'ابدأ الآن', stTitle: 'أخبرنا من أنت وسنجهز لك كل شيء', stSub: 'نجهز مساحة عملك معك ونشغلها لفريقك.',
     fName: 'الاسم الكامل', fEmail: 'البريد الإلكتروني للعمل', fCompany: 'الشركة', fPlan: 'الباقة', optB: 'الأعمال — 20,000 ريال سنوياً + 1,500 ريال شهرياً', optP: 'الشخصية — 200 ريال شهرياً', fNotes: 'ما الذي تريد أن يتولاه Neo عنك؟', fSend: 'أرسل',
     sent: 'وصلنا طلبك وسنتواصل معك قريباً.', failed: 'تعذّر الإرسال. حاول مرة أخرى بعد دقيقة.', needName: 'أدخل اسمك وبريدك الإلكتروني.',
-    foot: '© 2026 MeshNet · الرياض', terms: 'الشروط', privacyLink: 'الخصوصية', signin: 'تسجيل الدخول',
+    foot: '© 2026 MeshNet · الرياض', terms: 'الشروط', privacyLink: 'الخصوصية',
     a1: 'تحليل المناقصات', a4: 'التسعير', a11: 'التقارير',
   };
   var EN = { copied: 'Copied', sent: 'Thank you — we have your request and will be in touch shortly.', failed: 'Could not send. Please try again in a minute.', needName: 'Please enter your name and email.' };
